@@ -61,7 +61,7 @@ export default function StudioHub() {
                     <CardContent className="p-0 space-y-6">
                         <div>
                             <Label className="text-lg font-semibold flex items-center gap-2 mb-2"><CalendarCheck className="w-5 h-5 text-accent"/> Date</Label>
-                            <div className="flex justify-center rounded-md border border-border/50 bg-background/50">
+                            <div className="rounded-md border border-border/50 bg-background/50">
                                <Calendar
                                     mode="single"
                                     selected={date}
