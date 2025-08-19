@@ -2,13 +2,17 @@
 "use client";
 
 import { useState } from "react";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Music, CalendarCheck, Clock, CheckCircle, SlidersHorizontal, Mic, Keyboard } from "lucide-react";
+import { Music, Calendar as CalendarIcon, Clock, CheckCircle, SlidersHorizontal, Mic, Keyboard } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const availableTimeSlots = ["09:00 - 11:00", "11:00 - 13:00", "14:00 - 16:00", "16:00 - 18:00", "18:00 - 20:00"];
 const services = [
@@ -102,33 +106,31 @@ export default function StudioHub() {
                     </div>
                     <div className="space-y-6">
                         <div>
-                             <Label className="text-lg font-semibold flex items-center gap-2 mb-4"><CalendarCheck className="w-5 h-5 text-accent"/> 3. Choisissez une date</Label>
-                            <div className="rounded-md border border-border/50 bg-background/50 p-3">
-                               <Calendar
+                             <Label className="text-lg font-semibold flex items-center gap-2 mb-4"><CalendarIcon className="w-5 h-5 text-accent"/> 3. Choisissez une date</Label>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                      "w-full justify-start text-left font-normal border-primary/50 text-primary hover:bg-primary/10 hover:text-primary",
+                                      !date && "text-muted-foreground"
+                                    )}
+                                  >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {date ? format(date, "PPP", { locale: fr }) : <span>Choisissez une date</span>}
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                  <Calendar
                                     mode="single"
                                     selected={date}
                                     onSelect={setDate}
-                                    className="p-0"
-                                    classNames={{
-                                        root: "w-full",
-                                        caption: "flex justify-center items-center relative mb-4",
-                                        caption_label: "text-lg font-bold text-primary-foreground",
-                                        nav_button: "h-8 w-8 bg-transparent hover:bg-accent/20 p-0 absolute rounded-full",
-                                        nav_button_previous: "left-0",
-                                        nav_button_next: "right-0",
-                                        head_row: "flex justify-between mb-2 px-2",
-                                        head_cell: 'text-muted-foreground uppercase text-xs w-full font-medium',
-                                        row: "flex w-full justify-between mt-2",
-                                        cell: 'text-center text-sm p-0 relative w-full',
-                                        day: 'w-full h-10 rounded-md hover:bg-accent/20 transition-colors',
-                                        day_selected: 'bg-primary text-primary-foreground hover:bg-primary/90 focus:bg-primary focus:text-primary-foreground',
-                                        day_today: 'bg-accent/30 text-accent-foreground font-bold border border-accent',
-                                        day_outside: 'text-muted-foreground/50 opacity-50',
-                                        day_disabled: 'text-muted-foreground opacity-50',
-                                    }}
                                     disabled={(d) => d < new Date(new Date().setDate(new Date().getDate() - 1))}
-                                />
-                            </div>
+                                    initialFocus
+                                    locale={fr}
+                                  />
+                                </PopoverContent>
+                              </Popover>
                         </div>
                         <Button onClick={handleBooking} size="lg" className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-lg">
                            Valider et Payer
