@@ -9,7 +9,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Music, CalendarCheck, Clock, CheckCircle, SlidersHorizontal, Mic, Keyboard } from "lucide-react";
-import type { DateRange } from "react-day-picker";
 
 const availableTimeSlots = ["09:00 - 11:00", "11:00 - 13:00", "14:00 - 16:00", "16:00 - 18:00", "18:00 - 20:00"];
 const services = [
@@ -64,23 +63,23 @@ export default function StudioHub() {
         </section>
 
         <Card className="bg-card border-border/50 max-w-4xl mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-2">
-                <div className="p-6 md:p-8">
-                    <CardHeader className="p-0 mb-6">
-                        <CardTitle className="text-3xl font-headline flex items-center gap-3">
-                            <Music className="w-8 h-8 text-accent" />
-                            Réservez Votre Session
-                        </CardTitle>
-                        <CardDescription>
-                            Planifiez votre prochaine session en quelques clics.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-0 space-y-6">
+            <CardHeader>
+                <CardTitle className="text-3xl font-headline flex items-center gap-3">
+                    <Music className="w-8 h-8 text-accent" />
+                    Réservez Votre Session
+                </CardTitle>
+                <CardDescription>
+                    Planifiez votre prochaine session en quelques clics.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-6">
                          <div>
-                           <Label className="text-lg font-semibold flex items-center gap-2 mb-2"><CheckCircle className="w-5 h-5 text-accent"/> 1. Choisissez votre prestation</Label>
+                           <Label className="text-lg font-semibold flex items-center gap-2 mb-4"><CheckCircle className="w-5 h-5 text-accent"/> 1. Choisissez votre prestation</Label>
                            <RadioGroup value={selectedService} onValueChange={setSelectedService} className="space-y-2">
                              {services.map((service) => (
-                                <Label key={service.id} htmlFor={service.id} className="flex items-center justify-between p-3 rounded-md border border-border/50 cursor-pointer has-[input:checked]:border-primary has-[input:checked]:bg-primary/5">
+                                <Label key={service.id} htmlFor={service.id} className="flex items-center justify-between p-3 rounded-md border border-border/50 cursor-pointer has-[input:checked]:border-primary has-[input:checked]:bg-primary/5 transition-colors">
                                     <div>
                                         <span className="font-semibold">{service.label}</span>
                                         <p className="text-sm text-muted-foreground">{service.price}</p>
@@ -91,46 +90,53 @@ export default function StudioHub() {
                            </RadioGroup>
                         </div>
                         <div>
-                           <Label className="text-lg font-semibold flex items-center gap-2 mb-2"><Clock className="w-5 h-5 text-accent"/> 2. Sélectionnez un créneau</Label>
+                           <Label className="text-lg font-semibold flex items-center gap-2 mb-4"><Clock className="w-5 h-5 text-accent"/> 2. Sélectionnez un créneau</Label>
                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             {availableTimeSlots.map((time) => (
-                                <Button key={time} variant={selectedTime === time ? "default" : "outline"} onClick={() => setSelectedTime(time)} className={`${selectedTime === time ? 'bg-primary text-primary-foreground' : 'border-primary/50 text-primary hover:bg-primary/10'}`}>
+                                <Button key={time} variant={selectedTime === time ? "default" : "outline"} onClick={() => setSelectedTime(time)} className={`transition-colors ${selectedTime === time ? 'bg-primary text-primary-foreground' : 'border-primary/50 text-primary hover:bg-primary/10'}`}>
                                     {time}
                                 </Button>
                             ))}
                            </div>
                         </div>
-                    </CardContent>
-                </div>
-                 <div className="p-6 md:p-8 md:border-l border-t md:border-t-0 border-border/50 flex flex-col">
-                    <div className="flex-grow">
-                         <Label className="text-lg font-semibold flex items-center gap-2 mb-2"><CalendarCheck className="w-5 h-5 text-accent"/> 3. Choisissez une date</Label>
-                        <div className="rounded-md border border-border/50 bg-background/50">
-                           <Calendar
-                                mode="single"
-                                selected={date}
-                                onSelect={setDate}
-                                className="p-0"
-                                classNames={{
-                                    root: "w-full",
-                                    head_cell: 'text-muted-foreground w-full',
-                                    cell: 'w-full',
-                                    day: 'w-full h-10',
-                                    day_selected: 'bg-primary text-primary-foreground hover:bg-primary/90',
-                                    day_today: 'bg-accent/20 text-accent-foreground',
-                                }}
-                                disabled={(d) => d < new Date(new Date().setDate(new Date().getDate() - 1))}
-                            />
-                        </div>
                     </div>
-                    <Button onClick={handleBooking} size="lg" className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-lg mt-6">
-                       Valider et Payer
-                    </Button>
+                    <div className="space-y-6">
+                        <div>
+                             <Label className="text-lg font-semibold flex items-center gap-2 mb-4"><CalendarCheck className="w-5 h-5 text-accent"/> 3. Choisissez une date</Label>
+                            <div className="rounded-md border border-border/50 bg-background/50 p-3">
+                               <Calendar
+                                    mode="single"
+                                    selected={date}
+                                    onSelect={setDate}
+                                    className="p-0"
+                                    classNames={{
+                                        root: "w-full",
+                                        caption: "flex justify-center items-center relative mb-4",
+                                        caption_label: "text-lg font-bold text-primary-foreground",
+                                        nav_button: "h-8 w-8 bg-transparent hover:bg-accent/20 p-0 absolute",
+                                        nav_button_previous: "left-0",
+                                        nav_button_next: "right-0",
+                                        head_row: "flex justify-between mb-2",
+                                        head_cell: 'text-muted-foreground uppercase text-xs w-full',
+                                        row: "flex w-full justify-between mt-2",
+                                        cell: 'text-center text-sm p-0 relative w-full',
+                                        day: 'w-full h-10 rounded-md hover:bg-accent/20 transition-colors',
+                                        day_selected: 'bg-primary text-primary-foreground hover:bg-primary/90 focus:bg-primary focus:text-primary-foreground',
+                                        day_today: 'bg-accent/30 text-accent-foreground font-bold',
+                                        day_outside: 'text-muted-foreground/50 opacity-50',
+                                        day_disabled: 'text-muted-foreground opacity-50',
+                                    }}
+                                    disabled={(d) => d < new Date(new Date().setDate(new Date().getDate() - 1))}
+                                />
+                            </div>
+                        </div>
+                        <Button onClick={handleBooking} size="lg" className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-lg">
+                           Valider et Payer
+                        </Button>
+                    </div>
                 </div>
-            </div>
+            </CardContent>
         </Card>
     </div>
   );
 }
-
-    
