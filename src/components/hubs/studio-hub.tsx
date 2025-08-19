@@ -14,7 +14,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Music, Calendar as CalendarIcon, Clock, SlidersHorizontal, Mic, AudioLines, User, DiscAlbum, FileText, ListMusic, Pencil } from "lucide-react";
+import { Music, Calendar as CalendarIcon, Clock, SlidersHorizontal, Mic, AudioLines, User, DiscAlbum, FileText, ListMusic, Pencil, Plus, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
@@ -104,11 +104,12 @@ export default function StudioHub() {
   const projectType = form.watch("projectType");
 
   React.useEffect(() => {
+    const trackName = projectType === 'single' ? "Titre unique" : "";
     if (projectType === 'single') {
       if (fields.length > 1) {
-        replace([{ name: fields[0]?.name || "Titre unique" }]);
+        replace([{ name: fields[0]?.name || trackName }]);
       } else if (fields.length === 0) {
-        replace([{ name: "Titre unique" }]);
+        replace([{ name: trackName }]);
       }
     }
   }, [projectType, fields, replace]);
@@ -118,7 +119,7 @@ export default function StudioHub() {
     const selectedService = services.find(s => s.id === data.serviceId);
     let description = `Bonjour ${data.artistName}, votre session "${selectedService?.label}" pour le projet "${data.projectName}" (${data.projectType}) a été demandée.`;
     
-    if (data.projectType === 'Single' && data.date && data.timeSlot) {
+    if (data.projectType === 'single' && data.date && data.timeSlot) {
       description += ` Session unique le ${format(data.date, "PPP", { locale: fr })} de ${data.timeSlot}.`;
     } else {
         const trackDetails = data.tracks.map(t => `${t.name} (le ${t.date ? format(t.date, "PPP", { locale: fr }) : 'date non spécifiée'} à ${t.timeSlot || 'créneau non spécifié'})`).join('; ');
@@ -140,21 +141,6 @@ export default function StudioHub() {
       timeSlot: undefined,
     });
     replace([{ name: "" }]);
-  };
-
-  const handleTrackCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const count = parseInt(e.target.value, 10) || 0;
-    if (count < 1) return;
-    const currentCount = fields.length;
-    if (count > currentCount) {
-        for (let i = 0; i < count - currentCount; i++) {
-            append({ name: "" });
-        }
-    } else if (count < currentCount) {
-        for (let i = 0; i < currentCount - count; i++) {
-            remove(currentCount - 1 - i);
-        }
-    }
   };
 
   return (
@@ -266,9 +252,17 @@ export default function StudioHub() {
                     </div>
                 ) : (
                     <div className="space-y-6">
-                        <div className="max-w-xs">
+                        <div className="flex items-center gap-4">
                             <FormLabel>Nombre de titres</FormLabel>
-                            <Input type="number" min="1" value={fields.length} onChange={handleTrackCountChange} disabled={projectType === 'single'} />
+                            <div className="flex items-center gap-2">
+                                <Button type="button" size="icon" variant="outline" onClick={() => fields.length > 1 && remove(fields.length - 1)} disabled={fields.length <= 1}>
+                                    <Minus className="h-4 w-4" />
+                                </Button>
+                                <span className="text-lg font-semibold w-10 text-center">{fields.length}</span>
+                                <Button type="button" size="icon" variant="outline" onClick={() => append({ name: "" })}>
+                                    <Plus className="h-4 w-4" />
+                                </Button>
+                            </div>
                         </div>
                         <Separator />
                         <div className="space-y-4">
