@@ -59,7 +59,7 @@ export default function StudioHub() {
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
     name: "tracks",
   });
@@ -97,6 +97,14 @@ export default function StudioHub() {
       }
     }
   };
+
+  React.useEffect(() => {
+    if (projectType === 'Single') {
+      if (fields.length !== 1) {
+        replace([{ name: fields[0]?.name || "" }]);
+      }
+    }
+  }, [projectType, fields, replace]);
 
   return (
     <div className="space-y-12">
@@ -191,7 +199,7 @@ export default function StudioHub() {
                                 <FormLabel className="text-lg font-semibold flex items-center gap-2"><ListMusic className="w-5 h-5 text-accent" />Détails des titres</FormLabel>
                                 <div className="space-y-2">
                                   <FormLabel className="text-sm">Nombre de titres</FormLabel>
-                                  <Input type="number" min="1" value={fields.length} onChange={handleTrackCountChange} className="border-primary/50 w-24" />
+                                  <Input type="number" min="1" value={fields.length} onChange={handleTrackCountChange} disabled={projectType === 'Single'} className="border-primary/50 w-24" />
                                 </div>
                                 <Separator />
                                 <div className="space-y-4 max-h-48 overflow-y-auto pr-2">
@@ -324,5 +332,3 @@ export default function StudioHub() {
     </div>
   );
 }
-
-    
