@@ -14,7 +14,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Music, Calendar as CalendarIcon, Clock, SlidersHorizontal, Mic, AudioLines, User, DiscAlbum, FileText, ListMusic } from "lucide-react";
+import { Music, Calendar as CalendarIcon, Clock, SlidersHorizontal, Mic, AudioLines, User, DiscAlbum, FileText, ListMusic, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
@@ -34,7 +34,7 @@ const bookingSchema = z.object({
   date: z.date().optional(),
   tracks: z.array(trackSchema).min(1, "Veuillez ajouter au moins un titre.")
 }).superRefine((data, ctx) => {
-    if (data.projectType === 'Single') {
+    if (data.projectType === 'single') {
         if (!data.date) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
@@ -49,7 +49,7 @@ const bookingSchema = z.object({
                 message: 'Veuillez sélectionner un créneau.',
             });
         }
-    } else {
+    } else if (data.projectType) {
         data.tracks.forEach((track, index) => {
             if (!track.date) {
                 ctx.addIssue({
@@ -100,10 +100,23 @@ export default function StudioHub() {
     control: form.control,
     name: "tracks",
   });
+  
+  const projectType = form.watch("projectType");
+
+  React.useEffect(() => {
+    if (projectType === 'single') {
+      if (fields.length > 1) {
+        replace([{ name: fields[0]?.name || "Titre unique" }]);
+      } else if (fields.length === 0) {
+        replace([{ name: "Titre unique" }]);
+      }
+    }
+  }, [projectType, fields, replace]);
+
 
   const onSubmit = (data: BookingFormValues) => {
     const selectedService = services.find(s => s.id === data.serviceId);
-    let description = `Bonjour ${data.artistName}, votre session "${selectedService?.label}" pour le projet "${data.projectName}" (${data.projectType}) a été réservée.`;
+    let description = `Bonjour ${data.artistName}, votre session "${selectedService?.label}" pour le projet "${data.projectName}" (${data.projectType}) a été demandée.`;
     
     if (data.projectType === 'Single' && data.date && data.timeSlot) {
       description += ` Session unique le ${format(data.date, "PPP", { locale: fr })} de ${data.timeSlot}.`;
@@ -113,8 +126,9 @@ export default function StudioHub() {
     }
 
     toast({
-        title: "Réservation confirmée !",
-        description: description,
+        title: "Demande de réservation envoyée !",
+        description: "Nous vous contacterons bientôt pour confirmer la disponibilité.",
+        variant: "default"
     });
     form.reset({
       serviceId: "voice-mix",
@@ -127,12 +141,10 @@ export default function StudioHub() {
     });
     replace([{ name: "" }]);
   };
-  
-  const selectedServiceId = form.watch("serviceId");
-  const projectType = form.watch("projectType");
 
   const handleTrackCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const count = parseInt(e.target.value, 10) || 0;
+    if (count < 1) return;
     const currentCount = fields.length;
     if (count > currentCount) {
         for (let i = 0; i < count - currentCount; i++) {
@@ -146,272 +158,173 @@ export default function StudioHub() {
   };
 
   return (
-    <div className="container mx-auto py-10">
-      <Card className="w-[90%] md:w-[75%] lg:w-[60%] mx-auto">
-        <CardHeader>
-          <CardTitle className="text-2xl">Réserver le Studio</CardTitle>
-          <CardDescription>
-            Réservez votre session d'enregistrement au studio.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="artistName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nom de l'artiste / Groupe</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Nom de l'artiste" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="projectName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nom du Projet</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Nom du projet" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="projectType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Type de Projet</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sélectionner un type de projet" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {projectTypes.map((type) => (
-                          <SelectItem key={type.id} value={type.id}>
-                            {type.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="serviceId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Prestation</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sélectionner une prestation" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {services.map((service) => (
-                          <SelectItem key={service.id} value={service.id}>
-                            <div className="flex items-center space-x-2">
-                              {React.createElement(service.icon, { className: "h-4 w-4" })}
-                              <span>{service.label}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              {projectType === "single" ? (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="date"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Date de la session</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant={"outline"}
-                                className={cn(
-                                  "w-[240px] pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                              >
-                                {field.value ? (
-                                  format(field.value, "PPP", { locale: fr })
-                                ) : (
-                                  <span>Choisir une date</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              locale={fr}
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) =>
-                                date < new Date()
-                              }
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="timeSlot"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Créneau</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Sélectionner un créneau" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {availableTimeSlots.map((timeSlot) => (
-                              <SelectItem key={timeSlot} value={timeSlot}>
-                                {timeSlot}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
-              ) : (
-                <>
-                  <div className="grid grid-cols-1 gap-4">
-                    <FormLabel>Nombre de titres</FormLabel>
-                    <Input
-                      type="number"
-                      defaultValue={fields.length.toString()}
-                      onChange={handleTrackCountChange}
-                      min="1"
-                    />
-                  </div>
-                  <Separator className="my-2" />
-                  {fields.map((field, index) => (
-                    <div key={field.id} className="space-y-2">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Titre #{index + 1}</CardTitle>
-                        </CardHeader>
-                        <CardContent className="grid gap-4">
-                          <FormField
-                            control={form.control}
-                            name={`tracks.${index}.name` as const}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Nom du titre</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="Nom du titre" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name={`tracks.${index}.date` as const}
-                            render={({ field }) => (
-                              <FormItem className="flex flex-col">
-                                <FormLabel>Date de la session</FormLabel>
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <FormControl>
-                                      <Button
-                                        variant={"outline"}
-                                        className={cn(
-                                          "w-[240px] pl-3 text-left font-normal",
-                                          !field.value && "text-muted-foreground"
-                                        )}
-                                      >
-                                        {field.value ? (
-                                          format(field.value, "PPP", { locale: fr })
-                                        ) : (
-                                          <span>Choisir une date</span>
-                                        )}
-                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                      </Button>
-                                    </FormControl>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar
-                                      mode="single"
-                                      locale={fr}
-                                      selected={field.value}
-                                      onSelect={field.onChange}
-                                      disabled={(date) =>
-                                        date < new Date()
-                                      }
-                                      initialFocus
-                                    />
-                                  </PopoverContent>
-                                </Popover>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name={`tracks.${index}.timeSlot` as const}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Créneau</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Sélectionner un créneau" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {availableTimeSlots.map((timeSlot) => (
-                                      <SelectItem key={timeSlot} value={timeSlot}>
-                                        {timeSlot}
-                                      </SelectItem>
+    <div className="space-y-12">
+      <header className="text-center space-y-2">
+        <h1 className="text-4xl font-bold text-primary font-headline tracking-wider">KHEOPS STUDIO</h1>
+        <p className="text-muted-foreground text-lg">Donnez vie à vos projets musicaux dans un environnement professionnel.</p>
+      </header>
+
+      <div className="w-full max-w-4xl mx-auto">
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <Card className="border-border/50">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-3 text-2xl"><User className="text-accent w-7 h-7" /> Informations sur le Projet</CardTitle>
+                    <CardDescription>Commencez par nous en dire plus sur vous et votre projet.</CardDescription>
+                </CardHeader>
+                <CardContent className="grid md:grid-cols-2 gap-6 pt-2">
+                    <FormField control={form.control} name="artistName" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Nom de l'artiste / Groupe</FormLabel>
+                            <FormControl><Input placeholder="Ex: KHEOPS Collective" {...field} /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                    <FormField control={form.control} name="projectName" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Nom du Projet</FormLabel>
+                            <FormControl><Input placeholder="Ex: Chroniques de l'Aube" {...field} /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                </CardContent>
+            </Card>
+
+            <Card className="border-border/50">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-3 text-2xl"><SlidersHorizontal className="text-accent w-7 h-7" /> Prestation & Type</CardTitle>
+                    <CardDescription>Choisissez le type de projet et la prestation qui vous convient le mieux.</CardDescription>
+                </CardHeader>
+                <CardContent className="grid md:grid-cols-2 gap-6 pt-2">
+                    <FormField control={form.control} name="projectType" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Type de Projet</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un type" /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                    {projectTypes.map((type) => (<SelectItem key={type.id} value={type.id}>{type.label}</SelectItem>))}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                    <FormField control={form.control} name="serviceId" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Prestation désirée</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner une prestation" /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                    {services.map((service) => (
+                                        <SelectItem key={service.id} value={service.id}>
+                                            <div className="flex items-center gap-2">
+                                                {React.createElement(service.icon, { className: "w-4 h-4" })}
+                                                <span>{service.label}</span>
+                                            </div>
+                                        </SelectItem>
                                     ))}
-                                  </SelectContent>
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                </CardContent>
+            </Card>
+
+            {projectType && (
+            <Card className="border-border/50">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-3 text-2xl"><CalendarIcon className="text-accent w-7 h-7" /> Planification</CardTitle>
+                    <CardDescription>Sélectionnez les dates et créneaux pour vos enregistrements.</CardDescription>
+                </CardHeader>
+                <CardContent className="pt-2">
+                {projectType === 'single' ? (
+                    <div className="grid md:grid-cols-2 gap-6">
+                        <FormField control={form.control} name="date" render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                                <FormLabel>Date de la session</FormLabel>
+                                <Popover><PopoverTrigger asChild>
+                                <FormControl><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {field.value ? format(field.value, "PPP", { locale: fr }) : <span>Choisir une date</span>}
+                                </Button></FormControl>
+                                </PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" locale={fr} selected={field.value} onSelect={field.onChange} disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} initialFocus /></PopoverContent></Popover>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                         <FormField control={form.control} name="timeSlot" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Créneau Horaire</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un créneau" /></SelectTrigger></FormControl>
+                                    <SelectContent>
+                                        {availableTimeSlots.map((slot) => <SelectItem key={slot} value={slot}>{slot}</SelectItem>)}
+                                    </SelectContent>
                                 </Select>
                                 <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </CardContent>
-                      </Card>
+                            </FormItem>
+                        )} />
                     </div>
-                  ))}
-                </>
-              )}
-              <Button type="submit">Réserver</Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+                ) : (
+                    <div className="space-y-6">
+                        <div className="max-w-xs">
+                            <FormLabel>Nombre de titres</FormLabel>
+                            <Input type="number" min="1" value={fields.length} onChange={handleTrackCountChange} disabled={projectType === 'single'} />
+                        </div>
+                        <Separator />
+                        <div className="space-y-4">
+                        {fields.map((field, index) => (
+                            <div key={field.id} className="p-4 rounded-lg border border-border/70 bg-background/50 space-y-4">
+                                <h4 className="font-semibold text-primary flex items-center gap-2"><Pencil className="w-4 h-4" /> Titre #{index + 1}</h4>
+                                <div className="grid md:grid-cols-3 gap-4">
+                                    <FormField control={form.control} name={`tracks.${index}.name`} render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Nom du titre</FormLabel>
+                                            <FormControl><Input placeholder={`Titre ${index + 1}`} {...field} /></FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                    <FormField control={form.control} name={`tracks.${index}.date`} render={({ field }) => (
+                                       <FormItem className="flex flex-col">
+                                            <FormLabel>Date</FormLabel>
+                                            <Popover><PopoverTrigger asChild>
+                                            <FormControl><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                {field.value ? format(field.value, "PPP", { locale: fr }) : <span>Choisir une date</span>}
+                                            </Button></FormControl>
+                                            </PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" locale={fr} selected={field.value} onSelect={field.onChange} disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} initialFocus /></PopoverContent></Popover>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                    <FormField control={form.control} name={`tracks.${index}.timeSlot`} render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Créneau</FormLabel>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger></FormControl>
+                                                <SelectContent>
+                                                    {availableTimeSlots.map((slot) => <SelectItem key={slot} value={slot}>{slot}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                </div>
+                            </div>
+                        ))}
+                        </div>
+                    </div>
+                )}
+                </CardContent>
+            </Card>
+            )}
+
+            <div className="flex justify-end">
+                <Button size="lg" type="submit" className="font-bold w-full md:w-auto" disabled={!projectType}>
+                    {projectType ? "Réserver la Session" : "Veuillez remplir le formulaire"}
+                </Button>
+            </div>
+          </form>
+        </Form>
+      </div>
     </div>
   );
 }
