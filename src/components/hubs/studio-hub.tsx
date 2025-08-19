@@ -106,13 +106,24 @@ export default function StudioHub() {
   React.useEffect(() => {
     const trackName = projectType === 'single' ? "Titre unique" : "";
     if (projectType === 'single') {
-      if (fields.length > 1) {
-        replace([{ name: fields[0]?.name || trackName }]);
-      } else if (fields.length === 0) {
         replace([{ name: trackName }]);
+    }
+  }, [projectType, replace]);
+
+
+  const handleTrackCountChange = (value: number) => {
+    const count = Math.max(1, value || 1);
+    const difference = count - fields.length;
+    if (difference > 0) {
+      for (let i = 0; i < difference; i++) {
+        append({ name: "" });
+      }
+    } else if (difference < 0) {
+      for (let i = 0; i < Math.abs(difference); i++) {
+        remove(fields.length - 1 - i);
       }
     }
-  }, [projectType, fields, replace]);
+  };
 
 
   const onSubmit = (data: BookingFormValues) => {
@@ -255,11 +266,17 @@ export default function StudioHub() {
                         <div className="flex items-center gap-4">
                             <FormLabel>Nombre de titres</FormLabel>
                             <div className="flex items-center gap-2">
-                                <Button type="button" size="icon" variant="outline" onClick={() => fields.length > 1 && remove(fields.length - 1)} disabled={fields.length <= 1}>
+                                <Button type="button" size="icon" variant="outline" onClick={() => handleTrackCountChange(fields.length - 1)} disabled={fields.length <= 1}>
                                     <Minus className="h-4 w-4" />
                                 </Button>
-                                <span className="text-lg font-semibold w-10 text-center">{fields.length}</span>
-                                <Button type="button" size="icon" variant="outline" onClick={() => append({ name: "" })}>
+                                <Input
+                                    type="number"
+                                    className="w-16 text-center"
+                                    value={fields.length}
+                                    onChange={(e) => handleTrackCountChange(parseInt(e.target.value, 10))}
+                                    min={1}
+                                />
+                                <Button type="button" size="icon" variant="outline" onClick={() => handleTrackCountChange(fields.length + 1)}>
                                     <Plus className="h-4 w-4" />
                                 </Button>
                             </div>
