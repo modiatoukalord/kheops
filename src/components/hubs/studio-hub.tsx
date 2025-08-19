@@ -14,7 +14,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Music, Calendar as CalendarIcon, Clock, SlidersHorizontal, Mic, AudioLines, User, DiscAlbum, FileText, ListMusic, Pencil, Plus, Minus } from "lucide-react";
+import { Music, Calendar as CalendarIcon, Clock, SlidersHorizontal, Mic, AudioLines, User, DiscAlbum, FileText, ListMusic, Pencil, Plus, Minus, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
@@ -28,6 +28,7 @@ const trackSchema = z.object({
 const bookingSchema = z.object({
   artistName: z.string().min(1, { message: "Veuillez saisir le nom de l'artiste ou du groupe." }),
   projectName: z.string().min(1, { message: "Veuillez saisir le nom du projet." }),
+  phoneNumber: z.string().min(1, { message: "Veuillez saisir votre numéro de téléphone." }),
   projectType: z.string({ required_error: "Veuillez choisir le type de projet." }),
   serviceId: z.string({ required_error: "Veuillez choisir une prestation." }),
   timeSlot: z.string().optional(),
@@ -92,6 +93,7 @@ export default function StudioHub() {
       serviceId: "voice-mix",
       artistName: "",
       projectName: "",
+      phoneNumber: "",
       tracks: [{ name: "" }],
     },
   });
@@ -128,7 +130,7 @@ export default function StudioHub() {
 
   const onSubmit = (data: BookingFormValues) => {
     const selectedService = services.find(s => s.id === data.serviceId);
-    let description = `Bonjour ${data.artistName}, votre session "${selectedService?.label}" pour le projet "${data.projectName}" (${data.projectType}) a été demandée.`;
+    let description = `Bonjour ${data.artistName}, votre session "${selectedService?.label}" pour le projet "${data.projectName}" (${data.projectType}) a été demandée. Nous vous contacterons au ${data.phoneNumber}.`;
     
     if (data.projectType === 'single' && data.date && data.timeSlot) {
       description += ` Session unique le ${format(data.date, "PPP", { locale: fr })} de ${data.timeSlot}.`;
@@ -146,6 +148,7 @@ export default function StudioHub() {
       serviceId: "voice-mix",
       artistName: "",
       projectName: "",
+      phoneNumber: "",
       tracks: [{ name: "" }],
       projectType: undefined,
       date: undefined,
@@ -181,6 +184,18 @@ export default function StudioHub() {
                         <FormItem>
                             <FormLabel>Nom du Projet</FormLabel>
                             <FormControl><Input placeholder="Ex: Chroniques de l'Aube" {...field} /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                     <FormField control={form.control} name="phoneNumber" render={({ field }) => (
+                        <FormItem className="md:col-span-2">
+                            <FormLabel>Numéro de téléphone</FormLabel>
+                            <FormControl>
+                                <div className="relative">
+                                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input placeholder="Ex: +221 77 123 45 67" {...field} className="pl-10" />
+                                </div>
+                            </FormControl>
                             <FormMessage />
                         </FormItem>
                     )} />
