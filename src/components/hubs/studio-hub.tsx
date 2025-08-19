@@ -1,3 +1,4 @@
+
 "use client";
 
 import { format } from "date-fns";
@@ -28,7 +29,9 @@ const trackSchema = z.object({
 const bookingSchema = z.object({
   artistName: z.string().min(1, { message: "Veuillez saisir le nom de l'artiste ou du groupe." }),
   projectName: z.string().min(1, { message: "Veuillez saisir le nom du projet." }),
-  phoneNumber: z.string().min(1, { message: "Veuillez saisir votre numéro de téléphone." }),
+  phoneNumber: z.string()
+    .min(1, { message: "Veuillez saisir votre numéro de téléphone." })
+    .regex(/^\+242\s?(\d{2}\s?\d{3}\s?\d{4}|\d{9})$/, "Veuillez saisir un numéro valide au format +242 XX XXX XXXX."),
   projectType: z.string({ required_error: "Veuillez choisir le type de projet." }),
   serviceId: z.string({ required_error: "Veuillez choisir une prestation." }),
   timeSlot: z.string().optional(),
@@ -193,7 +196,7 @@ export default function StudioHub() {
                             <FormControl>
                                 <div className="relative">
                                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <Input placeholder="Ex: +221 77 123 45 67" {...field} className="pl-10" />
+                                    <Input placeholder="Ex: +242 06 123 4567" {...field} className="pl-10" />
                                 </div>
                             </FormControl>
                             <FormMessage />
