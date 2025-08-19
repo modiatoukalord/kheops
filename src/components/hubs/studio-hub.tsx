@@ -8,20 +8,20 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Music, Calendar as CalendarIcon, Clock, CheckCircle, SlidersHorizontal, Mic, Keyboard } from "lucide-react";
+import { Music, Calendar as CalendarIcon, Clock, CheckCircle, SlidersHorizontal, Mic, AudioLines } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const availableTimeSlots = ["09:00 - 11:00", "11:00 - 13:00", "14:00 - 16:00", "16:00 - 18:00", "18:00 - 20:00"];
 const services = [
-    { id: "rental", label: "Location simple", price: "30000 FCFA/h", icon: Keyboard, description: "Accès complet à notre équipement de pointe pour vos projets." },
-    { id: "recording", label: "Enregistrement + Ingénieur", price: "50000 FCFA/h", icon: Mic, description: "Session d'enregistrement guidée par un de nos ingénieurs du son." },
-    { id: "mastering", label: "Mix & Mastering", price: "75000 FCFA/h", icon: SlidersHorizontal, description: "Finalisez vos pistes avec un traitement audio professionnel." },
+    { id: "voice-recording", label: "Prise de voix", price: "30 000 FCFA/h", icon: Mic, description: "Enregistrement de haute qualité de vos voix pour chansons, podcasts ou voix-off." },
+    { id: "voice-mix", label: "Prise de voix + Mix", price: "50 000 FCFA/h", icon: AudioLines, description: "Enregistrement et mixage de vos pistes vocales pour un son équilibré et clair." },
+    { id: "full-package", label: "Prise de voix + Mix + Mastering", price: "75 000 FCFA/h", icon: SlidersHorizontal, description: "Le service complet pour des pistes vocales prêtes à la diffusion." },
 ];
 
 export default function StudioHub() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
-  const [selectedService, setSelectedService] = useState<string>("recording");
+  const [selectedService, setSelectedService] = useState<string>("voice-mix");
   const { toast } = useToast();
 
   const handleBooking = () => {
