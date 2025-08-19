@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -7,18 +6,16 @@ import { fr } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { Music, Calendar as CalendarIcon, Clock, CheckCircle, SlidersHorizontal, Mic, Keyboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const availableTimeSlots = ["09:00 - 11:00", "11:00 - 13:00", "14:00 - 16:00", "16:00 - 18:00", "18:00 - 20:00"];
 const services = [
-    { id: "rental", label: "Location simple", price: "50€/h", icon: Keyboard, description: "Accès complet à notre équipement de pointe pour vos projets." },
-    { id: "recording", label: "Enregistrement + Ingénieur", price: "80€/h", icon: Mic, description: "Session d'enregistrement guidée par un de nos ingénieurs du son." },
-    { id: "mastering", label: "Mix & Mastering", price: "120€/h", icon: SlidersHorizontal, description: "Finalisez vos pistes avec un traitement audio professionnel." },
+    { id: "rental", label: "Location simple", price: "30000 FCFA/h", icon: Keyboard, description: "Accès complet à notre équipement de pointe pour vos projets." },
+    { id: "recording", label: "Enregistrement + Ingénieur", price: "50000 FCFA/h", icon: Mic, description: "Session d'enregistrement guidée par un de nos ingénieurs du son." },
+    { id: "mastering", label: "Mix & Mastering", price: "75000 FCFA/h", icon: SlidersHorizontal, description: "Finalisez vos pistes avec un traitement audio professionnel." },
 ];
 
 export default function StudioHub() {
@@ -38,7 +35,7 @@ export default function StudioHub() {
     }
     toast({
         title: "Réservation en cours",
-        description: `Votre demande pour le ${date.toLocaleDateString('fr-FR')} à ${selectedTime} est en cours de traitement.`,
+        description: `Votre demande pour le ${format(date, "PPP", { locale: fr })} à ${selectedTime} est en cours de traitement.`,
     });
     // Stripe integration would go here
   };
@@ -76,43 +73,53 @@ export default function StudioHub() {
                     Planifiez votre prochaine session en quelques clics.
                 </CardDescription>
             </CardHeader>
-            <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <CardContent className="p-6 space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                    
                     <div className="space-y-6">
-                         <div>
-                           <Label className="text-lg font-semibold flex items-center gap-2 mb-4"><CheckCircle className="w-5 h-5 text-accent"/> 1. Choisissez votre prestation</Label>
-                           <RadioGroup value={selectedService} onValueChange={setSelectedService} className="space-y-2">
-                             {services.map((service) => (
-                                <Label key={service.id} htmlFor={service.id} className="flex items-center justify-between p-3 rounded-md border border-border/50 cursor-pointer has-[input:checked]:border-primary has-[input:checked]:bg-primary/5 transition-colors">
-                                    <div>
-                                        <span className="font-semibold">{service.label}</span>
-                                        <p className="text-sm text-muted-foreground">{service.price}</p>
-                                    </div>
-                                    <RadioGroupItem value={service.id} id={service.id} />
-                                </Label>
-                             ))}
-                           </RadioGroup>
-                        </div>
                         <div>
-                           <Label className="text-lg font-semibold flex items-center gap-2 mb-4"><Clock className="w-5 h-5 text-accent"/> 2. Sélectionnez un créneau</Label>
-                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            {availableTimeSlots.map((time) => (
-                                <Button key={time} variant={selectedTime === time ? "default" : "outline"} onClick={() => setSelectedTime(time)} className={`transition-colors ${selectedTime === time ? 'bg-primary text-primary-foreground' : 'border-primary/50 text-primary hover:bg-primary/10'}`}>
-                                    {time}
-                                </Button>
-                            ))}
-                           </div>
+                            <h3 className="text-lg font-semibold flex items-center gap-2 mb-4"><CheckCircle className="w-5 h-5 text-accent"/> 1. Choisissez votre prestation</h3>
+                            <div className="space-y-3">
+                                {services.map((service) => (
+                                    <Button
+                                        key={service.id}
+                                        variant={selectedService === service.id ? "secondary" : "outline"}
+                                        onClick={() => setSelectedService(service.id)}
+                                        className="w-full justify-start h-auto p-4 text-left"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-5 h-5 rounded-full border-2 ${selectedService === service.id ? 'bg-primary border-primary' : 'border-primary/50'}`}></div>
+                                            <div>
+                                                <p className="font-bold">{service.label}</p>
+                                                <p className="text-sm text-muted-foreground">{service.price}</p>
+                                            </div>
+                                        </div>
+                                    </Button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 className="text-lg font-semibold flex items-center gap-2 mb-4"><Clock className="w-5 h-5 text-accent"/> 2. Sélectionnez un créneau</h3>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                {availableTimeSlots.map((time) => (
+                                    <Button key={time} variant={selectedTime === time ? "default" : "outline"} onClick={() => setSelectedTime(time)} className={`transition-colors ${selectedTime === time ? 'bg-primary text-primary-foreground' : 'border-primary/50 text-primary hover:bg-primary/10'}`}>
+                                        {time}
+                                    </Button>
+                                ))}
+                            </div>
                         </div>
                     </div>
+
                     <div className="space-y-6">
-                        <div>
-                             <Label className="text-lg font-semibold flex items-center gap-2 mb-4"><CalendarIcon className="w-5 h-5 text-accent"/> 3. Choisissez une date</Label>
+                         <div>
+                           <h3 className="text-lg font-semibold flex items-center gap-2 mb-4"><CalendarIcon className="w-5 h-5 text-accent"/> 3. Choisissez une date</h3>
                               <Popover>
                                 <PopoverTrigger asChild>
                                   <Button
                                     variant={"outline"}
                                     className={cn(
-                                      "w-full justify-start text-left font-normal border-primary/50 text-primary hover:bg-primary/10 hover:text-primary",
+                                      "w-full justify-start text-left font-normal h-12 border-primary/50 text-primary hover:bg-primary/10 hover:text-primary",
                                       !date && "text-muted-foreground"
                                     )}
                                   >
@@ -128,14 +135,20 @@ export default function StudioHub() {
                                     disabled={(d) => d < new Date(new Date().setDate(new Date().getDate() - 1))}
                                     initialFocus
                                     locale={fr}
+                                    className="bg-card border-border rounded-md"
+                                     classNames={{
+                                        day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+                                        day_today: "bg-accent text-accent-foreground",
+                                    }}
                                   />
                                 </PopoverContent>
                               </Popover>
                         </div>
-                        <Button onClick={handleBooking} size="lg" className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-lg">
+                        <Button onClick={handleBooking} size="lg" className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-lg h-12">
                            Valider et Payer
                         </Button>
                     </div>
+
                 </div>
             </CardContent>
         </Card>
