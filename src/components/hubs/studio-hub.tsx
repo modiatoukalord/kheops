@@ -1,3 +1,4 @@
+
 "use client";
 
 import { format } from "date-fns";
@@ -13,11 +14,14 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Music, Calendar as CalendarIcon, Clock, SlidersHorizontal, Mic, AudioLines, User } from "lucide-react";
+import { Music, Calendar as CalendarIcon, Clock, SlidersHorizontal, Mic, AudioLines, User, DiscAlbum, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const bookingSchema = z.object({
-  artistName: z.string().min(1, { message: "Veuillez saisir votre nom d'artiste." }),
+  artistName: z.string().min(1, { message: "Veuillez saisir le nom de l'artiste ou du groupe." }),
+  projectName: z.string().min(1, { message: "Veuillez saisir le nom du projet." }),
+  projectType: z.string({ required_error: "Veuillez choisir le type de projet." }),
   serviceId: z.string({ required_error: "Veuillez choisir une prestation." }),
   timeSlot: z.string({ required_error: "Veuillez sélectionner un créneau." }),
   date: z.date({ required_error: "Veuillez choisir une date." }),
@@ -31,6 +35,12 @@ const services = [
     { id: "voice-mix", label: "Prise de voix + Mix", price: "50 000 FCFA/h", icon: AudioLines, description: "Enregistrement et mixage de vos pistes vocales pour un son équilibré et clair." },
     { id: "full-package", label: "Prise de voix + Mix + Mastering", price: "75 000 FCFA/h", icon: SlidersHorizontal, description: "Le service complet pour des pistes vocales prêtes à la diffusion." },
 ];
+const projectTypes = [
+  { id: "single", label: "Single" },
+  { id: "mixtape", label: "Mixtape" },
+  { id: "album", label: "Album" },
+];
+
 
 export default function StudioHub() {
   const { toast } = useToast();
@@ -39,6 +49,7 @@ export default function StudioHub() {
     defaultValues: {
       serviceId: "voice-mix",
       artistName: "",
+      projectName: "",
     },
   });
 
@@ -46,7 +57,7 @@ export default function StudioHub() {
     const selectedService = services.find(s => s.id === data.serviceId);
     toast({
         title: "Réservation confirmée !",
-        description: `Bonjour ${data.artistName}, votre session "${selectedService?.label}" est réservée pour le ${format(data.date, "PPP", { locale: fr })} de ${data.timeSlot}.`,
+        description: `Bonjour ${data.artistName}, votre session "${selectedService?.label}" pour le projet "${data.projectName}" (${data.projectType}) est réservée pour le ${format(data.date, "PPP", { locale: fr })} de ${data.timeSlot}.`,
     });
     form.reset();
   };
@@ -96,10 +107,47 @@ export default function StudioHub() {
                               name="artistName"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel className="text-lg font-semibold flex items-center gap-2 mb-2"><User className="w-5 h-5 text-accent"/>Nom d'artiste</FormLabel>
+                                  <FormLabel className="text-lg font-semibold flex items-center gap-2 mb-2"><User className="w-5 h-5 text-accent"/>Nom de l'artiste ou du groupe</FormLabel>
                                   <FormControl>
-                                    <Input placeholder="Saisissez votre nom d'artiste" {...field} className="border-primary/50" />
+                                    <Input placeholder="Saisissez le nom" {...field} className="border-primary/50" />
                                   </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name="projectName"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-lg font-semibold flex items-center gap-2 mb-2"><FileText className="w-5 h-5 text-accent"/>Nom du projet</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="Saisissez le nom du projet" {...field} className="border-primary/50" />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            
+                            <FormField
+                              control={form.control}
+                              name="projectType"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-lg font-semibold flex items-center gap-2 mb-2"><DiscAlbum className="w-5 h-5 text-accent"/>Type de projet</FormLabel>
+                                   <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                      <SelectTrigger className="border-primary/50">
+                                        <SelectValue placeholder="Sélectionnez un type" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      {projectTypes.map((type) => (
+                                        <SelectItem key={type.id} value={type.label}>{type.label}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
                                   <FormMessage />
                                 </FormItem>
                               )}
@@ -213,3 +261,5 @@ export default function StudioHub() {
     </div>
   );
 }
+
+    
