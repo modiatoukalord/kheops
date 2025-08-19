@@ -107,6 +107,8 @@ export default function StudioHub() {
   });
   
   const projectType = form.watch("projectType");
+  const allTracks = form.watch("tracks");
+  const singleDate = form.watch("date");
 
   React.useEffect(() => {
     const trackName = projectType === 'single' ? "Titre unique" : "";
@@ -159,6 +161,14 @@ export default function StudioHub() {
     });
     replace([{ name: "" }]);
   };
+
+  const getBookedSlotsForDate = (date: Date | undefined) => {
+    if (!date) return [];
+    return allTracks
+      .filter(track => track.date && track.date.getTime() === date.getTime() && track.timeSlot)
+      .map(track => track.timeSlot as string);
+  };
+
 
   return (
     <div className="space-y-12">
@@ -301,7 +311,11 @@ export default function StudioHub() {
                         </div>
                         <Separator />
                         <div className="space-y-4">
-                        {fields.map((field, index) => (
+                        {fields.map((field, index) => {
+                             const currentDate = form.watch(`tracks.${index}.date`);
+                             const bookedSlots = getBookedSlotsForDate(currentDate);
+
+                            return(
                             <div key={field.id} className="p-4 rounded-lg border border-border/70 bg-background/50 space-y-4">
                                 <h4 className="font-semibold text-primary flex items-center gap-2"><Pencil className="w-4 h-4" /> Titre #{index + 1}</h4>
                                 <div className="grid md:grid-cols-3 gap-4">
@@ -312,25 +326,32 @@ export default function StudioHub() {
                                             <FormMessage />
                                         </FormItem>
                                     )} />
-                                    <FormField control={form.control} name={`tracks.${index}.date`} render={({ field }) => (
+                                    <FormField control={form.control} name={`tracks.${index}.date`} render={({ field: dateField }) => (
                                        <FormItem className="flex flex-col">
                                             <FormLabel>Date</FormLabel>
                                             <Popover><PopoverTrigger asChild>
-                                            <FormControl><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
+                                            <FormControl><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !dateField.value && "text-muted-foreground")}>
                                                 <CalendarIcon className="mr-2 h-4 w-4" />
-                                                {field.value ? format(field.value, "PPP", { locale: fr }) : <span>Choisir une date</span>}
+                                                {dateField.value ? format(dateField.value, "PPP", { locale: fr }) : <span>Choisir une date</span>}
                                             </Button></FormControl>
-                                            </PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" locale={fr} selected={field.value} onSelect={field.onChange} disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} initialFocus /></PopoverContent></Popover>
+                                            </PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" locale={fr} selected={dateField.value} onSelect={(date) => {
+                                                dateField.onChange(date);
+                                                // Reset timeslot when date changes
+                                                form.setValue(`tracks.${index}.timeSlot`, undefined);
+                                            }} disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} initialFocus /></PopoverContent></Popover>
                                             <FormMessage />
                                         </FormItem>
                                     )} />
                                     <FormField control={form.control} name={`tracks.${index}.timeSlot`} render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Créneau</FormLabel>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value} disabled={!currentDate}>
                                                 <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger></FormControl>
                                                 <SelectContent>
-                                                    {availableTimeSlots.map((slot) => <SelectItem key={slot} value={slot}>{slot}</SelectItem>)}
+                                                    {availableTimeSlots.map((slot) => {
+                                                        const isSlotTaken = bookedSlots.includes(slot) && field.value !== slot;
+                                                        return (<SelectItem key={slot} value={slot} disabled={isSlotTaken}>{slot}</SelectItem>)
+                                                    })}
                                                 </SelectContent>
                                             </Select>
                                             <FormMessage />
@@ -338,7 +359,7 @@ export default function StudioHub() {
                                     )} />
                                 </div>
                             </div>
-                        ))}
+                        )})}
                         </div>
                     </div>
                 )}
@@ -357,3 +378,5 @@ export default function StudioHub() {
     </div>
   );
 }
+
+    
