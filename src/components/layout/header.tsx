@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { Pyramid, LogIn } from "lucide-react";
 
 interface HeaderProps {
@@ -9,11 +10,19 @@ interface HeaderProps {
 }
 
 export default function Header({ activeHub, setActiveHub }: HeaderProps) {
+  const { toast } = useToast();
   const navItems = [
     { id: "culture", label: "Culture Hub" },
     { id: "studio", label: "Studio" },
     { id: "wear", label: "Wear" },
   ];
+
+  const handleLoginClick = () => {
+    toast({
+      title: "Fonctionnalité à venir",
+      description: "La connexion utilisateur n'est pas encore disponible.",
+    });
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -39,7 +48,11 @@ export default function Header({ activeHub, setActiveHub }: HeaderProps) {
         </nav>
 
         <div className="flex items-center">
-          <Button variant="outline" className="border-primary text-primary hover:bg-primary/10 hover:text-primary">
+          <Button
+            variant="outline"
+            className="border-primary text-primary hover:bg-primary/10 hover:text-primary"
+            onClick={handleLoginClick}
+          >
             <LogIn className="mr-2 h-4 w-4" />
             Connexion
           </Button>

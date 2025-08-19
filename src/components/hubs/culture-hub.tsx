@@ -4,6 +4,7 @@ import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 import { BookOpen, CalendarDays } from "lucide-react";
 
 const culturalContent = [
@@ -56,12 +57,35 @@ const events = [
 ];
 
 export default function CultureHub() {
+  const { toast } = useToast();
+
+  const handleMembership = () => {
+    toast({
+      title: "Adhésion Bientôt Disponible",
+      description: "Revenez bientôt pour rejoindre la communauté KHEOPS !",
+    });
+  };
+
+  const handleRegistration = (eventTitle: string) => {
+    toast({
+      title: "Inscription Reçue",
+      description: `Votre inscription pour "${eventTitle}" a bien été prise en compte.`,
+    });
+  };
+  
+  const handleDiscover = (contentTitle: string) => {
+    toast({
+      title: "Contenu à venir",
+      description: `Le contenu pour "${contentTitle}" sera bientôt disponible.`,
+    });
+  };
+
   return (
     <div className="space-y-12">
       <header className="text-center space-y-2">
         <h1 className="text-4xl font-bold text-primary font-headline tracking-wider">KHEOPS CULTURE HUB</h1>
         <p className="text-muted-foreground text-lg">Votre portail vers un univers de connaissances et de divertissement.</p>
-        <Button size="lg" className="bg-primary/90 hover:bg-primary text-primary-foreground font-bold">
+        <Button size="lg" className="bg-primary/90 hover:bg-primary text-primary-foreground font-bold" onClick={handleMembership}>
           Devenir Membre
         </Button>
       </header>
@@ -81,7 +105,7 @@ export default function CultureHub() {
                 <Badge variant="secondary" className="text-accent-foreground bg-accent/20 border-accent/50">{item.category}</Badge>
                 <CardTitle className="text-lg font-semibold text-primary-foreground">{item.title}</CardTitle>
                 <CardDescription className="text-muted-foreground text-sm">{item.description}</CardDescription>
-                <Button variant="outline" className="w-full mt-2 border-primary/50 text-primary hover:bg-primary/10">
+                <Button variant="outline" className="w-full mt-2 border-primary/50 text-primary hover:bg-primary/10" onClick={() => handleDiscover(item.title)}>
                   Découvrir
                 </Button>
               </CardContent>
@@ -107,7 +131,7 @@ export default function CultureHub() {
                     <h3 className="text-xl font-semibold">{event.title}</h3>
                     <p className="text-muted-foreground">{event.description}</p>
                 </div>
-                <Button className="flex-shrink-0 bg-accent text-accent-foreground hover:bg-accent/80">S'inscrire</Button>
+                <Button className="flex-shrink-0 bg-accent text-accent-foreground hover:bg-accent/80" onClick={() => handleRegistration(event.title)}>S'inscrire</Button>
              </Card>
           ))}
         </div>
