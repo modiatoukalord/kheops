@@ -3,9 +3,10 @@
 
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import React from "react";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,9 +15,10 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Music, Calendar as CalendarIcon, Clock, SlidersHorizontal, Mic, AudioLines, User, DiscAlbum, FileText } from "lucide-react";
+import { Music, Calendar as CalendarIcon, Clock, SlidersHorizontal, Mic, AudioLines, User, DiscAlbum, FileText, ListMusic } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 
 const bookingSchema = z.object({
   artistName: z.string().min(1, { message: "Veuillez saisir le nom de l'artiste ou du groupe." }),
@@ -25,6 +27,9 @@ const bookingSchema = z.object({
   serviceId: z.string({ required_error: "Veuillez choisir une prestation." }),
   timeSlot: z.string({ required_error: "Veuillez sélectionner un créneau." }),
   date: z.date({ required_error: "Veuillez choisir une date." }),
+  tracks: z.array(z.object({
+    name: z.string().min(1, { message: "Veuillez nommer le titre." })
+  })).optional()
 });
 
 type BookingFormValues = z.infer<typeof bookingSchema>;
@@ -50,19 +55,48 @@ export default function StudioHub() {
       serviceId: "voice-mix",
       artistName: "",
       projectName: "",
+      tracks: [{ name: "" }],
     },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "tracks",
   });
 
   const onSubmit = (data: BookingFormValues) => {
     const selectedService = services.find(s => s.id === data.serviceId);
+    let description = `Bonjour ${data.artistName}, votre session "${selectedService?.label}" pour le projet "${data.projectName}" (${data.projectType}) est réservée pour le ${format(data.date, "PPP", { locale: fr })} de ${data.timeSlot}.`;
+    
+    if (data.tracks && data.tracks.length > 0) {
+      const trackNames = data.tracks.map(t => t.name).join(', ');
+      description += ` Titres: ${trackNames}.`
+    }
+
     toast({
         title: "Réservation confirmée !",
-        description: `Bonjour ${data.artistName}, votre session "${selectedService?.label}" pour le projet "${data.projectName}" (${data.projectType}) est réservée pour le ${format(data.date, "PPP", { locale: fr })} de ${data.timeSlot}.`,
+        description: description,
     });
     form.reset();
   };
   
   const selectedServiceId = form.watch("serviceId");
+  const projectType = form.watch("projectType");
+
+  const handleTrackCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const count = parseInt(e.target.value, 10) || 0;
+    const difference = count - fields.length;
+
+    if (difference > 0) {
+      for (let i = 0; i < difference; i++) {
+        append({ name: "" });
+      }
+    } else if (difference < 0) {
+      for (let i = 0; i < Math.abs(difference); i++) {
+        remove(fields.length - 1 - i);
+      }
+    }
+  };
 
   return (
     <div className="space-y-12">
@@ -152,7 +186,38 @@ export default function StudioHub() {
                                 </FormItem>
                               )}
                             />
+                             {projectType && (
+                              <Card className="bg-card-foreground/5 p-4 space-y-4">
+                                <FormLabel className="text-lg font-semibold flex items-center gap-2"><ListMusic className="w-5 h-5 text-accent" />Détails des titres</FormLabel>
+                                <div className="space-y-2">
+                                  <FormLabel className="text-sm">Nombre de titres</FormLabel>
+                                  <Input type="number" min="1" value={fields.length} onChange={handleTrackCountChange} className="border-primary/50 w-24" />
+                                </div>
+                                <Separator />
+                                <div className="space-y-4 max-h-48 overflow-y-auto pr-2">
+                                  {fields.map((field, index) => (
+                                    <FormField
+                                      key={field.id}
+                                      control={form.control}
+                                      name={`tracks.${index}.name`}
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel>Titre {index + 1}</FormLabel>
+                                          <FormControl>
+                                            <Input placeholder={`Nom du titre ${index + 1}`} {...field} className="border-primary/50" />
+                                          </FormControl>
+                                          <FormMessage />
+                                        </FormItem>
+                                      )}
+                                    />
+                                  ))}
+                                </div>
+                              </Card>
+                            )}
 
+                        </div>
+
+                        <div className="space-y-6">
                             <FormField
                                 control={form.control}
                                 name="serviceId"
@@ -182,15 +247,35 @@ export default function StudioHub() {
                                     </FormItem>
                                 )}
                             />
-                        </div>
-
-                        <div className="space-y-6">
+                             <FormField
+                                control={form.control}
+                                name="timeSlot"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-lg font-semibold flex items-center gap-2 mb-4"><Clock className="w-5 h-5 text-accent"/> 2. Sélectionnez un créneau</FormLabel>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                            {availableTimeSlots.map((time) => (
+                                                <Button 
+                                                  key={time} 
+                                                  variant={field.value === time ? "default" : "outline"} 
+                                                  onClick={() => field.onChange(time)} 
+                                                  className={`transition-colors ${field.value === time ? 'bg-primary text-primary-foreground' : 'border-primary/50 text-primary hover:bg-primary/10'}`}
+                                                  type="button"
+                                                >
+                                                    {time}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
                            <FormField
                                 control={form.control}
                                 name="date"
                                 render={({ field }) => (
                                     <FormItem className="flex flex-col">
-                                        <FormLabel className="text-lg font-semibold flex items-center gap-2 mb-4"><CalendarIcon className="w-5 h-5 text-accent"/> 3. Choisissez une date</FormLabel>
+                                        <FormLabel className="text-lg font-semibold flex items-center gap-2 mb-2"><CalendarIcon className="w-5 h-5 text-accent"/> 3. Choisissez une date</FormLabel>
                                         <Popover>
                                             <PopoverTrigger asChild>
                                                 <FormControl>
@@ -226,29 +311,7 @@ export default function StudioHub() {
                                     </FormItem>
                                 )}
                             />
-                             <FormField
-                                control={form.control}
-                                name="timeSlot"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-lg font-semibold flex items-center gap-2 mb-4"><Clock className="w-5 h-5 text-accent"/> 2. Sélectionnez un créneau</FormLabel>
-                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                            {availableTimeSlots.map((time) => (
-                                                <Button 
-                                                  key={time} 
-                                                  variant={field.value === time ? "default" : "outline"} 
-                                                  onClick={() => field.onChange(time)} 
-                                                  className={`transition-colors ${field.value === time ? 'bg-primary text-primary-foreground' : 'border-primary/50 text-primary hover:bg-primary/10'}`}
-                                                  type="button"
-                                                >
-                                                    {time}
-                                                </Button>
-                                            ))}
-                                        </div>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                           
                             <Button type="submit" size="lg" className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-lg h-12">
                                Valider et Payer
                             </Button>
