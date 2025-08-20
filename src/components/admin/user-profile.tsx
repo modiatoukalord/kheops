@@ -1,10 +1,11 @@
+
 "use client";
 
 import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, AtSign, Calendar, Edit, Phone, ShieldCheck, User, QrCode } from "lucide-react";
+import { ArrowLeft, AtSign, Calendar, Edit, Phone, ShieldCheck, User, QrCode, Printer } from "lucide-react";
 import QRCode from "react-qr-code";
 import type { Subscriber } from "./user-management";
 
@@ -27,13 +28,23 @@ export default function UserProfile({ user, onBack }: UserProfileProps) {
     endDate: user.endDate,
   });
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" onClick={onBack}>
-          <ArrowLeft className="h-4 w-4" />
+    <div className="space-y-6 printable-area">
+      <div className="flex items-center justify-between no-print">
+        <div className="flex items-center gap-4">
+            <Button variant="outline" size="icon" onClick={onBack}>
+            <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <h1 className="text-2xl font-bold">Profil de l'Abonné</h1>
+        </div>
+        <Button onClick={handlePrint}>
+            <Printer className="mr-2 h-4 w-4" />
+            Imprimer le reçu
         </Button>
-        <h1 className="text-2xl font-bold">Profil de l'Abonné</h1>
       </div>
       <div className="grid md:grid-cols-3 gap-6">
         <div className="md:col-span-2 space-y-6">
@@ -91,6 +102,25 @@ export default function UserProfile({ user, onBack }: UserProfileProps) {
             </CardContent>
         </Card>
       </div>
+       <style jsx global>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .printable-area, .printable-area * {
+            visibility: visible;
+          }
+          .printable-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+          }
+          .no-print {
+            display: none;
+          }
+        }
+      `}</style>
     </div>
   );
 }
