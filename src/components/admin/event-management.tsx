@@ -1,11 +1,22 @@
+
 "use client";
 
 import React, { useState } from "react";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Calendar } from "@/components/ui/calendar";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Edit, Trash2 } from "lucide-react";
+import { PlusCircle, Edit, Trash2, CalendarIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 
 const initialEvents = [
   {
@@ -41,22 +52,44 @@ const categoryColors: { [key: string]: string } = {
   Lancement: "bg-purple-500/80 text-white",
 };
 
-
 export default function EventManagement() {
-  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [date, setDate] = useState<DateRange | undefined>();
   const [events, setEvents] = useState(initialEvents);
-  
-  const eventsForSelectedDate = date
-    ? events.filter(
-        (event) => event.date.toDateString() === date.toDateString()
-      )
-    : [];
-    
+  const { toast } = useToast();
+  const [isDialogOpen, setDialogOpen] = useState(false);
+
   const upcomingEvents = events
     .filter(event => event.date >= new Date())
     .sort((a,b) => a.date.getTime() - b.date.getTime())
     .slice(0, 5);
-
+    
+  const handleAddEvent = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const title = formData.get("title") as string;
+    
+    if (date?.from && title) {
+        const newEvent = {
+            id: `evt-${Date.now()}`,
+            title,
+            date: date.from,
+            category: formData.get("category") as string,
+        };
+        setEvents(prev => [newEvent, ...prev]);
+        toast({
+            title: "Événement Ajouté",
+            description: `L'événement "${title}" a été ajouté.`,
+        });
+        setDialogOpen(false);
+        setDate(undefined);
+    } else {
+        toast({
+            title: "Erreur",
+            description: "Veuillez remplir tous les champs obligatoires.",
+            variant: "destructive"
+        })
+    }
+  };
 
   return (
     <div className="grid md:grid-cols-3 gap-6">
@@ -69,18 +102,91 @@ export default function EventManagement() {
                     Planifiez et visualisez tous les événements liés à la structure.
                     </CardDescription>
                 </div>
-                <Button>
-                    <PlusCircle className="mr-2 h-4 w-4"/>
-                    Ajouter un événement
-                </Button>
+                <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button>
+                            <PlusCircle className="mr-2 h-4 w-4"/>
+                            Ajouter un événement
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <form onSubmit={handleAddEvent}>
+                            <DialogHeader>
+                                <DialogTitle>Ajouter un nouvel événement</DialogTitle>
+                                <DialogDescription>
+                                    Remplissez les informations pour créer un nouvel événement.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="title">Titre de l'événement</Label>
+                                    <Input id="title" name="title" placeholder="Ex: Tournoi e-sport" required/>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="category">Catégorie</Label>
+                                    <Select name="category" required>
+                                        <SelectTrigger><SelectValue placeholder="Sélectionner une catégorie"/></SelectTrigger>
+                                        <SelectContent>
+                                            {Object.keys(categoryColors).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                     <Label>Date de l'événement</Label>
+                                     <Popover>
+                                        <PopoverTrigger asChild>
+                                        <Button
+                                            id="date"
+                                            variant={"outline"}
+                                            className={cn(
+                                            "w-full justify-start text-left font-normal",
+                                            !date && "text-muted-foreground"
+                                            )}
+                                        >
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {date?.from ? (
+                                            date.to ? (
+                                                <>
+                                                {format(date.from, "LLL dd, y", { locale: fr })} -{" "}
+                                                {format(date.to, "LLL dd, y", { locale: fr })}
+                                                </>
+                                            ) : (
+                                                format(date.from, "LLL dd, y", { locale: fr })
+                                            )
+                                            ) : (
+                                            <span>Choisir une ou plusieurs dates</span>
+                                            )}
+                                        </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar
+                                            initialFocus
+                                            mode="range"
+                                            defaultMonth={date?.from}
+                                            selected={date}
+                                            onSelect={setDate}
+                                            numberOfMonths={2}
+                                            locale={fr}
+                                        />
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button type="submit">Ajouter l'événement</Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
             </CardHeader>
-          <CardContent className="flex justify-center">
+          <CardContent className="flex justify-center p-2 sm:p-6">
             <Calendar
-              mode="single"
+              mode="range"
               selected={date}
               onSelect={setDate}
               className="rounded-md border"
-              locale={require("date-fns/locale/fr").fr}
+              locale={fr}
+              numberOfMonths={2}
               modifiers={{
                 event: events.map(e => e.date),
               }}
@@ -132,8 +238,13 @@ export default function EventManagement() {
               )}
             </div>
           </CardContent>
+          <CardFooter className="pt-4 justify-center">
+             <Button variant="ghost" className="w-full">Voir tous les événements</Button>
+          </CardFooter>
         </Card>
       </div>
     </div>
   );
 }
+
+    
