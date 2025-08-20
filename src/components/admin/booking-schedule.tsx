@@ -7,7 +7,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, PlusCircle, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { MoreHorizontal, PlusCircle, CheckCircle2, XCircle, Clock, Calendar as CalendarIcon } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,7 +20,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -148,42 +147,43 @@ export default function BookingSchedule() {
 
   return (
     <div className="space-y-6">
-       <Card>
-          <CardHeader>
-              <CardTitle>Calendrier</CardTitle>
-              <CardDescription>
-              Vue d'ensemble des réservations.
-              </CardDescription>
-          </CardHeader>
-          <CardContent className="flex justify-center">
-              <Calendar
-              mode="single"
-              selected={date}
-              onSelect={setDate}
-              className="rounded-md border"
-              locale={require("date-fns/locale/fr").fr}
-              modifiers={{
-                  booked: bookings.filter(b => b.status === 'Confirmé').map(b => b.date),
-                  pending: bookings.filter(b => b.status === 'En attente').map(b => b.date),
-              }}
-              modifiersStyles={{
-                  booked: {
-                      color: 'hsl(var(--primary-foreground))',
-                      backgroundColor: 'hsl(var(--primary))',
-                  },
-                  pending: {
-                      borderColor: 'hsl(var(--primary))',
-                  }
-              }}
-              />
-          </CardContent>
-      </Card>
       <Card>
           <CardHeader className="flex flex-row justify-between items-start">
               <div>
                   <CardTitle>Réservations à venir</CardTitle>
                   <CardDescription>Gérez les réservations et leur statut.</CardDescription>
               </div>
+              <div className="flex gap-2">
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button variant="outline">
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            Voir le Calendrier
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={date}
+                        onSelect={setDate}
+                        className="rounded-md border"
+                        locale={fr}
+                        modifiers={{
+                            booked: bookings.filter(b => b.status === 'Confirmé').map(b => b.date),
+                            pending: bookings.filter(b => b.status === 'En attente').map(b => b.date),
+                        }}
+                        modifiersStyles={{
+                            booked: {
+                                color: 'hsl(var(--primary-foreground))',
+                                backgroundColor: 'hsl(var(--primary))',
+                            },
+                            pending: {
+                                borderColor: 'hsl(var(--primary))',
+                            }
+                        }}
+                      />
+                    </PopoverContent>
+                </Popover>
                 <Dialog open={isBookingDialogOpen} onOpenChange={setBookingDialogOpen}>
                   <DialogTrigger asChild>
                       <Button>
@@ -241,6 +241,7 @@ export default function BookingSchedule() {
                       </Form>
                   </DialogContent>
               </Dialog>
+              </div>
           </CardHeader>
         <CardContent>
             <div className="overflow-x-auto">
