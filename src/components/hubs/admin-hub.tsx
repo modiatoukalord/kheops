@@ -3,19 +3,21 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, FileText, CalendarCheck, Settings, ArrowLeft } from "lucide-react";
+import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus } from "lucide-react";
 import UserManagement from "@/components/admin/user-management";
 import ContentManagement from "@/components/admin/content-management";
 import BookingSchedule from "@/components/admin/booking-schedule";
 import SiteSettings from "@/components/admin/site-settings";
+import EventManagement from "@/components/admin/event-management";
 
-type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings";
+type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events";
 
 const adminViews = {
     users: { component: UserManagement, title: "Gestion des Abonnements" },
     content: { component: ContentManagement, title: "Gestion des Contenus" },
     bookings: { component: BookingSchedule, title: "Planning des Réservations" },
     settings: { component: SiteSettings, title: "Paramètres du Site" },
+    events: { component: EventManagement, title: "Gestion des Événements" },
 };
 
 export default function AdminHub() {
@@ -42,13 +44,23 @@ export default function AdminHub() {
     },
     {
       title: "Gestion des Contenus",
-      description: "Ajouter ou modifier des livres, articles et événements.",
+      description: "Ajouter ou modifier des livres et articles.",
       icon: FileText,
       action: "Gérer",
       view: "content" as AdminView,
       color: "bg-green-500/80",
       textColor: "text-white",
       hoverColor: "hover:bg-green-600/90",
+    },
+    {
+      title: "Gestion des Événements",
+      description: "Créer et gérer les événements et compétitions.",
+      icon: CalendarPlus,
+      action: "Gérer",
+      view: "events" as AdminView,
+      color: "bg-red-500/80",
+      textColor: "text-white",
+      hoverColor: "hover:bg-red-600/90",
     },
     {
       title: "Réservations du Studio",
@@ -95,7 +107,7 @@ export default function AdminHub() {
 
       {activeView === 'dashboard' ? (
         <section>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {adminSections.map((section) => (
               <Card key={section.title} className={`${section.color} ${section.textColor} border-0 flex flex-col justify-between transition-all duration-300 ${section.hoverColor} hover:-translate-y-1 shadow-lg`}>
                 <CardHeader>
@@ -105,7 +117,7 @@ export default function AdminHub() {
                   </CardTitle>
                   <CardDescription className={`${section.textColor} opacity-80`}>{section.description}</CardDescription>
                 </CardHeader>
-                <CardContent className="flex justify-end">
+                <CardContent className="flex justify-end pt-6">
                   <Button className="bg-white/20 hover:bg-white/30 text-white" onClick={() => handleAction(section.view)}>
                     {section.action}
                   </Button>

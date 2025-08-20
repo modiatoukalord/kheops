@@ -1,16 +1,16 @@
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 
-export default function ContentManagement() {
+export default function EventManagement() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Gestion des Contenus</CardTitle>
+        <CardTitle>Gestion des Événements</CardTitle>
         <CardDescription>
-          Ajoutez, modifiez ou supprimez des livres et articles.
+          Créez, modifiez ou supprimez des événements et des compétitions.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <p>Le contenu de la gestion des contenus sera bientôt disponible.</p>
+        <p>Le contenu de la gestion des événements sera bientôt disponible.</p>
       </CardContent>
     </Card>
   );
