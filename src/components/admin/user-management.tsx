@@ -20,14 +20,13 @@ import { cn } from "@/lib/utils";
 
 
 const KHEOPS_MEMBER_FEE = 5000;
-const PREMIUM_FEE = 15000;
 
 const subscribersData = [
   {
     id: "user-001",
     name: "Amina Dubois",
     phone: "+242 06 123 4567",
-    plan: "Membre KHEOPS",
+    plan: "Abonnement KHEOPS",
     status: "Actif" as "Actif" | "En attente" | "Annulé",
     startDate: "15-07-2024",
     amount: "5 000 FCFA",
@@ -36,7 +35,7 @@ const subscribersData = [
     id: "user-002",
     name: "Binta Traoré",
     phone: "+242 05 987 6543",
-    plan: "Membre KHEOPS",
+    plan: "Abonnement KHEOPS",
     status: "Actif" as "Actif" | "En attente" | "Annulé",
     startDate: "12-07-2024",
     amount: "5 000 FCFA",
@@ -45,7 +44,7 @@ const subscribersData = [
     id: "user-003",
     name: "Mamadou Sow",
     phone: "+242 06 111 2233",
-    plan: "Premium",
+    plan: "Abonnement KHEOPS",
     status: "Annulé" as "Actif" | "En attente" | "Annulé",
     startDate: "01-06-2024",
     amount: "15 000 FCFA",
@@ -54,7 +53,7 @@ const subscribersData = [
     id: "user-004",
     name: "Fatou N'diaye",
     phone: "+242 05 444 5566",
-    plan: "Premium",
+    plan: "Abonnement KHEOPS",
     status: "Actif" as "Actif" | "En attente" | "Annulé",
     startDate: "28-06-2024",
     amount: "15 000 FCFA",
@@ -63,7 +62,7 @@ const subscribersData = [
     id: "user-005",
     name: "Jean-Pierre Diallo",
     phone: "+242 06 777 8899",
-    plan: "Membre KHEOPS",
+    plan: "Abonnement KHEOPS",
     status: "En attente" as "Actif" | "En attente" | "Annulé",
     startDate: "20-07-2024",
     amount: "5 000 FCFA",
@@ -83,7 +82,7 @@ const getEndDate = (startDate: string, durationMonths = 1) => {
 
 export const initialSubscribers = subscribersData.map(s => ({
   ...s,
-  endDate: s.status === "Annulé" ? "N/A" : getEndDate(s.startDate, s.plan === "Premium" ? 1 : 1),
+  endDate: s.status === "Annulé" ? "N/A" : getEndDate(s.startDate, 1),
 }));
 
 export type Subscriber = (typeof initialSubscribers)[0];
@@ -217,12 +216,19 @@ export default function UserManagement({
     subscriber.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     subscriber.phone.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  
+  const totalSubscriptionRevenue = subscribers
+    .filter(s => s.status === 'Actif')
+    .reduce((total, s) => {
+        const amount = parseFloat(s.amount.replace(/\s/g, '').replace('FCFA', ''));
+        return total + (isNaN(amount) ? 0 : amount);
+    }, 0);
 
   const stats = [
-    { title: "Abonnés Totaux", value: "152", icon: Users },
-    { title: "Abonnés Actifs", value: "128", icon: CreditCard },
+    { title: "Abonnés Totaux", value: subscribers.length.toString(), icon: Users },
+    { title: "Abonnés Actifs", value: subscribers.filter(s => s.status === 'Actif').length.toString(), icon: CreditCard },
     { title: "Nouveaux / mois", value: "12", icon: Activity },
-    { title: "Revenu Mensuel", value: "640 000 FCFA", icon: DollarSign },
+    { title: "Revenu total des abonnements", value: `${totalSubscriptionRevenue.toLocaleString('fr-FR')} FCFA`, icon: DollarSign },
   ];
   
   if (selectedSubscriber) {
@@ -330,7 +336,7 @@ export default function UserManagement({
                                                   key={s.id}
                                                   value={s.id}
                                                   onSelect={(currentValue) => {
-                                                    setSelectedSubscriberId(currentValue === selectedSubscriberId ? "" : s.id);
+                                                    setSelectedSubscriberId(s.id === selectedSubscriberId ? "" : s.id);
                                                     setComboboxOpen(false);
                                                   }}
                                                   className="cursor-pointer"
@@ -447,7 +453,3 @@ export default function UserManagement({
     </div>
   );
 }
-
-    
-
-    
