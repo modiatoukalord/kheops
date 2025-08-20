@@ -10,9 +10,7 @@ import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MoreHorizontal, Search, Users, CreditCard, Activity, DollarSign, Filter, Phone, CalendarOff, PlusCircle, Check, ChevronsUpDown } from "lucide-react";
-import Image from "next/image";
 import { addMonths, parse, format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import UserProfile from "./user-profile";
@@ -29,8 +27,6 @@ const subscribersData = [
     id: "user-001",
     name: "Amina Dubois",
     phone: "+242 06 123 4567",
-    avatar: "https://placehold.co/40x40.png",
-    hint: "woman portrait",
     plan: "Membre KHEOPS",
     status: "Actif" as "Actif" | "En attente" | "Annulé",
     startDate: "15-07-2024",
@@ -40,8 +36,6 @@ const subscribersData = [
     id: "user-002",
     name: "Binta Traoré",
     phone: "+242 05 987 6543",
-    avatar: "https://placehold.co/40x40.png",
-    hint: "woman face",
     plan: "Membre KHEOPS",
     status: "Actif" as "Actif" | "En attente" | "Annulé",
     startDate: "12-07-2024",
@@ -51,8 +45,6 @@ const subscribersData = [
     id: "user-003",
     name: "Mamadou Sow",
     phone: "+242 06 111 2233",
-    avatar: "https://placehold.co/40x40.png",
-    hint: "man portrait",
     plan: "Premium",
     status: "Annulé" as "Actif" | "En attente" | "Annulé",
     startDate: "01-06-2024",
@@ -62,8 +54,6 @@ const subscribersData = [
     id: "user-004",
     name: "Fatou N'diaye",
     phone: "+242 05 444 5566",
-    avatar: "https://placehold.co/40x40.png",
-    hint: "woman smiling",
     plan: "Premium",
     status: "Actif" as "Actif" | "En attente" | "Annulé",
     startDate: "28-06-2024",
@@ -73,8 +63,6 @@ const subscribersData = [
     id: "user-005",
     name: "Jean-Pierre Diallo",
     phone: "+242 06 777 8899",
-    avatar: "https://placehold.co/40x40.png",
-    hint: "man face",
     plan: "Membre KHEOPS",
     status: "En attente" as "Actif" | "En attente" | "Annulé",
     startDate: "20-07-2024",
@@ -157,8 +145,6 @@ export default function UserManagement() {
             id: `user-${Date.now()}`,
             name,
             phone,
-            avatar: "https://placehold.co/40x40.png",
-            hint: "person face",
             plan: 'Abonnement KHEOPS',
             status: 'Actif' as 'Actif',
             startDate: startDate,
@@ -307,6 +293,7 @@ export default function UserManagement() {
                                                   setSelectedSubscriberId("");
                                                   setComboboxOpen(false);
                                                 }}
+                                                className="cursor-pointer"
                                               >
                                                 -- Nouvel Abonné --
                                               </CommandItem>
@@ -318,6 +305,7 @@ export default function UserManagement() {
                                                     setSelectedSubscriberId(currentValue === selectedSubscriberId ? "" : s.id);
                                                     setComboboxOpen(false);
                                                   }}
+                                                  className="cursor-pointer"
                                                 >
                                                   <Check
                                                     className={cn(
@@ -361,7 +349,6 @@ export default function UserManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[80px]">Avatar</TableHead>
                   <TableHead>Nom</TableHead>
                   <TableHead className="hidden lg:table-cell">Contact</TableHead>
                   <TableHead className="hidden sm:table-cell">Statut</TableHead>
@@ -373,16 +360,6 @@ export default function UserManagement() {
               <TableBody>
                 {filteredSubscribers.map((subscriber) => (
                   <TableRow key={subscriber.id}>
-                    <TableCell>
-                      <Image
-                        src={subscriber.avatar}
-                        alt={subscriber.name}
-                        width={40}
-                        height={40}
-                        className="rounded-full"
-                        data-ai-hint={subscriber.hint}
-                      />
-                    </TableCell>
                     <TableCell>
                         <div className="font-medium">{subscriber.name}</div>
                         <div className="text-xs text-muted-foreground">{subscriber.amount}</div>

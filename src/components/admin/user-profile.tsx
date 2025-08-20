@@ -1,7 +1,6 @@
 
 "use client";
 
-import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -49,15 +48,7 @@ export default function UserProfile({ user, onBack }: UserProfileProps) {
       <div className="grid md:grid-cols-3 gap-6">
         <div className="md:col-span-2 space-y-6">
           <Card>
-            <CardHeader className="flex flex-row items-center gap-4">
-              <Image
-                src={user.avatar}
-                alt={user.name}
-                width={80}
-                height={80}
-                className="rounded-full border-4 border-primary"
-                data-ai-hint={user.hint}
-              />
+            <CardHeader>
               <div>
                 <CardTitle className="text-3xl">{user.name}</CardTitle>
                 <CardDescription className="flex items-center gap-2">
