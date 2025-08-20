@@ -23,7 +23,8 @@ import { Calendar as CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { FormControl } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
 
 
 const initialBookings = [
@@ -90,6 +91,9 @@ export default function BookingSchedule() {
   const [bookings, setBookings] = useState(initialBookings);
   const [isDialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
+  
+  const form = useForm();
+
 
   const upcomingBookings = bookings
     .filter(booking => booking.date >= new Date())
@@ -99,16 +103,14 @@ export default function BookingSchedule() {
     setBookings(bookings.map(b => b.id === bookingId ? { ...b, status: newStatus } : b));
   };
   
-  const handleAddBooking = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
+  const handleAddBooking = (data: any) => {
     const newBooking = {
       id: `res-${Date.now()}`,
-      artistName: formData.get("artistName") as string,
-      projectName: formData.get("projectName") as string,
-      date: new Date(formData.get("date") as string),
-      timeSlot: formData.get("timeSlot") as string,
-      service: formData.get("service") as string,
+      artistName: data.artistName,
+      projectName: data.projectName,
+      date: date!,
+      timeSlot: data.timeSlot,
+      service: data.service,
       status: "En attente" as BookingStatus,
     };
     setBookings(prev => [newBooking, ...prev]);
@@ -171,7 +173,8 @@ export default function BookingSchedule() {
                         </Button>
                     </DialogTrigger>
                     <DialogContent>
-                         <form onSubmit={handleAddBooking}>
+                        <Form {...form}>
+                         <form onSubmit={form.handleSubmit(handleAddBooking)}>
                             <DialogHeader>
                                 <DialogTitle>Ajouter une nouvelle réservation</DialogTitle>
                                 <DialogDescription>
@@ -179,22 +182,16 @@ export default function BookingSchedule() {
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="grid gap-4 py-4">
+                                <FormField control={form.control} name="artistName" render={({ field }) => (<FormItem className="grid grid-cols-4 items-center gap-4"><Label className="text-right">Artiste</Label><FormControl><Input placeholder="Nom de l'artiste" className="col-span-3" required {...field} /></FormControl></FormItem>)} />
+                                <FormField control={form.control} name="projectName" render={({ field }) => (<FormItem className="grid grid-cols-4 items-center gap-4"><Label className="text-right">Projet</Label><FormControl><Input placeholder="Nom du projet" className="col-span-3" required {...field} /></FormControl></FormItem>)} />
+                                
                                 <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="artistName" className="text-right">Artiste</Label>
-                                    <Input id="artistName" name="artistName" placeholder="Nom de l'artiste" className="col-span-3" required />
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="projectName" className="text-right">Projet</Label>
-                                    <Input id="projectName" name="projectName" placeholder="Nom du projet" className="col-span-3" required />
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="date" className="text-right">Date</Label>
-                                     <Popover>
+                                    <Label className="text-right">Date</Label>
+                                    <Popover>
                                         <PopoverTrigger asChild>
                                             <FormControl>
                                                 <Button
                                                     variant={"outline"}
-                                                    name="date"
                                                     className={cn(
                                                         "col-span-3 justify-start text-left font-normal",
                                                         !date && "text-muted-foreground"
@@ -216,33 +213,15 @@ export default function BookingSchedule() {
                                         </PopoverContent>
                                     </Popover>
                                 </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="timeSlot" className="text-right">Créneau</Label>
-                                    <Select name="timeSlot" required>
-                                        <SelectTrigger className="col-span-3">
-                                            <SelectValue placeholder="Sélectionner un créneau" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {availableTimeSlots.map(slot => <SelectItem key={slot} value={slot}>{slot}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="service" className="text-right">Service</Label>
-                                    <Select name="service" required>
-                                        <SelectTrigger className="col-span-3">
-                                            <SelectValue placeholder="Sélectionner un service" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {availableServices.map(service => <SelectItem key={service} value={service}>{service}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                <FormField control={form.control} name="timeSlot" render={({ field }) => (<FormItem className="grid grid-cols-4 items-center gap-4"><Label className="text-right">Créneau</Label><Select onValueChange={field.onChange} defaultValue={field.value} required><FormControl><SelectTrigger className="col-span-3"><SelectValue placeholder="Sélectionner un créneau" /></SelectTrigger></FormControl><SelectContent>{availableTimeSlots.map(slot => <SelectItem key={slot} value={slot}>{slot}</SelectItem>)}</SelectContent></Select></FormItem>)} />
+                                <FormField control={form.control} name="service" render={({ field }) => (<FormItem className="grid grid-cols-4 items-center gap-4"><Label className="text-right">Service</Label><Select onValueChange={field.onChange} defaultValue={field.value} required><FormControl><SelectTrigger className="col-span-3"><SelectValue placeholder="Sélectionner un service" /></SelectTrigger></FormControl><SelectContent>{availableServices.map(service => <SelectItem key={service} value={service}>{service}</SelectItem>)}</SelectContent></Select></FormItem>)} />
+
                             </div>
                             <DialogFooter>
                                 <Button type="submit">Ajouter la réservation</Button>
                             </DialogFooter>
                         </form>
+                        </Form>
                     </DialogContent>
                 </Dialog>
             </CardHeader>
