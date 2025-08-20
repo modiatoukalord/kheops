@@ -3,15 +3,17 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark } from "lucide-react";
+import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature } from "lucide-react";
 import UserManagement from "@/components/admin/user-management";
 import ContentManagement from "@/components/admin/content-management";
 import BookingSchedule from "@/components/admin/booking-schedule";
 import SiteSettings from "@/components/admin/site-settings";
 import EventManagement from "@/components/admin/event-management";
 import FinancialManagement from "@/components/admin/financial-management";
+import ContractManagement from "@/components/admin/contract-management";
 
-type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial";
+
+type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts";
 
 const adminViews = {
     users: { component: UserManagement, title: "Gestion des Abonnements" },
@@ -20,6 +22,7 @@ const adminViews = {
     settings: { component: SiteSettings, title: "Paramètres du Site" },
     events: { component: EventManagement, title: "Gestion des Événements" },
     financial: { component: FinancialManagement, title: "Gestion Financière" },
+    contracts: { component: ContractManagement, title: "Gestion des Contrats" },
 };
 
 export default function AdminHub() {
@@ -66,13 +69,23 @@ export default function AdminHub() {
     },
     {
       title: "Réservations du Studio",
-      description: "Voir et gérer le planning des réservations du studio et gestionnaires des contrats.",
+      description: "Voir et gérer le planning des réservations du studio.",
       icon: CalendarCheck,
       action: "Consulter",
       view: "bookings" as AdminView,
       color: "bg-purple-500/80",
       textColor: "text-white",
       hoverColor: "hover:bg-purple-600/90",
+    },
+    {
+        title: "Gestion des Contrats",
+        description: "Suivre et mettre à jour les contrats de réservation.",
+        icon: FileSignature,
+        action: "Gérer",
+        view: "contracts" as AdminView,
+        color: "bg-teal-500/80",
+        textColor: "text-white",
+        hoverColor: "hover:bg-teal-600/90",
     },
     {
         title: "Gestion Financière",
