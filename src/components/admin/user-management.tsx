@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MoreHorizontal, Search, Users, CreditCard, Activity, DollarSign, Filter, Phone, CalendarOff, PlusCircle } from "lucide-react";
 import Image from "next/image";
-import { addDays, parse } from "date-fns";
+import { addDays, parse, format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
 const subscribersData = [
@@ -83,7 +83,7 @@ const getEndDate = (startDate: string) => {
   }
 };
 
-const subscribers = subscribersData.map(s => ({
+const initialSubscribers = subscribersData.map(s => ({
   ...s,
   endDate: s.status === "Annulé" ? "N/A" : getEndDate(s.startDate),
 }));
@@ -96,6 +96,7 @@ const statusVariant: { [key: string]: "default" | "secondary" | "destructive" } 
 };
 
 export default function UserManagement() {
+  const [subscribers, setSubscribers] = useState(initialSubscribers);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
@@ -104,13 +105,55 @@ export default function UserManagement() {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const name = formData.get("name") as string;
+    const phone = formData.get("phone") as string;
+    const plan = formData.get("plan") as string;
+
+    const today = new Date();
+    const startDate = format(today, 'dd-MM-yyyy');
+    const newSubscriber = {
+        id: `user-${Date.now()}`,
+        name,
+        phone,
+        avatar: "https://placehold.co/40x40.png",
+        hint: "person face",
+        plan: plan === 'premium' ? 'Premium' : 'Membre KHEOPS',
+        status: 'Actif' as 'Actif',
+        startDate: startDate,
+        amount: plan === 'premium' ? '15 000 FCFA' : '5 000 FCFA',
+        endDate: getEndDate(startDate),
+    };
+
+    setSubscribers(prev => [newSubscriber, ...prev]);
     
-    // Here you would typically handle form submission, e.g., send data to an API
     toast({
         title: "Abonné ajouté",
         description: `${name} a été ajouté à la liste des abonnés.`,
     });
-    setDialogOpen(false); // Close the dialog
+    setDialogOpen(false);
+  };
+  
+  const handleAction = (action: string, userName: string) => {
+    let title = "";
+    let description = "";
+
+    switch (action) {
+      case "view":
+        title = "Fonctionnalité à venir";
+        description = `Le profil de ${userName} sera bientôt consultable.`;
+        break;
+      case "edit":
+        title = "Modification à venir";
+        description = `La modification de l'abonnement de ${userName} sera bientôt disponible.`;
+        break;
+      case "cancel":
+        title = "Annulation à venir";
+        description = `L'annulation de l'abonnement de ${userName} sera bientôt disponible.`;
+        break;
+      default:
+        return;
+    }
+
+    toast({ title, description });
   };
   
   const filteredSubscribers = subscribers.filter(subscriber =>
@@ -190,7 +233,7 @@ export default function UserManagement() {
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="plan" className="text-right">Abonnement</Label>
-                                <Select name="plan" required>
+                                <Select name="plan" required defaultValue="membre-kheops">
                                     <SelectTrigger className="col-span-3">
                                         <SelectValue placeholder="Sélectionner un plan" />
                                     </SelectTrigger>
@@ -275,9 +318,9 @@ export default function UserManagement() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem>Voir le profil</DropdownMenuItem>
-                          <DropdownMenuItem>Modifier l'abonnement</DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-500">Annuler l'abonnement</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleAction('view', subscriber.name)}>Voir le profil</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleAction('edit', subscriber.name)}>Modifier l'abonnement</DropdownMenuItem>
+                          <DropdownMenuItem className="text-red-500" onClick={() => handleAction('cancel', subscriber.name)}>Annuler l'abonnement</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -291,5 +334,3 @@ export default function UserManagement() {
     </div>
   );
 }
-
-    
