@@ -13,9 +13,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MoreHorizontal, Search, Users, CreditCard, Activity, DollarSign, Filter, Phone, CalendarOff, PlusCircle } from "lucide-react";
 import Image from "next/image";
-import { addDays, parse, format } from "date-fns";
+import { addMonths, parse, format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import UserProfile from "./user-profile";
+
+const KHEOPS_MEMBER_FEE = 5000;
+const PREMIUM_FEE = 15000;
 
 const subscribersData = [
   {
@@ -75,19 +78,20 @@ const subscribersData = [
   },
 ];
 
-const getEndDate = (startDate: string) => {
+const getEndDate = (startDate: string, durationMonths = 1) => {
   try {
     const date = parse(startDate, 'dd-MM-yyyy', new Date());
-    const endDate = addDays(date, 30);
+    const endDate = addMonths(date, durationMonths);
     return endDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
   } catch (error) {
     return "N/A";
   }
 };
 
+
 const initialSubscribers = subscribersData.map(s => ({
   ...s,
-  endDate: s.status === "Annulé" ? "N/A" : getEndDate(s.startDate),
+  endDate: s.status === "Annulé" ? "N/A" : getEndDate(s.startDate, s.plan === "Premium" ? 1 : 1),
 }));
 
 export type Subscriber = (typeof initialSubscribers)[0];
@@ -112,10 +116,13 @@ export default function UserManagement() {
     const name = formData.get("name") as string;
     const phone = formData.get("phone") as string;
     const plan = formData.get("plan") as string;
+    const durationMonths = parseInt(formData.get("duration") as string, 10);
     const subscriberIdToUpdate = formData.get("subscriberToRenew") as string;
     
     const today = new Date();
     const startDate = format(today, 'dd-MM-yyyy');
+    
+    const amount = (plan === 'premium' ? PREMIUM_FEE : KHEOPS_MEMBER_FEE) * durationMonths;
 
     if (subscriberIdToUpdate && subscriberIdToUpdate !== 'new') {
         // Handle renewal
@@ -127,8 +134,8 @@ export default function UserManagement() {
                     plan: plan === 'premium' ? 'Premium' : 'Membre KHEOPS',
                     status: 'Actif' as 'Actif',
                     startDate: startDate,
-                    amount: plan === 'premium' ? '15 000 FCFA' : '5 000 FCFA',
-                    endDate: getEndDate(startDate),
+                    amount: `${amount.toLocaleString('fr-FR')} FCFA`,
+                    endDate: getEndDate(startDate, durationMonths),
                   }
                 : sub
             )
@@ -150,8 +157,8 @@ export default function UserManagement() {
             plan: plan === 'premium' ? 'Premium' : 'Membre KHEOPS',
             status: 'Actif' as 'Actif',
             startDate: startDate,
-            amount: plan === 'premium' ? '15 000 FCFA' : '5 000 FCFA',
-            endDate: getEndDate(startDate),
+            amount: `${amount.toLocaleString('fr-FR')} FCFA`,
+            endDate: getEndDate(startDate, durationMonths),
         };
         setSubscribers(prev => [newSubscriber, ...prev]);
         toast({
@@ -290,16 +297,20 @@ export default function UserManagement() {
                                     <Input id="phone" name="phone" placeholder="Ex: +242 06 123 4567" className="col-span-3" required defaultValue={subscriberToRenew?.phone} disabled={!!subscriberToRenew} />
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="plan" className="text-right">Abonnement</Label>
-                                <Select name="plan" required defaultValue={subscriberToRenew ? (subscriberToRenew.plan === 'Premium' ? 'premium' : 'membre-kheops') : "membre-kheops"}>
-                                    <SelectTrigger className="col-span-3">
-                                        <SelectValue placeholder="Sélectionner un plan" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="membre-kheops">Membre KHEOPS</SelectItem>
-                                        <SelectItem value="premium">Premium</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                    <Label htmlFor="plan" className="text-right">Abonnement</Label>
+                                    <Select name="plan" required defaultValue={subscriberToRenew ? (subscriberToRenew.plan === 'Premium' ? 'premium' : 'membre-kheops') : "membre-kheops"}>
+                                        <SelectTrigger className="col-span-3">
+                                            <SelectValue placeholder="Sélectionner un plan" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="membre-kheops">Membre KHEOPS</SelectItem>
+                                            <SelectItem value="premium">Premium</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="duration" className="text-right">Durée (mois)</Label>
+                                    <Input id="duration" name="duration" type="number" placeholder="Ex: 3" className="col-span-3" required defaultValue="1" min="1" />
                                 </div>
                             </div>
                             <DialogFooter>
