@@ -148,6 +148,36 @@ export default function BookingSchedule() {
 
   return (
     <div className="space-y-6">
+       <Card>
+          <CardHeader>
+              <CardTitle>Calendrier</CardTitle>
+              <CardDescription>
+              Vue d'ensemble des réservations.
+              </CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-center">
+              <Calendar
+              mode="single"
+              selected={date}
+              onSelect={setDate}
+              className="rounded-md border"
+              locale={require("date-fns/locale/fr").fr}
+              modifiers={{
+                  booked: bookings.filter(b => b.status === 'Confirmé').map(b => b.date),
+                  pending: bookings.filter(b => b.status === 'En attente').map(b => b.date),
+              }}
+              modifiersStyles={{
+                  booked: {
+                      color: 'hsl(var(--primary-foreground))',
+                      backgroundColor: 'hsl(var(--primary))',
+                  },
+                  pending: {
+                      borderColor: 'hsl(var(--primary))',
+                  }
+              }}
+              />
+          </CardContent>
+      </Card>
       <Card>
           <CardHeader className="flex flex-row justify-between items-start">
               <div>
@@ -278,36 +308,7 @@ export default function BookingSchedule() {
         </CardContent>
       </Card>
       
-       <Card>
-          <CardHeader>
-              <CardTitle>Calendrier</CardTitle>
-              <CardDescription>
-              Vue d'ensemble des réservations.
-              </CardDescription>
-          </CardHeader>
-          <CardContent className="flex justify-center">
-              <Calendar
-              mode="single"
-              selected={date}
-              onSelect={setDate}
-              className="rounded-md border"
-              locale={require("date-fns/locale/fr").fr}
-              modifiers={{
-                  booked: bookings.filter(b => b.status === 'Confirmé').map(b => b.date),
-                  pending: bookings.filter(b => b.status === 'En attente').map(b => b.date),
-              }}
-              modifiersStyles={{
-                  booked: {
-                      color: 'hsl(var(--primary-foreground))',
-                      backgroundColor: 'hsl(var(--primary))',
-                  },
-                  pending: {
-                      borderColor: 'hsl(var(--primary))',
-                  }
-              }}
-              />
-          </CardContent>
-      </Card>
+      
     </div>
   );
 }
