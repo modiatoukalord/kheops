@@ -315,7 +315,7 @@ export default function UserManagement() {
                                                   key={s.id}
                                                   value={s.id}
                                                   onSelect={(currentValue) => {
-                                                    setSelectedSubscriberId(currentValue === selectedSubscriberId ? "" : currentValue);
+                                                    setSelectedSubscriberId(currentValue === selectedSubscriberId ? "" : s.id);
                                                     setComboboxOpen(false);
                                                   }}
                                                 >
