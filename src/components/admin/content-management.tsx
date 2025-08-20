@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from "react";
@@ -22,6 +23,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuLabel,
+  DropdownMenuCheckboxItem
 } from "@/components/ui/dropdown-menu";
 import {
   Dialog,
@@ -119,6 +122,8 @@ export default function ContentManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
+  const [typeFilters, setTypeFilters] = useState<ContentType[]>([]);
+  const [statusFilters, setStatusFilters] = useState<ContentStatus[]>([]);
 
   const handleAddContent = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -157,11 +162,15 @@ export default function ContentManagement() {
     })
   };
 
-  const filteredContent = content.filter(
-    (item) =>
+  const filteredContent = content.filter((item) => {
+    const matchesSearch =
       item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.author.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+      item.author.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = typeFilters.length === 0 || typeFilters.includes(item.type);
+    const matchesStatus = statusFilters.length === 0 || statusFilters.includes(item.status);
+
+    return matchesSearch && matchesType && matchesStatus;
+  });
 
   return (
     <Card>
@@ -183,10 +192,51 @@ export default function ContentManagement() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Button variant="outline">
-              <Filter className="mr-2 h-4 w-4" />
-              Filtrer
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <Filter className="mr-2 h-4 w-4" />
+                  Filtrer
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Filtrer par Type</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {Object.keys(typeConfig).map((type) => (
+                  <DropdownMenuCheckboxItem
+                    key={type}
+                    checked={typeFilters.includes(type as ContentType)}
+                    onCheckedChange={(checked) =>
+                      setTypeFilters(
+                        checked
+                          ? [...typeFilters, type as ContentType]
+                          : typeFilters.filter((t) => t !== type)
+                      )
+                    }
+                  >
+                    {type}
+                  </DropdownMenuCheckboxItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Filtrer par Statut</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {Object.keys(statusConfig).map((status) => (
+                  <DropdownMenuCheckboxItem
+                    key={status}
+                    checked={statusFilters.includes(status as ContentStatus)}
+                    onCheckedChange={(checked) =>
+                      setStatusFilters(
+                        checked
+                          ? [...statusFilters, status as ContentStatus]
+                          : statusFilters.filter((s) => s !== status)
+                      )
+                    }
+                  >
+                    {status}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button>

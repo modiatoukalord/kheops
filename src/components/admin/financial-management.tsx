@@ -12,6 +12,14 @@ import { useToast } from "@/hooks/use-toast";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Landmark, ArrowUpRight, ArrowDownLeft, PlusCircle, Search, Calendar, Filter } from "lucide-react";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -65,6 +73,7 @@ export default function FinancialManagement({ transactions, setTransactions }: F
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
+  const [typeFilters, setTypeFilters] = useState<("Revenu" | "Dépense")[]>([]);
 
   const handleAddTransaction = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -78,9 +87,11 @@ export default function FinancialManagement({ transactions, setTransactions }: F
     setDialogOpen(false);
   };
   
-  const filteredTransactions = transactions.filter(transaction =>
-    transaction.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredTransactions = transactions.filter(transaction => {
+    const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = typeFilters.length === 0 || typeFilters.includes(transaction.type);
+    return matchesSearch && matchesType;
+  });
   
   const totalRevenue = transactions.filter(t => t.type === 'Revenu').reduce((acc, t) => acc + t.amount, 0);
   const totalExpenses = transactions.filter(t => t.type === 'Dépense').reduce((acc, t) => acc + t.amount, 0);
@@ -152,7 +163,35 @@ export default function FinancialManagement({ transactions, setTransactions }: F
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <Button variant="outline"><Filter className="mr-2 h-4 w-4" />Filtrer</Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline"><Filter className="mr-2 h-4 w-4" />Filtrer</Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Filtrer par type</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuCheckboxItem
+                    checked={typeFilters.includes("Revenu")}
+                    onCheckedChange={(checked) => setTypeFilters(
+                      checked
+                        ? [...typeFilters, "Revenu"]
+                        : typeFilters.filter((t) => t !== "Revenu")
+                    )}
+                  >
+                    Revenu
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem
+                    checked={typeFilters.includes("Dépense")}
+                    onCheckedChange={(checked) => setTypeFilters(
+                      checked
+                        ? [...typeFilters, "Dépense"]
+                        : typeFilters.filter((t) => t !== "Dépense")
+                    )}
+                  >
+                    Dépense
+                  </DropdownMenuCheckboxItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
                <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
                     <DialogTrigger asChild>
                         <Button><PlusCircle className="mr-2 h-4 w-4" />Ajouter</Button>

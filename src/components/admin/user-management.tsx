@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { MoreHorizontal, Search, Users, CreditCard, Activity, DollarSign, Filter, Phone, CalendarOff, PlusCircle, Check, ChevronsUpDown, CheckCircle, Trash2 } from "lucide-react";
@@ -86,6 +86,7 @@ export const initialSubscribers = subscribersData.map(s => ({
 }));
 
 export type Subscriber = (typeof initialSubscribers)[0];
+type SubscriberStatus = Subscriber["status"];
 
 const statusVariant: { [key: string]: "default" | "secondary" | "destructive" } = {
   "Actif": "default",
@@ -114,6 +115,7 @@ export default function UserManagement({
   const [selectedSubscriberId, setSelectedSubscriberId] = useState<string>("");
   const { toast } = useToast();
   const [comboboxOpen, setComboboxOpen] = useState(false);
+  const [statusFilters, setStatusFilters] = useState<SubscriberStatus[]>([]);
 
 
   const handleSubscriptionSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -210,10 +212,12 @@ export default function UserManagement({
     }
   };
   
-  const filteredSubscribers = subscribers.filter(subscriber =>
-    subscriber.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    subscriber.phone.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredSubscribers = subscribers.filter(subscriber => {
+    const matchesSearch = subscriber.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          subscriber.phone.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilters.length === 0 || statusFilters.includes(subscriber.status);
+    return matchesSearch && matchesStatus;
+  });
   
   const totalSubscriptionRevenue = subscribers
     .filter(s => s.status === 'Actif')
@@ -271,10 +275,34 @@ export default function UserManagement({
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <Button variant="outline">
-                    <Filter className="mr-2 h-4 w-4" />
-                    Filtrer
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline">
+                      <Filter className="mr-2 h-4 w-4" />
+                      Filtrer
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Filtrer par statut</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {(Object.keys(statusVariant) as SubscriberStatus[]).map((status) => (
+                      <DropdownMenuCheckboxItem
+                        key={status}
+                        checked={statusFilters.includes(status)}
+                        onSelect={(event) => event.preventDefault()}
+                        onCheckedChange={(checked) => {
+                          setStatusFilters(
+                            checked
+                              ? [...statusFilters, status]
+                              : statusFilters.filter((s) => s !== status)
+                          );
+                        }}
+                      >
+                        {status}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
                  <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { setDialogOpen(isOpen); if (!isOpen) setSelectedSubscriberId("");}}>
                     <DialogTrigger asChild>
                         <Button>
@@ -324,7 +352,7 @@ export default function UserManagement({
                                                 <Check
                                                     className={cn(
                                                       "mr-2 h-4 w-4",
-                                                      selectedSubscriberId === "new" ? "opacity-100" : "opacity-0"
+                                                      selectedSubscriberId === "new" || !selectedSubscriberId ? "opacity-100" : "opacity-0"
                                                     )}
                                                   />
                                                 -- Nouvel Abonné --
