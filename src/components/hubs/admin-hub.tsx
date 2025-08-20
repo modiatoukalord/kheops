@@ -66,7 +66,7 @@ export default function AdminHub() {
     },
     {
       title: "Réservations du Studio",
-      description: "Voir et gérer le planning des réservations du studio.",
+      description: "Voir et gérer le planning des réservations du studio et gestionnaires des contrats.",
       icon: CalendarCheck,
       action: "Consulter",
       view: "bookings" as AdminView,
