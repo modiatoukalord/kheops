@@ -103,37 +103,65 @@ export default function UserManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [selectedSubscriber, setSelectedSubscriber] = useState<Subscriber | null>(null);
+  const [selectedSubscriberId, setSelectedSubscriberId] = useState<string>("");
   const { toast } = useToast();
 
-  const handleAddSubscriber = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubscriptionSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const name = formData.get("name") as string;
     const phone = formData.get("phone") as string;
     const plan = formData.get("plan") as string;
-
+    const subscriberIdToUpdate = formData.get("subscriberToRenew") as string;
+    
     const today = new Date();
     const startDate = format(today, 'dd-MM-yyyy');
-    const newSubscriber = {
-        id: `user-${Date.now()}`,
-        name,
-        phone,
-        avatar: "https://placehold.co/40x40.png",
-        hint: "person face",
-        plan: plan === 'premium' ? 'Premium' : 'Membre KHEOPS',
-        status: 'Actif' as 'Actif',
-        startDate: startDate,
-        amount: plan === 'premium' ? '15 000 FCFA' : '5 000 FCFA',
-        endDate: getEndDate(startDate),
-    };
 
-    setSubscribers(prev => [newSubscriber, ...prev]);
-    
-    toast({
-        title: "Abonné ajouté",
-        description: `${name} a été ajouté à la liste des abonnés.`,
-    });
+    if (subscriberIdToUpdate && subscriberIdToUpdate !== 'new') {
+        // Handle renewal
+        setSubscribers(prev => 
+            prev.map(sub => 
+                sub.id === subscriberIdToUpdate
+                ? {
+                    ...sub,
+                    plan: plan === 'premium' ? 'Premium' : 'Membre KHEOPS',
+                    status: 'Actif' as 'Actif',
+                    startDate: startDate,
+                    amount: plan === 'premium' ? '15 000 FCFA' : '5 000 FCFA',
+                    endDate: getEndDate(startDate),
+                  }
+                : sub
+            )
+        );
+        const renewedSubscriber = subscribers.find(s => s.id === subscriberIdToUpdate);
+        toast({
+            title: "Abonnement Renouvelé",
+            description: `L'abonnement de ${renewedSubscriber?.name} a été renouvelé.`,
+        });
+
+    } else {
+        // Handle new subscriber
+        const newSubscriber = {
+            id: `user-${Date.now()}`,
+            name,
+            phone,
+            avatar: "https://placehold.co/40x40.png",
+            hint: "person face",
+            plan: plan === 'premium' ? 'Premium' : 'Membre KHEOPS',
+            status: 'Actif' as 'Actif',
+            startDate: startDate,
+            amount: plan === 'premium' ? '15 000 FCFA' : '5 000 FCFA',
+            endDate: getEndDate(startDate),
+        };
+        setSubscribers(prev => [newSubscriber, ...prev]);
+        toast({
+            title: "Abonné ajouté",
+            description: `${name} a été ajouté à la liste des abonnés.`,
+        });
+    }
+
     setDialogOpen(false);
+    setSelectedSubscriberId("");
   };
   
   const handleAction = (action: string, subscriberId: string) => {
@@ -181,6 +209,9 @@ export default function UserManagement() {
     return <UserProfile user={selectedSubscriber} onBack={() => setSelectedSubscriber(null)} />;
   }
 
+  const subscriberToRenew = subscribers.find(s => s.id === selectedSubscriberId);
+
+
   return (
     <div className="space-y-6">
       <section>
@@ -220,33 +251,47 @@ export default function UserManagement() {
                     <Filter className="mr-2 h-4 w-4" />
                     Filtrer
                 </Button>
-                 <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
+                 <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { setDialogOpen(isOpen); if (!isOpen) setSelectedSubscriberId("");}}>
                     <DialogTrigger asChild>
                         <Button>
                             <PlusCircle className="mr-2 h-4 w-4" />
-                            Ajouter un abonné
+                            Ajouter ou Renouveler
                         </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-[425px]">
-                        <form onSubmit={handleAddSubscriber}>
+                        <form onSubmit={handleSubscriptionSubmit}>
                             <DialogHeader>
                                 <DialogTitle>Ajouter ou Renouveler un Abonnement</DialogTitle>
                                 <DialogDescription>
-                                    Remplissez les informations pour un nouvel abonnement ou un renouvellement.
+                                    Sélectionnez un abonné à renouveler ou remplissez les champs pour un nouvel abonné.
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="grid gap-4 py-4">
                                 <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="subscriberToRenew" className="text-right">Abonné</Label>
+                                    <Select name="subscriberToRenew" onValueChange={setSelectedSubscriberId} defaultValue="new">
+                                        <SelectTrigger className="col-span-3">
+                                            <SelectValue placeholder="Sélectionner un abonné..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="new">-- Nouvel Abonné --</SelectItem>
+                                            {subscribers.map(s => (
+                                                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
                                     <Label htmlFor="name" className="text-right">Nom</Label>
-                                    <Input id="name" name="name" placeholder="Ex: Jean Dupont" className="col-span-3" required />
+                                    <Input id="name" name="name" placeholder="Ex: Jean Dupont" className="col-span-3" required defaultValue={subscriberToRenew?.name} disabled={!!subscriberToRenew} />
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
                                     <Label htmlFor="phone" className="text-right">Téléphone</Label>
-                                    <Input id="phone" name="phone" placeholder="Ex: +242 06 123 4567" className="col-span-3" required />
+                                    <Input id="phone" name="phone" placeholder="Ex: +242 06 123 4567" className="col-span-3" required defaultValue={subscriberToRenew?.phone} disabled={!!subscriberToRenew} />
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="plan" className="text-right">Abonnement</Label>
-                                <Select name="plan" required defaultValue="membre-kheops">
+                                <Select name="plan" required defaultValue={subscriberToRenew ? (subscriberToRenew.plan === 'Premium' ? 'premium' : 'membre-kheops') : "membre-kheops"}>
                                     <SelectTrigger className="col-span-3">
                                         <SelectValue placeholder="Sélectionner un plan" />
                                     </SelectTrigger>
