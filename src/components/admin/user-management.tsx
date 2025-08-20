@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { MoreHorizontal, Search, Users, CreditCard, Activity, DollarSign, Filter
 import Image from "next/image";
 import { addDays, parse, format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import UserProfile from "./user-profile";
 
 const subscribersData = [
   {
@@ -88,6 +89,7 @@ const initialSubscribers = subscribersData.map(s => ({
   endDate: s.status === "Annulé" ? "N/A" : getEndDate(s.startDate),
 }));
 
+export type Subscriber = (typeof initialSubscribers)[0];
 
 const statusVariant: { [key: string]: "default" | "secondary" | "destructive" } = {
   "Actif": "default",
@@ -99,6 +101,7 @@ export default function UserManagement() {
   const [subscribers, setSubscribers] = useState(initialSubscribers);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setDialogOpen] = useState(false);
+  const [selectedSubscriber, setSelectedSubscriber] = useState<Subscriber | null>(null);
   const { toast } = useToast();
 
   const handleAddSubscriber = (event: React.FormEvent<HTMLFormElement>) => {
@@ -141,9 +144,7 @@ export default function UserManagement() {
 
     switch (action) {
       case "view":
-        title = "Consultation du Profil";
-        description = `Affichage des détails pour ${subscriber.name}. (Fonctionnalité à venir)`;
-        toast({ title, description });
+        setSelectedSubscriber(subscriber);
         break;
       case "edit":
         title = "Modification de l'Abonnement";
@@ -174,6 +175,10 @@ export default function UserManagement() {
     { title: "Nouveaux / mois", value: "12", icon: Activity },
     { title: "Revenu Mensuel", value: "640 000 FCFA", icon: DollarSign },
   ];
+  
+  if (selectedSubscriber) {
+    return <UserProfile user={selectedSubscriber} onBack={() => setSelectedSubscriber(null)} />;
+  }
 
   return (
     <div className="space-y-6">
