@@ -55,6 +55,9 @@ import {
   Trash2,
   CheckCircle,
   Eye,
+  Film,
+  Puzzle,
+  BookCopy,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -62,7 +65,7 @@ const initialContent = [
   {
     id: "cont-001",
     title: "Le Labyrinthe d'Osiris",
-    type: "Livre" as "Livre" | "Article",
+    type: "Livre" as "Livre" | "Article" | "Manga" | "Film" | "Jeu de société",
     author: "KHEOPS Publishing",
     status: "Publié" as "Publié" | "Brouillon",
     lastUpdated: "2024-07-15",
@@ -70,7 +73,7 @@ const initialContent = [
   {
     id: "cont-002",
     title: "Pharaoh's Legacy Vol. 1",
-    type: "Livre" as "Livre" | "Article",
+    type: "Manga" as "Livre" | "Article" | "Manga" | "Film" | "Jeu de société",
     author: "KHEOPS Manga",
     status: "Publié" as "Publié" | "Brouillon",
     lastUpdated: "2024-07-20",
@@ -78,7 +81,7 @@ const initialContent = [
   {
     id: "cont-003",
     title: "L'art du Hiéroglyphe",
-    type: "Article" as "Livre" | "Article",
+    type: "Article" as "Livre" | "Article" | "Manga" | "Film" | "Jeu de société",
     author: "Dr. A. Diop",
     status: "Brouillon" as "Publié" | "Brouillon",
     lastUpdated: "2024-08-01",
@@ -86,7 +89,7 @@ const initialContent = [
   {
     id: "cont-004",
     title: "Les Chroniques de Thot",
-    type: "Livre" as "Livre" | "Article",
+    type: "Livre" as "Livre" | "Article" | "Manga" | "Film" | "Jeu de société",
     author: "KHEOPS Publishing",
     status: "Brouillon" as "Publié" | "Brouillon",
     lastUpdated: "2024-08-05",
@@ -95,15 +98,20 @@ const initialContent = [
 
 type Content = (typeof initialContent)[0];
 type ContentStatus = Content["status"];
+type ContentType = Content["type"];
+
 
 const statusConfig = {
   Publié: { variant: "default", icon: CheckCircle },
   Brouillon: { variant: "secondary", icon: Edit },
 };
 
-const typeConfig = {
-  Livre: { icon: BookOpen },
-  Article: { icon: FileText },
+const typeConfig: { [key in ContentType]: { icon: React.ElementType, label: string } } = {
+  Livre: { icon: BookOpen, label: "Livre" },
+  Article: { icon: FileText, label: "Article" },
+  Manga: { icon: BookCopy, label: "Manga" },
+  Film: { icon: Film, label: "Film" },
+  "Jeu de société": { icon: Puzzle, label: "Jeu de société" },
 };
 
 export default function ContentManagement() {
@@ -162,7 +170,7 @@ export default function ContentManagement() {
           <div>
             <CardTitle>Gestion des Contenus</CardTitle>
             <CardDescription>
-              Ajoutez, modifiez ou supprimez des livres et articles.
+              Ajoutez, modifiez ou supprimez des livres, articles, films, mangas et jeux.
             </CardDescription>
           </div>
           <div className="flex items-center gap-2 w-full md:w-auto">
@@ -191,8 +199,7 @@ export default function ContentManagement() {
                   <DialogHeader>
                     <DialogTitle>Ajouter un nouveau contenu</DialogTitle>
                     <DialogDescription>
-                      Remplissez les informations pour créer un nouveau livre
-                      ou article.
+                      Remplissez les informations pour créer une nouvelle oeuvre.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
@@ -207,11 +214,11 @@ export default function ContentManagement() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                        <Label htmlFor="author">Auteur</Label>
+                        <Label htmlFor="author">Auteur / Créateur</Label>
                         <Input
                             id="author"
                             name="author"
-                            placeholder="Nom de l'auteur"
+                            placeholder="Nom du créateur"
                             required
                         />
                         </div>
@@ -222,8 +229,9 @@ export default function ContentManagement() {
                             <SelectValue placeholder="Sélectionner un type" />
                             </SelectTrigger>
                             <SelectContent>
-                            <SelectItem value="Livre">Livre</SelectItem>
-                            <SelectItem value="Article">Article</SelectItem>
+                            {Object.entries(typeConfig).map(([key, { label }]) => (
+                              <SelectItem key={key} value={key}>{label}</SelectItem>
+                            ))}
                             </SelectContent>
                         </Select>
                         </div>
@@ -249,7 +257,7 @@ export default function ContentManagement() {
               <TableRow>
                 <TableHead>Titre</TableHead>
                 <TableHead className="hidden sm:table-cell">Type</TableHead>
-                <TableHead className="hidden md:table-cell">Auteur</TableHead>
+                <TableHead className="hidden md:table-cell">Auteur/Créateur</TableHead>
                 <TableHead>Statut</TableHead>
                 <TableHead className="hidden md:table-cell">
                   Dernière mise à jour
@@ -268,7 +276,7 @@ export default function ContentManagement() {
                       <TableCell className="hidden sm:table-cell">
                         <div className="flex items-center gap-2">
                            <typeInfo.icon className="h-4 w-4 text-muted-foreground" />
-                           {item.type}
+                           {typeInfo.label}
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">

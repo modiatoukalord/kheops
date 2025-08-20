@@ -289,7 +289,7 @@ export default function UserManagement() {
                                           aria-expanded={comboboxOpen}
                                           className="col-span-3 justify-between"
                                         >
-                                          {selectedSubscriberId && selectedSubscriberId !== "new"
+                                          {selectedSubscriberId && selectedSubscriberId !== 'new'
                                             ? subscribers.find((s) => s.id === selectedSubscriberId)?.name
                                             : "Sélectionner un abonné..."}
                                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -303,8 +303,8 @@ export default function UserManagement() {
                                             <CommandGroup>
                                               <CommandItem
                                                 value="new"
-                                                onSelect={(currentValue) => {
-                                                  setSelectedSubscriberId(currentValue === "new" ? "" : currentValue);
+                                                onSelect={() => {
+                                                  setSelectedSubscriberId("");
                                                   setComboboxOpen(false);
                                                 }}
                                               >
@@ -343,18 +343,6 @@ export default function UserManagement() {
                                     <Input id="phone" name="phone" placeholder="Ex: +242 06 123 4567" className="col-span-3" required defaultValue={subscriberToRenew?.phone} disabled={!!subscriberToRenew} />
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="plan" className="text-right">Abonnement</Label>
-                                    <Select name="plan" required defaultValue="membre-kheops">
-                                        <SelectTrigger className="col-span-3">
-                                            <SelectValue placeholder="Sélectionner un plan" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="membre-kheops">Membre KHEOPS</SelectItem>
-                                            <SelectItem value="premium">Premium</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
                                     <Label htmlFor="duration" className="text-right">Durée (mois)</Label>
                                     <Input id="duration" name="duration" type="number" placeholder="Ex: 3" className="col-span-3" required defaultValue="1" min="1" />
                                 </div>
@@ -375,11 +363,10 @@ export default function UserManagement() {
                 <TableRow>
                   <TableHead className="w-[80px]">Avatar</TableHead>
                   <TableHead>Nom</TableHead>
-                  <TableHead className="hidden lg:table-cell">Contact Téléphonique</TableHead>
-                  <TableHead>Abonnement</TableHead>
+                  <TableHead className="hidden lg:table-cell">Contact</TableHead>
                   <TableHead className="hidden sm:table-cell">Statut</TableHead>
-                  <TableHead className="hidden md:table-cell">Date d'inscription</TableHead>
-                  <TableHead className="hidden md:table-cell">Date de fin</TableHead>
+                  <TableHead className="hidden md:table-cell">Début</TableHead>
+                  <TableHead className="hidden md:table-cell">Fin</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -396,16 +383,15 @@ export default function UserManagement() {
                         data-ai-hint={subscriber.hint}
                       />
                     </TableCell>
-                    <TableCell className="font-medium">{subscriber.name}</TableCell>
+                    <TableCell>
+                        <div className="font-medium">{subscriber.name}</div>
+                        <div className="text-xs text-muted-foreground">{subscriber.amount}</div>
+                    </TableCell>
                     <TableCell className="hidden lg:table-cell">
                         <div className="flex items-center gap-2">
                            <Phone className="h-4 w-4 text-muted-foreground" />
                            {subscriber.phone}
                         </div>
-                    </TableCell>
-                    <TableCell>
-                        <div className="font-medium">{subscriber.plan}</div>
-                        <div className="text-xs text-muted-foreground">{subscriber.amount}</div>
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">
                       <Badge variant={statusVariant[subscriber.status] || "default"}>
