@@ -13,6 +13,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+
 
 const initialBookings = [
   {
@@ -70,9 +81,14 @@ const statusConfig = {
 
 type BookingStatus = keyof typeof statusConfig;
 
+const availableServices = ["Prise de voix", "Prise de voix + Mix", "Full-package"];
+const availableTimeSlots = ["09:00 - 11:00", "11:00 - 13:00", "14:00 - 16:00", "16:00 - 18:00", "18:00 - 20:00"];
+
 export default function BookingSchedule() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [bookings, setBookings] = useState(initialBookings);
+  const [isDialogOpen, setDialogOpen] = useState(false);
+  const { toast } = useToast();
 
   const upcomingBookings = bookings
     .filter(booking => booking.date >= new Date())
@@ -80,6 +96,26 @@ export default function BookingSchedule() {
 
   const handleStatusChange = (bookingId: string, newStatus: BookingStatus) => {
     setBookings(bookings.map(b => b.id === bookingId ? { ...b, status: newStatus } : b));
+  };
+  
+  const handleAddBooking = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const newBooking = {
+      id: `res-${Date.now()}`,
+      artistName: formData.get("artistName") as string,
+      projectName: formData.get("projectName") as string,
+      date: new Date(formData.get("date") as string),
+      timeSlot: formData.get("timeSlot") as string,
+      service: formData.get("service") as string,
+      status: "En attente" as BookingStatus,
+    };
+    setBookings(prev => [newBooking, ...prev]);
+    toast({
+        title: "Réservation ajoutée",
+        description: `La réservation pour ${newBooking.artistName} a été ajoutée.`,
+    });
+    setDialogOpen(false);
   };
 
 
@@ -126,10 +162,88 @@ export default function BookingSchedule() {
                     <CardTitle>Réservations à venir</CardTitle>
                     <CardDescription>Gérez les réservations et leur statut.</CardDescription>
                 </div>
-                <Button>
-                    <PlusCircle className="mr-2 h-4 w-4"/>
-                    Ajouter une réservation
-                </Button>
+                 <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button>
+                            <PlusCircle className="mr-2 h-4 w-4"/>
+                            Ajouter une réservation
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                         <form onSubmit={handleAddBooking}>
+                            <DialogHeader>
+                                <DialogTitle>Ajouter une nouvelle réservation</DialogTitle>
+                                <DialogDescription>
+                                    Remplissez les détails pour créer une nouvelle réservation de studio.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="artistName" className="text-right">Artiste</Label>
+                                    <Input id="artistName" name="artistName" placeholder="Nom de l'artiste" className="col-span-3" required />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="projectName" className="text-right">Projet</Label>
+                                    <Input id="projectName" name="projectName" placeholder="Nom du projet" className="col-span-3" required />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="date" className="text-right">Date</Label>
+                                     <Popover>
+                                        <PopoverTrigger asChild>
+                                            <FormControl>
+                                                <Button
+                                                    variant={"outline"}
+                                                    name="date"
+                                                    className={cn(
+                                                        "col-span-3 justify-start text-left font-normal",
+                                                        !date && "text-muted-foreground"
+                                                    )}
+                                                >
+                                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                                    {date ? format(date, "PPP", { locale: fr }) : <span>Choisir une date</span>}
+                                                </Button>
+                                            </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0">
+                                            <Calendar
+                                                mode="single"
+                                                selected={date}
+                                                onSelect={setDate}
+                                                initialFocus
+                                                locale={fr}
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="timeSlot" className="text-right">Créneau</Label>
+                                    <Select name="timeSlot" required>
+                                        <SelectTrigger className="col-span-3">
+                                            <SelectValue placeholder="Sélectionner un créneau" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {availableTimeSlots.map(slot => <SelectItem key={slot} value={slot}>{slot}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="service" className="text-right">Service</Label>
+                                    <Select name="service" required>
+                                        <SelectTrigger className="col-span-3">
+                                            <SelectValue placeholder="Sélectionner un service" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {availableServices.map(service => <SelectItem key={service} value={service}>{service}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button type="submit">Ajouter la réservation</Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
             </CardHeader>
           <CardContent>
              <div className="overflow-x-auto">
