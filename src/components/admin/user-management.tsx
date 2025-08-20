@@ -81,7 +81,7 @@ const getEndDate = (startDate: string, durationMonths = 1) => {
 };
 
 
-const initialSubscribers = subscribersData.map(s => ({
+export const initialSubscribers = subscribersData.map(s => ({
   ...s,
   endDate: s.status === "Annulé" ? "N/A" : getEndDate(s.startDate, s.plan === "Premium" ? 1 : 1),
 }));
@@ -94,8 +94,21 @@ const statusVariant: { [key: string]: "default" | "secondary" | "destructive" } 
   "Annulé": "destructive",
 };
 
-export default function UserManagement() {
-  const [subscribers, setSubscribers] = useState(initialSubscribers);
+interface UserManagementProps {
+  subscribers: Subscriber[];
+  setSubscribers: React.Dispatch<React.SetStateAction<Subscriber[]>>;
+  onValidateSubscription: (subscriber: Subscriber) => void;
+  onAddSubscriber: (newSubscriber: Omit<Subscriber, 'id'>) => void;
+  onRenewSubscriber: (subscriberToRenew: Subscriber, durationMonths: number) => void;
+}
+
+export default function UserManagement({
+  subscribers,
+  setSubscribers,
+  onValidateSubscription,
+  onAddSubscriber,
+  onRenewSubscriber
+}: UserManagementProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [selectedSubscriber, setSelectedSubscriber] = useState<Subscriber | null>(null);
@@ -119,30 +132,27 @@ export default function UserManagement() {
 
     if (subscriberIdToUpdate && subscriberIdToUpdate !== 'new') {
         // Handle renewal
-        setSubscribers(prev => 
-            prev.map(sub => 
-                sub.id === subscriberIdToUpdate
-                ? {
-                    ...sub,
-                    plan: 'Abonnement KHEOPS',
-                    status: 'Actif' as 'Actif',
-                    startDate: startDate,
-                    amount: `${amount.toLocaleString('fr-FR')} FCFA`,
-                    endDate: getEndDate(startDate, durationMonths),
-                  }
-                : sub
-            )
-        );
-        const renewedSubscriber = subscribers.find(s => s.id === subscriberIdToUpdate);
+        const subscriberToRenew = subscribers.find(s => s.id === subscriberIdToUpdate);
+        if (!subscriberToRenew) return;
+
+        const updatedSubscriber = {
+            ...subscriberToRenew,
+            plan: 'Abonnement KHEOPS',
+            status: 'Actif' as 'Actif',
+            startDate: startDate,
+            amount: `${amount.toLocaleString('fr-FR')} FCFA`,
+            endDate: getEndDate(startDate, durationMonths),
+        };
+
+        onRenewSubscriber(updatedSubscriber, durationMonths);
         toast({
             title: "Abonnement Renouvelé",
-            description: `L'abonnement de ${renewedSubscriber?.name} a été renouvelé.`,
+            description: `L'abonnement de ${updatedSubscriber.name} a été renouvelé.`,
         });
 
     } else {
         // Handle new subscriber
         const newSubscriber = {
-            id: `user-${Date.now()}`,
             name,
             phone,
             plan: 'Abonnement KHEOPS',
@@ -151,7 +161,7 @@ export default function UserManagement() {
             amount: `${amount.toLocaleString('fr-FR')} FCFA`,
             endDate: getEndDate(startDate, durationMonths),
         };
-        setSubscribers(prev => [newSubscriber, ...prev]);
+        onAddSubscriber(newSubscriber);
         toast({
             title: "Abonné ajouté",
             description: `${name} a été ajouté à la liste des abonnés.`,
@@ -179,9 +189,13 @@ export default function UserManagement() {
         toast({ title, description });
         break;
       case "validate":
-         setSubscribers(subscribers.map(s => 
-          s.id === subscriberId ? { ...s, status: "Actif" } : s
-        ));
+         const updatedSubscribers = subscribers.map(s => 
+          s.id === subscriberId ? { ...s, status: "Actif" as const } : s
+        );
+        setSubscribers(updatedSubscribers);
+        const validatedSubscriber = updatedSubscribers.find(s => s.id === subscriberId);
+        if(validatedSubscriber) onValidateSubscription(validatedSubscriber);
+
         title = "Abonnement Validé";
         description = `L'abonnement de ${subscriber.name} est maintenant actif.`;
         toast({ title, description });
@@ -297,8 +311,8 @@ export default function UserManagement() {
                                             <CommandGroup>
                                               <CommandItem
                                                 value="new"
-                                                onSelect={(currentValue) => {
-                                                  setSelectedSubscriberId(currentValue === selectedSubscriberId ? "" : "");
+                                                onSelect={() => {
+                                                  setSelectedSubscriberId("new");
                                                   setComboboxOpen(false);
                                                 }}
                                                 className="cursor-pointer"
@@ -306,7 +320,7 @@ export default function UserManagement() {
                                                 <Check
                                                     className={cn(
                                                       "mr-2 h-4 w-4",
-                                                      selectedSubscriberId === "" ? "opacity-100" : "opacity-0"
+                                                      selectedSubscriberId === "new" ? "opacity-100" : "opacity-0"
                                                     )}
                                                   />
                                                 -- Nouvel Abonné --

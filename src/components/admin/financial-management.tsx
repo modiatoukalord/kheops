@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from "react";
@@ -21,8 +22,16 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 
+export type Transaction = {
+  id: string;
+  date: string;
+  description: string;
+  type: "Revenu" | "Dépense";
+  amount: number;
+  status: "Complété" | "En attente" | "Annulé";
+};
 
-const initialTransactions = [
+export const initialTransactions: Transaction[] = [
     { id: "txn-001", date: "2024-07-25", description: "Abonnement Premium - F. N'diaye", type: "Revenu", amount: 15000, status: "Complété" },
     { id: "txn-002", date: "2024-07-24", description: "Achat matériel studio (micros)", type: "Dépense", amount: -150000, status: "Complété" },
     { id: "txn-003", date: "2024-07-23", description: "Paiement location espace", type: "Dépense", amount: -250000, status: "Complété" },
@@ -47,7 +56,12 @@ const statusVariant: { [key: string]: "default" | "secondary" | "destructive" } 
   "Annulé": "destructive",
 };
 
-export default function FinancialManagement() {
+interface FinancialManagementProps {
+  transactions: Transaction[];
+  setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
+}
+
+export default function FinancialManagement({ transactions, setTransactions }: FinancialManagementProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
@@ -64,12 +78,12 @@ export default function FinancialManagement() {
     setDialogOpen(false);
   };
   
-  const filteredTransactions = initialTransactions.filter(transaction =>
+  const filteredTransactions = transactions.filter(transaction =>
     transaction.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
   
-  const totalRevenue = initialTransactions.filter(t => t.type === 'Revenu').reduce((acc, t) => acc + t.amount, 0);
-  const totalExpenses = initialTransactions.filter(t => t.type === 'Dépense').reduce((acc, t) => acc + t.amount, 0);
+  const totalRevenue = transactions.filter(t => t.type === 'Revenu').reduce((acc, t) => acc + t.amount, 0);
+  const totalExpenses = transactions.filter(t => t.type === 'Dépense').reduce((acc, t) => acc + t.amount, 0);
   const netProfit = totalRevenue + totalExpenses;
 
   const summaryCards = [

@@ -26,6 +26,17 @@ import { cn } from "@/lib/utils";
 import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 
+export type Booking = {
+  id: string;
+  artistName: string;
+  projectName: string;
+  date: Date;
+  timeSlot: string;
+  service: string;
+  status: "Confirmé" | "En attente" | "Annulé";
+  amount: number;
+}
+
 const servicesWithPrices = {
   "Prise de voix": 30000,
   "Prise de voix + Mix": 50000,
@@ -41,7 +52,7 @@ const calculatePrice = (service: string, timeSlot: string) => {
 };
 
 
-const initialBookings = [
+export const initialBookings: Booking[] = [
   {
     id: "res-001",
     artistName: "KHEOPS Collective",
@@ -49,7 +60,7 @@ const initialBookings = [
     date: new Date("2024-07-31T09:00:00"),
     timeSlot: "09:00 - 11:00",
     service: "Prise de voix + Mix",
-    status: "Confirmé" as "Confirmé" | "En attente" | "Annulé",
+    status: "Confirmé",
     amount: 100000,
   },
   {
@@ -59,7 +70,7 @@ const initialBookings = [
     date: new Date("2024-08-02T14:00:00"),
     timeSlot: "14:00 - 16:00",
     service: "Prise de voix",
-    status: "En attente" as "Confirmé" | "En attente" | "Annulé",
+    status: "En attente",
     amount: 60000,
   },
   {
@@ -69,7 +80,7 @@ const initialBookings = [
     date: new Date("2024-08-05T16:00:00"),
     timeSlot: "16:00 - 18:00",
     service: "Full-package",
-    status: "Confirmé" as "Confirmé" | "En attente" | "Annulé",
+    status: "Confirmé",
     amount: 150000,
   },
     {
@@ -79,7 +90,7 @@ const initialBookings = [
     date: new Date("2024-08-01T11:00:00"),
     timeSlot: "11:00 - 13:00",
     service: "Prise de voix",
-    status: "Annulé" as "Confirmé" | "En attente" | "Annulé",
+    status: "Annulé",
     amount: 60000,
   },
   {
@@ -89,7 +100,7 @@ const initialBookings = [
     date: new Date(),
     timeSlot: "18:00 - 20:00",
     service: "Prise de voix + Mix",
-    status: "En attente" as "Confirmé" | "En attente" | "Annulé",
+    status: "En attente",
     amount: 100000,
   },
 ];
@@ -108,9 +119,15 @@ type BookingStatus = keyof typeof bookingStatusConfig;
 const availableServices = ["Prise de voix", "Prise de voix + Mix", "Full-package"];
 const availableTimeSlots = ["09:00 - 11:00", "11:00 - 13:00", "14:00 - 16:00", "16:00 - 18:00", "18:00 - 20:00"];
 
-export default function BookingSchedule() {
+interface BookingScheduleProps {
+  bookings: Booking[];
+  setBookings: React.Dispatch<React.SetStateAction<Booking[]>>;
+  onAddBooking: (booking: Omit<Booking, 'id'>) => void;
+}
+
+
+export default function BookingSchedule({ bookings, setBookings, onAddBooking }: BookingScheduleProps) {
   const [date, setDate] = useState<Date | undefined>(new Date());
-  const [bookings, setBookings] = useState(initialBookings);
   const [isBookingDialogOpen, setBookingDialogOpen] = useState(false);
   const { toast } = useToast();
   
@@ -125,9 +142,8 @@ export default function BookingSchedule() {
     setBookings(bookings.map(b => b.id === bookingId ? { ...b, status: newStatus } : b));
   };
   
-  const handleAddBooking = (data: any) => {
+  const handleAddBookingSubmit = (data: any) => {
     const newBooking = {
-      id: `res-${Date.now()}`,
       artistName: data.artistName,
       projectName: data.projectName,
       date: date!,
@@ -136,7 +152,7 @@ export default function BookingSchedule() {
       status: "En attente" as BookingStatus,
       amount: calculatePrice(data.service, data.timeSlot),
     };
-    setBookings(prev => [newBooking, ...prev]);
+    onAddBooking(newBooking);
     toast({
         title: "Réservation ajoutée",
         description: `La réservation pour ${newBooking.artistName} a été ajoutée.`,
@@ -193,7 +209,7 @@ export default function BookingSchedule() {
                   </DialogTrigger>
                   <DialogContent>
                       <Form {...form}>
-                        <form onSubmit={form.handleSubmit(handleAddBooking)}>
+                        <form onSubmit={form.handleSubmit(handleAddBookingSubmit)}>
                           <DialogHeader>
                               <DialogTitle>Ajouter une nouvelle réservation</DialogTitle>
                               <DialogDescription>

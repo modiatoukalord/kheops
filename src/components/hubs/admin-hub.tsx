@@ -1,32 +1,89 @@
+
 "use client";
 
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature } from "lucide-react";
-import UserManagement from "@/components/admin/user-management";
+import UserManagement, { Subscriber } from "@/components/admin/user-management";
 import ContentManagement from "@/components/admin/content-management";
 import BookingSchedule from "@/components/admin/booking-schedule";
 import SiteSettings from "@/components/admin/site-settings";
 import EventManagement from "@/components/admin/event-management";
-import FinancialManagement from "@/components/admin/financial-management";
+import FinancialManagement, { Transaction } from "@/components/admin/financial-management";
 import ContractManagement from "@/components/admin/contract-management";
+import { initialSubscribers } from "@/components/admin/user-management";
+import { initialBookings, Booking } from "@/components/admin/booking-schedule";
+import { initialTransactions } from "@/components/admin/financial-management";
+import { format } from "date-fns";
 
 
 type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts";
 
-const adminViews = {
-    users: { component: UserManagement, title: "Gestion des Abonnements" },
-    content: { component: ContentManagement, title: "Gestion des Contenus" },
-    bookings: { component: BookingSchedule, title: "Planning des Réservations" },
-    settings: { component: SiteSettings, title: "Paramètres du Site" },
-    events: { component: EventManagement, title: "Gestion des Événements" },
-    financial: { component: FinancialManagement, title: "Gestion Financière" },
-    contracts: { component: ContractManagement, title: "Gestion des Contrats" },
-};
-
 export default function AdminHub() {
   const [activeView, setActiveView] = useState<AdminView>("dashboard");
+
+  const [bookings, setBookings] = useState<Booking[]>(initialBookings);
+  const [subscribers, setSubscribers] = useState<Subscriber[]>(initialSubscribers);
+  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
+
+  const handleAddBooking = (newBooking: Omit<Booking, 'id'>) => {
+    const fullBooking = { ...newBooking, id: `res-${Date.now()}`};
+    setBookings(prev => [fullBooking, ...prev]);
+    
+    // Add a corresponding transaction
+    const newTransaction: Transaction = {
+        id: `txn-${Date.now()}`,
+        date: format(fullBooking.date, "yyyy-MM-dd"),
+        description: `Réservation studio - ${fullBooking.artistName}`,
+        type: "Revenu",
+        amount: fullBooking.amount,
+        status: "En attente"
+    };
+    setTransactions(prev => [newTransaction, ...prev]);
+  };
+  
+  const handleValidateSubscription = (subscriber: Subscriber) => {
+     // Add a corresponding transaction
+    const newTransaction: Transaction = {
+        id: `txn-${Date.now()}`,
+        date: format(new Date(), "yyyy-MM-dd"),
+        description: `Abonnement - ${subscriber.name}`,
+        type: "Revenu",
+        amount: parseFloat(subscriber.amount.replace(/\s/g, '').replace('FCFA', '')),
+        status: "Complété"
+    };
+    setTransactions(prev => [newTransaction, ...prev]);
+  };
+  
+  const handleAddSubscriber = (newSubscriber: Omit<Subscriber, 'id'>) => {
+    const fullSubscriber = { ...newSubscriber, id: `user-${Date.now()}`};
+    setSubscribers(prev => [fullSubscriber, ...prev]);
+    handleValidateSubscription(fullSubscriber);
+  };
+  
+  const handleRenewSubscriber = (subscriberToRenew: Subscriber, durationMonths: number) => {
+    setSubscribers(prev => 
+        prev.map(sub => 
+            sub.id === subscriberToRenew.id
+            ? { ...subscriberToRenew }
+            : sub
+        )
+    );
+     handleValidateSubscription(subscriberToRenew);
+  };
+
+
+  const adminViews = {
+    users: { component: UserManagement, title: "Gestion des Abonnements", props: { subscribers, setSubscribers, onValidateSubscription: handleValidateSubscription, onAddSubscriber: handleAddSubscriber, onRenewSubscriber: handleRenewSubscriber } },
+    content: { component: ContentManagement, title: "Gestion des Contenus", props: {} },
+    bookings: { component: BookingSchedule, title: "Planning des Réservations", props: { bookings, setBookings, onAddBooking: handleAddBooking } },
+    settings: { component: SiteSettings, title: "Paramètres du Site", props: {} },
+    events: { component: EventManagement, title: "Gestion des Événements", props: {} },
+    financial: { component: FinancialManagement, title: "Gestion Financière", props: { transactions, setTransactions } },
+    contracts: { component: ContractManagement, title: "Gestion des Contrats", props: {} },
+  };
+
 
   const handleAction = (view: AdminView) => {
     setActiveView(view);
@@ -109,8 +166,10 @@ export default function AdminHub() {
     }
   ];
 
-  const CurrentView = activeView !== 'dashboard' ? adminViews[activeView].component : null;
+  const ViewComponent = activeView !== 'dashboard' ? adminViews[activeView].component : null;
   const currentTitle = activeView !== 'dashboard' ? adminViews[activeView].title : "PANNEAU D'ADMINISTRATION";
+  const viewProps = activeView !== 'dashboard' ? adminViews[activeView].props : {};
+
 
   return (
     <div className="space-y-8">
@@ -152,7 +211,7 @@ export default function AdminHub() {
           </div>
         </section>
       ) : (
-         CurrentView && <CurrentView />
+         ViewComponent && <ViewComponent {...viewProps} />
       )}
     </div>
   );
