@@ -12,7 +12,7 @@ import SiteSettings from "@/components/admin/site-settings";
 type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings";
 
 const adminViews = {
-    users: { component: UserManagement, title: "Gestion des Utilisateurs" },
+    users: { component: UserManagement, title: "Gestion des Abonnements" },
     content: { component: ContentManagement, title: "Gestion des Contenus" },
     bookings: { component: BookingSchedule, title: "Planning des Réservations" },
     settings: { component: SiteSettings, title: "Paramètres du Site" },
@@ -31,8 +31,8 @@ export default function AdminHub() {
 
   const adminSections = [
     {
-      title: "Gestion des Utilisateurs",
-      description: "Consulter, modifier ou bannir des utilisateurs.",
+      title: "Gestion des Abonnements",
+      description: "Gérer les abonnements des utilisateurs.",
       icon: Users,
       action: "Gérer",
       view: "users" as AdminView,

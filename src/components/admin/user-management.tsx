@@ -4,13 +4,13 @@ export default function UserManagement() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Gestion des Utilisateurs</CardTitle>
+        <CardTitle>Gestion des Abonnements</CardTitle>
         <CardDescription>
-          Ici, vous pouvez gérer les utilisateurs de la plateforme.
+          Ici, vous pouvez gérer les abonnements des utilisateurs.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <p>Le contenu de la gestion des utilisateurs sera bientôt disponible.</p>
+        <p>Le contenu de la gestion des abonnements sera bientôt disponible.</p>
       </CardContent>
     </Card>
   );
