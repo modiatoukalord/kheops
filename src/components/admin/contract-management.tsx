@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Send, PenSquare, Download, Clock, CheckCircle2, FileText } from "lucide-react";
+import { MoreHorizontal, Send, PenSquare, Download, Clock, CheckCircle2, FileText, PlusCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
@@ -36,12 +36,25 @@ export default function ContractManagement() {
             description: `Le statut du contrat ${contractId} est maintenant: ${newStatus}.`,
         });
     };
+    
+    const handleAddContract = () => {
+        toast({
+            title: "Fonctionnalité à venir",
+            description: "La création de contrat sera bientôt disponible.",
+        });
+    };
 
     return (
         <Card>
-            <CardHeader>
-                <CardTitle>Gestion des Contrats</CardTitle>
-                <CardDescription>Suivez et mettez à jour le statut des contrats de réservation.</CardDescription>
+            <CardHeader className="flex flex-row justify-between items-start">
+                <div>
+                    <CardTitle>Gestion des Contrats</CardTitle>
+                    <CardDescription>Suivez et mettez à jour le statut des contrats de réservation.</CardDescription>
+                </div>
+                 <Button onClick={handleAddContract}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Ajouter un contrat
+                </Button>
             </CardHeader>
             <CardContent>
                 <Table>
