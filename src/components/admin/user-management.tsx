@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, Search, Users, CreditCard, Activity, DollarSign, Filter, Phone, CalendarOff, PlusCircle, Check, ChevronsUpDown, CheckCircle } from "lucide-react";
+import { MoreHorizontal, Search, Users, CreditCard, Activity, DollarSign, Filter, Phone, CalendarOff, PlusCircle, Check, ChevronsUpDown, CheckCircle, Trash2 } from "lucide-react";
 import { addMonths, parse, format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import UserProfile from "./user-profile";
@@ -199,12 +199,10 @@ export default function UserManagement({
         description = `L'abonnement de ${subscriber.name} est maintenant actif.`;
         toast({ title, description });
         break;
-      case "cancel":
-        setSubscribers(subscribers.map(s => 
-          s.id === subscriberId ? { ...s, status: "Annulé", endDate: "N/A" } : s
-        ));
-        title = "Abonnement Annulé";
-        description = `L'abonnement de ${subscriber.name} a été annulé.`;
+      case "delete":
+        setSubscribers(subscribers.filter(s => s.id !== subscriberId));
+        title = "Abonnement Supprimé";
+        description = `L'abonnement de ${subscriber.name} a été supprimé.`;
         toast({ title, description, variant: "destructive" });
         break;
       default:
@@ -317,8 +315,8 @@ export default function UserManagement({
                                             <CommandGroup>
                                               <CommandItem
                                                 value="new"
-                                                onSelect={() => {
-                                                  setSelectedSubscriberId("new");
+                                                onSelect={(currentValue) => {
+                                                  setSelectedSubscriberId(currentValue === "new" ? "new" : "");
                                                   setComboboxOpen(false);
                                                 }}
                                                 className="cursor-pointer"
@@ -439,7 +437,10 @@ export default function UserManagement({
                               </DropdownMenuItem>
                           )}
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-red-500" onClick={() => handleAction('cancel', subscriber.id)}>Annuler l'abonnement</DropdownMenuItem>
+                          <DropdownMenuItem className="text-red-500" onClick={() => handleAction('delete', subscriber.id)}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Supprimer l'abonnement
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -453,3 +454,5 @@ export default function UserManagement({
     </div>
   );
 }
+
+    
