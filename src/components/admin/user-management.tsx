@@ -7,14 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Search, Users, CreditCard, Activity, DollarSign, Filter } from "lucide-react";
+import { MoreHorizontal, Search, Users, CreditCard, Activity, DollarSign, Filter, Phone } from "lucide-react";
 import Image from "next/image";
 
 const subscribers = [
   {
     id: "user-001",
     name: "Amina Dubois",
-    email: "amina.d@email.com",
+    phone: "+242 06 123 4567",
     avatar: "https://placehold.co/40x40.png",
     hint: "woman portrait",
     plan: "Membre KHEOPS",
@@ -25,7 +25,7 @@ const subscribers = [
   {
     id: "user-002",
     name: "Binta Traoré",
-    email: "b.traore@email.com",
+    phone: "+242 05 987 6543",
     avatar: "https://placehold.co/40x40.png",
     hint: "woman face",
     plan: "Membre KHEOPS",
@@ -36,7 +36,7 @@ const subscribers = [
   {
     id: "user-003",
     name: "Mamadou Sow",
-    email: "msow@email.com",
+    phone: "+242 06 111 2233",
     avatar: "https://placehold.co/40x40.png",
     hint: "man portrait",
     plan: "Premium",
@@ -47,7 +47,7 @@ const subscribers = [
   {
     id: "user-004",
     name: "Fatou N'diaye",
-    email: "fatou.ndiaye@email.com",
+    phone: "+242 05 444 5566",
     avatar: "https://placehold.co/40x40.png",
     hint: "woman smiling",
     plan: "Premium",
@@ -58,7 +58,7 @@ const subscribers = [
   {
     id: "user-005",
     name: "Jean-Pierre Diallo",
-    email: "jp.diallo@email.com",
+    phone: "+242 06 777 8899",
     avatar: "https://placehold.co/40x40.png",
     hint: "man face",
     plan: "Membre KHEOPS",
@@ -79,7 +79,7 @@ export default function UserManagement() {
   
   const filteredSubscribers = subscribers.filter(subscriber =>
     subscriber.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    subscriber.email.toLowerCase().includes(searchTerm.toLowerCase())
+    subscriber.phone.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const stats = [
@@ -118,7 +118,7 @@ export default function UserManagement() {
                 <div className="relative flex-grow">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
-                        placeholder="Rechercher par nom ou email..." 
+                        placeholder="Rechercher par nom ou contact..." 
                         className="pl-10 w-full"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -138,7 +138,7 @@ export default function UserManagement() {
                 <TableRow>
                   <TableHead className="w-[80px]">Avatar</TableHead>
                   <TableHead>Nom</TableHead>
-                  <TableHead className="hidden md:table-cell">Email</TableHead>
+                  <TableHead className="hidden md:table-cell">Contact Téléphonique</TableHead>
                   <TableHead>Abonnement</TableHead>
                   <TableHead className="hidden sm:table-cell">Statut</TableHead>
                   <TableHead className="hidden md:table-cell">Date d'inscription</TableHead>
@@ -159,7 +159,12 @@ export default function UserManagement() {
                       />
                     </TableCell>
                     <TableCell className="font-medium">{subscriber.name}</TableCell>
-                    <TableCell className="hidden md:table-cell">{subscriber.email}</TableCell>
+                    <TableCell className="hidden md:table-cell">
+                        <div className="flex items-center gap-2">
+                           <Phone className="h-4 w-4 text-muted-foreground" />
+                           {subscriber.phone}
+                        </div>
+                    </TableCell>
                     <TableCell>
                         <div className="font-medium">{subscriber.plan}</div>
                         <div className="text-xs text-muted-foreground">{subscriber.amount}</div>
