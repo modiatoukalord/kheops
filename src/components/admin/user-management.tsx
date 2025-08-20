@@ -7,10 +7,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, Search, Users, CreditCard, Activity, DollarSign, Filter, Phone, CalendarOff, PlusCircle, Check, ChevronsUpDown } from "lucide-react";
+import { MoreHorizontal, Search, Users, CreditCard, Activity, DollarSign, Filter, Phone, CalendarOff, PlusCircle, Check, ChevronsUpDown, CheckCircle } from "lucide-react";
 import { addMonths, parse, format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import UserProfile from "./user-profile";
@@ -178,6 +178,14 @@ export default function UserManagement() {
         description = `Le formulaire de modification pour ${subscriber.name} sera bientôt disponible.`;
         toast({ title, description });
         break;
+      case "validate":
+         setSubscribers(subscribers.map(s => 
+          s.id === subscriberId ? { ...s, status: "Actif" } : s
+        ));
+        title = "Abonnement Validé";
+        description = `L'abonnement de ${subscriber.name} est maintenant actif.`;
+        toast({ title, description });
+        break;
       case "cancel":
         setSubscribers(subscribers.map(s => 
           s.id === subscriberId ? { ...s, status: "Annulé", endDate: "N/A" } : s
@@ -289,12 +297,18 @@ export default function UserManagement() {
                                             <CommandGroup>
                                               <CommandItem
                                                 value="new"
-                                                onSelect={() => {
-                                                  setSelectedSubscriberId("");
+                                                onSelect={(currentValue) => {
+                                                  setSelectedSubscriberId(currentValue === selectedSubscriberId ? "" : "");
                                                   setComboboxOpen(false);
                                                 }}
                                                 className="cursor-pointer"
                                               >
+                                                <Check
+                                                    className={cn(
+                                                      "mr-2 h-4 w-4",
+                                                      selectedSubscriberId === "" ? "opacity-100" : "opacity-0"
+                                                    )}
+                                                  />
                                                 -- Nouvel Abonné --
                                               </CommandItem>
                                               {subscribers.map((s) => (
@@ -398,6 +412,13 @@ export default function UserManagement() {
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuItem onClick={() => handleAction('view', subscriber.id)}>Voir le profil</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleAction('edit', subscriber.id)}>Modifier l'abonnement</DropdownMenuItem>
+                          {subscriber.status === 'En attente' && (
+                              <DropdownMenuItem onClick={() => handleAction('validate', subscriber.id)}>
+                                <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                                Valider l'abonnement
+                              </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem className="text-red-500" onClick={() => handleAction('cancel', subscriber.id)}>Annuler l'abonnement</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -412,5 +433,7 @@ export default function UserManagement() {
     </div>
   );
 }
+
+    
 
     
