@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -229,9 +230,9 @@ export default function UserManagement() {
                     <DialogContent className="sm:max-w-[425px]">
                         <form onSubmit={handleAddSubscriber}>
                             <DialogHeader>
-                                <DialogTitle>Ajouter un nouvel abonné</DialogTitle>
+                                <DialogTitle>Ajouter ou Renouveler un Abonnement</DialogTitle>
                                 <DialogDescription>
-                                    Remplissez les informations ci-dessous pour ajouter un nouvel abonnement.
+                                    Remplissez les informations pour un nouvel abonnement ou un renouvellement.
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="grid gap-4 py-4">
@@ -257,7 +258,7 @@ export default function UserManagement() {
                                 </div>
                             </div>
                             <DialogFooter>
-                                <Button type="submit">Ajouter l'abonné</Button>
+                                <Button type="submit">Valider</Button>
                             </DialogFooter>
                         </form>
                     </DialogContent>
@@ -346,3 +347,5 @@ export default function UserManagement() {
     </div>
   );
 }
+
+    
