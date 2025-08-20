@@ -15,9 +15,9 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
 const initialContracts = [
-    { id: "ctr-001", bookingId: "res-001", artistName: "KHEOPS Collective", status: "Signé", lastUpdate: "2024-07-25" },
-    { id: "ctr-002", bookingId: "res-003", artistName: "Mc Solaar", status: "Envoyé", lastUpdate: "2024-08-01" },
-    { id: "ctr-003", bookingId: "res-002", artistName: "L'Artiste Anonyme", status: "En attente", lastUpdate: "2024-08-03" },
+    { id: "ctr-001", bookingId: "res-001", clientName: "KHEOPS Collective", status: "Signé", lastUpdate: "2024-07-25" },
+    { id: "ctr-002", bookingId: "res-003", clientName: "Mc Solaar", status: "Envoyé", lastUpdate: "2024-08-01" },
+    { id: "ctr-003", bookingId: "res-002", clientName: "L'Artiste Anonyme", status: "En attente", lastUpdate: "2024-08-03" },
 ];
 
 // Mock data, in a real app this would come from a shared service or store
@@ -37,7 +37,13 @@ const contractStatusConfig = {
 };
 
 type ContractStatus = keyof typeof contractStatusConfig;
-type Contract = (typeof initialContracts)[0];
+type Contract = {
+    id: string;
+    bookingId: string;
+    clientName: string;
+    status: "Signé" | "Envoyé" | "En attente" | "Archivé";
+    lastUpdate: string;
+};
 
 export default function ContractManagement() {
     const [contracts, setContracts] = useState(initialContracts);
@@ -69,7 +75,7 @@ export default function ContractManagement() {
         const newContract: Contract = {
             id: `ctr-${Date.now()}`,
             bookingId: booking.id,
-            artistName: booking.artistName,
+            clientName: booking.artistName,
             status: "En attente",
             lastUpdate: format(new Date(), 'yyyy-MM-dd'),
         };
@@ -147,7 +153,7 @@ export default function ContractManagement() {
                     <TableHeader>
                         <TableRow>
                             <TableHead>Contrat ID</TableHead>
-                            <TableHead>Artiste</TableHead>
+                            <TableHead>Client</TableHead>
                             <TableHead>Mise à jour</TableHead>
                             <TableHead>Statut</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
@@ -159,7 +165,7 @@ export default function ContractManagement() {
                             return (
                                 <TableRow key={contract.id}>
                                     <TableCell className="font-mono">{contract.id}</TableCell>
-                                    <TableCell>{contract.artistName}</TableCell>
+                                    <TableCell>{contract.clientName}</TableCell>
                                     <TableCell>{new Date(contract.lastUpdate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</TableCell>
                                     <TableCell>
                                         <Badge variant={statusInfo.variant}>
