@@ -6,7 +6,7 @@ import { Pyramid, LogIn } from "lucide-react";
 
 interface HeaderProps {
   activeHub: string;
-  setActiveHub: (hub: "culture" | "studio" | "wear") => void;
+  setActiveHub: (hub: "culture" | "studio" | "wear" | "admin") => void;
 }
 
 export default function Header({ activeHub, setActiveHub }: HeaderProps) {
@@ -15,6 +15,7 @@ export default function Header({ activeHub, setActiveHub }: HeaderProps) {
     { id: "culture", label: "Culture Hub" },
     { id: "studio", label: "Studio" },
     { id: "wear", label: "Wear" },
+    { id: "admin", label: "Admin" },
   ];
 
   const handleLoginClick = () => {
@@ -39,7 +40,7 @@ export default function Header({ activeHub, setActiveHub }: HeaderProps) {
             <Button
               key={item.id}
               variant={activeHub === item.id ? "secondary" : "ghost"}
-              onClick={() => setActiveHub(item.id as "culture" | "studio" | "wear")}
+              onClick={() => setActiveHub(item.id as "culture" | "studio" | "wear" | "admin")}
               className={`font-semibold transition-all duration-200 ${activeHub === item.id ? "text-primary scale-105" : ""}`}
             >
               {item.label}

@@ -6,6 +6,7 @@ import Header from "@/components/layout/header";
 import CultureHub from "@/components/hubs/culture-hub";
 import StudioHub from "@/components/hubs/studio-hub";
 import WearHub from "@/components/hubs/wear-hub";
+import AdminHub from "@/components/hubs/admin-hub";
 
 type Hubs = {
   [key: string]: ComponentType;
@@ -15,6 +16,7 @@ const hubComponents: Hubs = {
   culture: CultureHub,
   studio: StudioHub,
   wear: WearHub,
+  admin: AdminHub,
 };
 
 export default function Home() {
