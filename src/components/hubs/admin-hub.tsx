@@ -3,14 +3,15 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus } from "lucide-react";
+import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark } from "lucide-react";
 import UserManagement from "@/components/admin/user-management";
 import ContentManagement from "@/components/admin/content-management";
 import BookingSchedule from "@/components/admin/booking-schedule";
 import SiteSettings from "@/components/admin/site-settings";
 import EventManagement from "@/components/admin/event-management";
+import FinancialManagement from "@/components/admin/financial-management";
 
-type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events";
+type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial";
 
 const adminViews = {
     users: { component: UserManagement, title: "Gestion des Abonnements" },
@@ -18,6 +19,7 @@ const adminViews = {
     bookings: { component: BookingSchedule, title: "Planning des Réservations" },
     settings: { component: SiteSettings, title: "Paramètres du Site" },
     events: { component: EventManagement, title: "Gestion des Événements" },
+    financial: { component: FinancialManagement, title: "Gestion Financière" },
 };
 
 export default function AdminHub() {
@@ -71,6 +73,16 @@ export default function AdminHub() {
       color: "bg-purple-500/80",
       textColor: "text-white",
       hoverColor: "hover:bg-purple-600/90",
+    },
+    {
+        title: "Gestion Financière",
+        description: "Suivre les transactions et les revenus.",
+        icon: Landmark,
+        action: "Consulter",
+        view: "financial" as AdminView,
+        color: "bg-yellow-500/80",
+        textColor: "text-white",
+        hoverColor: "hover:bg-yellow-600/90",
     },
     {
         title: "Paramètres du Site",
