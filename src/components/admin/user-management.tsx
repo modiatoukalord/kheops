@@ -7,10 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Search, Users, CreditCard, Activity, DollarSign, Filter, Phone } from "lucide-react";
+import { MoreHorizontal, Search, Users, CreditCard, Activity, DollarSign, Filter, Phone, CalendarOff } from "lucide-react";
 import Image from "next/image";
+import { addDays, parse } from "date-fns";
 
-const subscribers = [
+const subscribersData = [
   {
     id: "user-001",
     name: "Amina Dubois",
@@ -67,6 +68,22 @@ const subscribers = [
     amount: "5 000 FCFA",
   },
 ];
+
+const getEndDate = (startDate: string) => {
+  try {
+    const date = parse(startDate, 'dd-MM-yyyy', new Date());
+    const endDate = addDays(date, 30);
+    return endDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
+  } catch (error) {
+    return "N/A";
+  }
+};
+
+const subscribers = subscribersData.map(s => ({
+  ...s,
+  endDate: s.status === "Annulé" ? "N/A" : getEndDate(s.startDate),
+}));
+
 
 const statusVariant: { [key: string]: "default" | "secondary" | "destructive" } = {
   "Actif": "default",
@@ -138,10 +155,11 @@ export default function UserManagement() {
                 <TableRow>
                   <TableHead className="w-[80px]">Avatar</TableHead>
                   <TableHead>Nom</TableHead>
-                  <TableHead className="hidden md:table-cell">Contact Téléphonique</TableHead>
+                  <TableHead className="hidden lg:table-cell">Contact Téléphonique</TableHead>
                   <TableHead>Abonnement</TableHead>
                   <TableHead className="hidden sm:table-cell">Statut</TableHead>
                   <TableHead className="hidden md:table-cell">Date d'inscription</TableHead>
+                  <TableHead className="hidden md:table-cell">Date de fin</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -159,7 +177,7 @@ export default function UserManagement() {
                       />
                     </TableCell>
                     <TableCell className="font-medium">{subscriber.name}</TableCell>
-                    <TableCell className="hidden md:table-cell">
+                    <TableCell className="hidden lg:table-cell">
                         <div className="flex items-center gap-2">
                            <Phone className="h-4 w-4 text-muted-foreground" />
                            {subscriber.phone}
@@ -175,6 +193,16 @@ export default function UserManagement() {
                       </Badge>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">{subscriber.startDate}</TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {subscriber.endDate !== "N/A" ? (
+                        subscriber.endDate
+                      ) : (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <CalendarOff className="h-4 w-4" />
+                          <span>N/A</span>
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
