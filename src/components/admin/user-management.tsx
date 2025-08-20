@@ -11,11 +11,15 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MoreHorizontal, Search, Users, CreditCard, Activity, DollarSign, Filter, Phone, CalendarOff, PlusCircle } from "lucide-react";
+import { MoreHorizontal, Search, Users, CreditCard, Activity, DollarSign, Filter, Phone, CalendarOff, PlusCircle, Check, ChevronsUpDown } from "lucide-react";
 import Image from "next/image";
 import { addMonths, parse, format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import UserProfile from "./user-profile";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+
 
 const KHEOPS_MEMBER_FEE = 5000;
 const PREMIUM_FEE = 15000;
@@ -109,6 +113,8 @@ export default function UserManagement() {
   const [selectedSubscriber, setSelectedSubscriber] = useState<Subscriber | null>(null);
   const [selectedSubscriberId, setSelectedSubscriberId] = useState<string>("");
   const { toast } = useToast();
+  const [comboboxOpen, setComboboxOpen] = useState(false);
+
 
   const handleSubscriptionSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -117,7 +123,7 @@ export default function UserManagement() {
     const phone = formData.get("phone") as string;
     const plan = formData.get("plan") as string;
     const durationMonths = parseInt(formData.get("duration") as string, 10);
-    const subscriberIdToUpdate = formData.get("subscriberToRenew") as string;
+    const subscriberIdToUpdate = selectedSubscriberId;
     
     const today = new Date();
     const startDate = format(today, 'dd-MM-yyyy');
@@ -276,17 +282,58 @@ export default function UserManagement() {
                             <div className="grid gap-4 py-4">
                                 <div className="grid grid-cols-4 items-center gap-4">
                                     <Label htmlFor="subscriberToRenew" className="text-right">Abonné</Label>
-                                    <Select name="subscriberToRenew" onValueChange={setSelectedSubscriberId} defaultValue="new">
-                                        <SelectTrigger className="col-span-3">
-                                            <SelectValue placeholder="Sélectionner un abonné..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="new">-- Nouvel Abonné --</SelectItem>
-                                            {subscribers.map(s => (
-                                                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
+                                      <PopoverTrigger asChild>
+                                        <Button
+                                          variant="outline"
+                                          role="combobox"
+                                          aria-expanded={comboboxOpen}
+                                          className="col-span-3 justify-between"
+                                        >
+                                          {selectedSubscriberId && selectedSubscriberId !== "new"
+                                            ? subscribers.find((s) => s.id === selectedSubscriberId)?.name
+                                            : "Sélectionner un abonné..."}
+                                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-[300px] p-0">
+                                        <Command>
+                                          <CommandInput placeholder="Rechercher un abonné..." />
+                                          <CommandList>
+                                            <CommandEmpty>Aucun abonné trouvé.</CommandEmpty>
+                                            <CommandGroup>
+                                              <CommandItem
+                                                value="new"
+                                                onSelect={() => {
+                                                  setSelectedSubscriberId("new");
+                                                  setComboboxOpen(false);
+                                                }}
+                                              >
+                                                -- Nouvel Abonné --
+                                              </CommandItem>
+                                              {subscribers.map((s) => (
+                                                <CommandItem
+                                                  key={s.id}
+                                                  value={s.name}
+                                                  onSelect={() => {
+                                                    setSelectedSubscriberId(s.id);
+                                                    setComboboxOpen(false);
+                                                  }}
+                                                >
+                                                  <Check
+                                                    className={cn(
+                                                      "mr-2 h-4 w-4",
+                                                      selectedSubscriberId === s.id ? "opacity-100" : "opacity-0"
+                                                    )}
+                                                  />
+                                                  {s.name}
+                                                </CommandItem>
+                                              ))}
+                                            </CommandGroup>
+                                          </CommandList>
+                                        </Command>
+                                      </PopoverContent>
+                                    </Popover>
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
                                     <Label htmlFor="name" className="text-right">Nom</Label>
