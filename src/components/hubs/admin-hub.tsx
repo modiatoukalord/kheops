@@ -34,29 +34,41 @@ export default function AdminHub() {
       title: "Gestion des Utilisateurs",
       description: "Consulter, modifier ou bannir des utilisateurs.",
       icon: Users,
-      action: "Gérer les utilisateurs",
+      action: "Gérer",
       view: "users" as AdminView,
+      color: "bg-blue-500/80",
+      textColor: "text-white",
+      hoverColor: "hover:bg-blue-600/90",
     },
     {
       title: "Gestion des Contenus",
       description: "Ajouter ou modifier des livres, articles et événements.",
       icon: FileText,
-      action: "Gérer les contenus",
+      action: "Gérer",
       view: "content" as AdminView,
+      color: "bg-green-500/80",
+      textColor: "text-white",
+      hoverColor: "hover:bg-green-600/90",
     },
     {
       title: "Réservations du Studio",
       description: "Voir et gérer le planning des réservations du studio.",
       icon: CalendarCheck,
-      action: "Voir le planning",
+      action: "Consulter",
       view: "bookings" as AdminView,
+      color: "bg-purple-500/80",
+      textColor: "text-white",
+      hoverColor: "hover:bg-purple-600/90",
     },
     {
         title: "Paramètres du Site",
         description: "Configurer les options générales de la plateforme.",
         icon: Settings,
-        action: "Accéder aux paramètres",
+        action: "Configurer",
         view: "settings" as AdminView,
+        color: "bg-orange-500/80",
+        textColor: "text-white",
+        hoverColor: "hover:bg-orange-600/90",
     }
   ];
 
@@ -83,18 +95,18 @@ export default function AdminHub() {
 
       {activeView === 'dashboard' ? (
         <section>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
             {adminSections.map((section) => (
-              <Card key={section.title} className="bg-card border-border/50 flex flex-col justify-between transition-all duration-300 hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-1">
+              <Card key={section.title} className={`${section.color} ${section.textColor} border-0 flex flex-col justify-between transition-all duration-300 ${section.hoverColor} hover:-translate-y-1 shadow-lg`}>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-3 text-2xl">
-                    <section.icon className="w-8 h-8 text-accent" />
+                  <CardTitle className="flex items-center gap-4 text-2xl">
+                    <section.icon className="w-10 h-10" />
                     {section.title}
                   </CardTitle>
-                  <CardDescription>{section.description}</CardDescription>
+                  <CardDescription className={`${section.textColor} opacity-80`}>{section.description}</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <Button className="w-full" variant="outline" onClick={() => handleAction(section.view)}>
+                <CardContent className="flex justify-end">
+                  <Button className="bg-white/20 hover:bg-white/30 text-white" onClick={() => handleAction(section.view)}>
                     {section.action}
                   </Button>
                 </CardContent>
