@@ -1,15 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Search, Users, CreditCard, Activity, DollarSign, Filter, Phone, CalendarOff } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MoreHorizontal, Search, Users, CreditCard, Activity, DollarSign, Filter, Phone, CalendarOff, PlusCircle } from "lucide-react";
 import Image from "next/image";
 import { addDays, parse } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 
 const subscribersData = [
   {
@@ -93,6 +97,21 @@ const statusVariant: { [key: string]: "default" | "secondary" | "destructive" } 
 
 export default function UserManagement() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [isDialogOpen, setDialogOpen] = useState(false);
+  const { toast } = useToast();
+
+  const handleAddSubscriber = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const name = formData.get("name") as string;
+    
+    // Here you would typically handle form submission, e.g., send data to an API
+    toast({
+        title: "Abonné ajouté",
+        description: `${name} a été ajouté à la liste des abonnés.`,
+    });
+    setDialogOpen(false); // Close the dialog
+  };
   
   const filteredSubscribers = subscribers.filter(subscriber =>
     subscriber.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -145,6 +164,49 @@ export default function UserManagement() {
                     <Filter className="mr-2 h-4 w-4" />
                     Filtrer
                 </Button>
+                 <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Ajouter un abonné
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                        <form onSubmit={handleAddSubscriber}>
+                            <DialogHeader>
+                                <DialogTitle>Ajouter un nouvel abonné</DialogTitle>
+                                <DialogDescription>
+                                    Remplissez les informations ci-dessous pour ajouter un nouvel abonnement.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="name" className="text-right">Nom</Label>
+                                    <Input id="name" name="name" placeholder="Ex: Jean Dupont" className="col-span-3" required />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="phone" className="text-right">Téléphone</Label>
+                                    <Input id="phone" name="phone" placeholder="Ex: +242 06 123 4567" className="col-span-3" required />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="plan" className="text-right">Abonnement</Label>
+                                <Select name="plan" required>
+                                    <SelectTrigger className="col-span-3">
+                                        <SelectValue placeholder="Sélectionner un plan" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="membre-kheops">Membre KHEOPS</SelectItem>
+                                        <SelectItem value="premium">Premium</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button type="submit">Ajouter l'abonné</Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
             </div>
           </div>
         </CardHeader>
@@ -229,3 +291,5 @@ export default function UserManagement() {
     </div>
   );
 }
+
+    
