@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Globe, Palette, Phone, Mail, Link, KeyRound, ShieldAlert } from "lucide-react";
+import { Globe, Palette, Phone, Mail, Link, KeyRound, ShieldAlert, DollarSign } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 export default function SiteSettings() {
@@ -94,6 +94,32 @@ export default function SiteSettings() {
         </CardContent>
         <CardFooter className="border-t px-6 py-4 justify-end">
             <Button onClick={() => handleSave("Apparence et Thème")}>Enregistrer</Button>
+        </CardFooter>
+      </Card>
+
+      {/* Subscription Settings Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+             <div className="flex-shrink-0 bg-cyan-500/20 text-cyan-500 p-3 rounded-full">
+                <DollarSign className="h-6 w-6" />
+             </div>
+             <div>
+                <CardTitle>Paramètres d'Abonnement</CardTitle>
+                <CardDescription>Gérez le prix de l'abonnement mensuel.</CardDescription>
+             </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+            <div className="space-y-2">
+                <Label htmlFor="subscription-price">Prix de l'abonnement mensuel (FCFA)</Label>
+                <div className="flex items-center gap-2 max-w-sm">
+                    <Input id="subscription-price" type="number" defaultValue="5000" />
+                </div>
+            </div>
+        </CardContent>
+        <CardFooter className="border-t px-6 py-4 justify-end">
+            <Button onClick={() => handleSave("Paramètres d'Abonnement")}>Enregistrer</Button>
         </CardFooter>
       </Card>
       
