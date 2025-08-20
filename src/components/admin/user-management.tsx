@@ -23,7 +23,7 @@ const subscribersData = [
     avatar: "https://placehold.co/40x40.png",
     hint: "woman portrait",
     plan: "Membre KHEOPS",
-    status: "Actif",
+    status: "Actif" as "Actif" | "En attente" | "Annulé",
     startDate: "15-07-2024",
     amount: "5 000 FCFA",
   },
@@ -34,7 +34,7 @@ const subscribersData = [
     avatar: "https://placehold.co/40x40.png",
     hint: "woman face",
     plan: "Membre KHEOPS",
-    status: "Actif",
+    status: "Actif" as "Actif" | "En attente" | "Annulé",
     startDate: "12-07-2024",
     amount: "5 000 FCFA",
   },
@@ -45,7 +45,7 @@ const subscribersData = [
     avatar: "https://placehold.co/40x40.png",
     hint: "man portrait",
     plan: "Premium",
-    status: "Annulé",
+    status: "Annulé" as "Actif" | "En attente" | "Annulé",
     startDate: "01-06-2024",
     amount: "15 000 FCFA",
   },
@@ -56,7 +56,7 @@ const subscribersData = [
     avatar: "https://placehold.co/40x40.png",
     hint: "woman smiling",
     plan: "Premium",
-    status: "Actif",
+    status: "Actif" as "Actif" | "En attente" | "Annulé",
     startDate: "28-06-2024",
     amount: "15 000 FCFA",
   },
@@ -67,7 +67,7 @@ const subscribersData = [
     avatar: "https://placehold.co/40x40.png",
     hint: "man face",
     plan: "Membre KHEOPS",
-    status: "En attente",
+    status: "En attente" as "Actif" | "En attente" | "Annulé",
     startDate: "20-07-2024",
     amount: "5 000 FCFA",
   },
@@ -132,28 +132,35 @@ export default function UserManagement() {
     setDialogOpen(false);
   };
   
-  const handleAction = (action: string, userName: string) => {
+  const handleAction = (action: string, subscriberId: string) => {
+    const subscriber = subscribers.find(s => s.id === subscriberId);
+    if (!subscriber) return;
+
     let title = "";
     let description = "";
 
     switch (action) {
       case "view":
-        title = "Fonctionnalité à venir";
-        description = `Le profil de ${userName} sera bientôt consultable.`;
+        title = "Consultation du Profil";
+        description = `Affichage des détails pour ${subscriber.name}. (Fonctionnalité à venir)`;
+        toast({ title, description });
         break;
       case "edit":
-        title = "Modification à venir";
-        description = `La modification de l'abonnement de ${userName} sera bientôt disponible.`;
+        title = "Modification de l'Abonnement";
+        description = `Le formulaire de modification pour ${subscriber.name} sera bientôt disponible.`;
+        toast({ title, description });
         break;
       case "cancel":
-        title = "Annulation à venir";
-        description = `L'annulation de l'abonnement de ${userName} sera bientôt disponible.`;
+        setSubscribers(subscribers.map(s => 
+          s.id === subscriberId ? { ...s, status: "Annulé", endDate: "N/A" } : s
+        ));
+        title = "Abonnement Annulé";
+        description = `L'abonnement de ${subscriber.name} a été annulé.`;
+        toast({ title, description, variant: "destructive" });
         break;
       default:
         return;
     }
-
-    toast({ title, description });
   };
   
   const filteredSubscribers = subscribers.filter(subscriber =>
@@ -318,9 +325,9 @@ export default function UserManagement() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => handleAction('view', subscriber.name)}>Voir le profil</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleAction('edit', subscriber.name)}>Modifier l'abonnement</DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-500" onClick={() => handleAction('cancel', subscriber.name)}>Annuler l'abonnement</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleAction('view', subscriber.id)}>Voir le profil</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleAction('edit', subscriber.id)}>Modifier l'abonnement</DropdownMenuItem>
+                          <DropdownMenuItem className="text-red-500" onClick={() => handleAction('cancel', subscriber.id)}>Annuler l'abonnement</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
