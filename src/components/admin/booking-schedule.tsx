@@ -27,6 +27,20 @@ import { cn } from "@/lib/utils";
 import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 
+const servicesWithPrices = {
+  "Prise de voix": 30000,
+  "Prise de voix + Mix": 50000,
+  "Full-package": 75000,
+  "Prise de voix + Mix + Mastering": 75000,
+};
+
+const calculatePrice = (service: string, timeSlot: string) => {
+    const hourlyRate = servicesWithPrices[service as keyof typeof servicesWithPrices] || 0;
+    const [start, end] = timeSlot.split(' - ').map(t => parseInt(t.split(':')[0], 10));
+    const duration = end - start;
+    return hourlyRate * duration;
+};
+
 
 const initialBookings = [
   {
@@ -37,6 +51,7 @@ const initialBookings = [
     timeSlot: "09:00 - 11:00",
     service: "Prise de voix + Mix",
     status: "Confirmé" as "Confirmé" | "En attente" | "Annulé",
+    amount: 100000,
   },
   {
     id: "res-002",
@@ -46,6 +61,7 @@ const initialBookings = [
     timeSlot: "14:00 - 16:00",
     service: "Prise de voix",
     status: "En attente" as "Confirmé" | "En attente" | "Annulé",
+    amount: 60000,
   },
   {
     id: "res-003",
@@ -55,6 +71,7 @@ const initialBookings = [
     timeSlot: "16:00 - 18:00",
     service: "Full-package",
     status: "Confirmé" as "Confirmé" | "En attente" | "Annulé",
+    amount: 150000,
   },
     {
     id: "res-004",
@@ -64,6 +81,7 @@ const initialBookings = [
     timeSlot: "11:00 - 13:00",
     service: "Prise de voix",
     status: "Annulé" as "Confirmé" | "En attente" | "Annulé",
+    amount: 60000,
   },
   {
     id: "res-005",
@@ -73,6 +91,7 @@ const initialBookings = [
     timeSlot: "18:00 - 20:00",
     service: "Prise de voix + Mix",
     status: "En attente" as "Confirmé" | "En attente" | "Annulé",
+    amount: 100000,
   },
 ];
 
@@ -116,6 +135,7 @@ export default function BookingSchedule() {
       timeSlot: data.timeSlot,
       service: data.service,
       status: "En attente" as BookingStatus,
+      amount: calculatePrice(data.service, data.timeSlot),
     };
     setBookings(prev => [newBooking, ...prev]);
     toast({
@@ -200,6 +220,7 @@ export default function BookingSchedule() {
                   <TableHead>Artiste</TableHead>
                   <TableHead>Date & Heure</TableHead>
                   <TableHead>Service</TableHead>
+                  <TableHead>Montant</TableHead>
                   <TableHead>Statut</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -218,6 +239,7 @@ export default function BookingSchedule() {
                                   <span className="font-mono text-sm">{booking.timeSlot}</span>
                               </TableCell>
                                 <TableCell>{booking.service}</TableCell>
+                                <TableCell className="font-semibold">{booking.amount.toLocaleString('fr-FR')} FCFA</TableCell>
                               <TableCell>
                               <Badge variant={statusInfo.variant}>
                                   <statusInfo.icon className={`mr-2 h-3.5 w-3.5 ${statusInfo.color}`} />
@@ -247,7 +269,7 @@ export default function BookingSchedule() {
                       )
                   }) : (
                       <TableRow>
-                          <TableCell colSpan={5} className="text-center h-24">Aucune réservation à venir.</TableCell>
+                          <TableCell colSpan={6} className="text-center h-24">Aucune réservation à venir.</TableCell>
                       </TableRow>
                   )}
               </TableBody>
