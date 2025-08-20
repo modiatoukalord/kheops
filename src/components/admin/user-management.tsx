@@ -121,14 +121,13 @@ export default function UserManagement() {
     const formData = new FormData(event.currentTarget);
     const name = formData.get("name") as string;
     const phone = formData.get("phone") as string;
-    const plan = formData.get("plan") as string;
     const durationMonths = parseInt(formData.get("duration") as string, 10);
     const subscriberIdToUpdate = selectedSubscriberId;
     
     const today = new Date();
     const startDate = format(today, 'dd-MM-yyyy');
     
-    const amount = (plan === 'premium' ? PREMIUM_FEE : KHEOPS_MEMBER_FEE) * durationMonths;
+    const amount = (KHEOPS_MEMBER_FEE) * durationMonths;
 
     if (subscriberIdToUpdate && subscriberIdToUpdate !== 'new') {
         // Handle renewal
@@ -137,7 +136,7 @@ export default function UserManagement() {
                 sub.id === subscriberIdToUpdate
                 ? {
                     ...sub,
-                    plan: plan === 'premium' ? 'Premium' : 'Membre KHEOPS',
+                    plan: 'Abonnement KHEOPS',
                     status: 'Actif' as 'Actif',
                     startDate: startDate,
                     amount: `${amount.toLocaleString('fr-FR')} FCFA`,
@@ -160,7 +159,7 @@ export default function UserManagement() {
             phone,
             avatar: "https://placehold.co/40x40.png",
             hint: "person face",
-            plan: plan === 'premium' ? 'Premium' : 'Membre KHEOPS',
+            plan: 'Abonnement KHEOPS',
             status: 'Actif' as 'Actif',
             startDate: startDate,
             amount: `${amount.toLocaleString('fr-FR')} FCFA`,
@@ -304,8 +303,8 @@ export default function UserManagement() {
                                             <CommandGroup>
                                               <CommandItem
                                                 value="new"
-                                                onSelect={() => {
-                                                  setSelectedSubscriberId("new");
+                                                onSelect={(currentValue) => {
+                                                  setSelectedSubscriberId(currentValue === "new" ? "" : currentValue);
                                                   setComboboxOpen(false);
                                                 }}
                                               >
@@ -314,9 +313,9 @@ export default function UserManagement() {
                                               {subscribers.map((s) => (
                                                 <CommandItem
                                                   key={s.id}
-                                                  value={s.name}
-                                                  onSelect={() => {
-                                                    setSelectedSubscriberId(s.id);
+                                                  value={s.id}
+                                                  onSelect={(currentValue) => {
+                                                    setSelectedSubscriberId(currentValue === selectedSubscriberId ? "" : currentValue);
                                                     setComboboxOpen(false);
                                                   }}
                                                 >
@@ -345,7 +344,7 @@ export default function UserManagement() {
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
                                     <Label htmlFor="plan" className="text-right">Abonnement</Label>
-                                    <Select name="plan" required defaultValue={subscriberToRenew ? (subscriberToRenew.plan === 'Premium' ? 'premium' : 'membre-kheops') : "membre-kheops"}>
+                                    <Select name="plan" required defaultValue="membre-kheops">
                                         <SelectTrigger className="col-span-3">
                                             <SelectValue placeholder="Sélectionner un plan" />
                                         </SelectTrigger>
