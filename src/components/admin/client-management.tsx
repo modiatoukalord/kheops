@@ -13,8 +13,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { Label } from "@/components/ui/label";
 
 export type Client = {
   id: string;
@@ -33,6 +42,8 @@ interface ClientManagementProps {
 
 export default function ClientManagement({ clients, setClients }: ClientManagementProps) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [isAddClientDialogOpen, setAddClientDialogOpen] = useState(false);
+  const { toast } = useToast();
 
   const filteredClients = clients.filter(
     (client) =>
@@ -42,6 +53,31 @@ export default function ClientManagement({ clients, setClients }: ClientManageme
   
   const totalClients = clients.length;
   const totalSpentAllClients = clients.reduce((acc, client) => acc + client.totalSpent, 0);
+
+  const handleAddClient = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const name = formData.get("name") as string;
+    const email = formData.get("email") as string;
+    const phone = formData.get("phone") as string;
+
+    const newClient: Client = {
+      id: `client-${Date.now()}`,
+      name,
+      email,
+      phone,
+      lastActivity: new Date().toISOString().split("T")[0],
+      totalSpent: 0,
+      lastService: "N/A",
+    };
+
+    setClients(prev => [newClient, ...prev]);
+    toast({
+      title: "Client Ajouté",
+      description: `Le client "${name}" a été ajouté avec succès.`,
+    });
+    setAddClientDialogOpen(false);
+  };
 
   return (
     <div className="space-y-6">
@@ -87,10 +123,41 @@ export default function ClientManagement({ clients, setClients }: ClientManageme
                     onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <Button>
-                    <PlusCircle className="mr-2 h-4 w-4"/>
-                    Ajouter un client
-                </Button>
+                <Dialog open={isAddClientDialogOpen} onOpenChange={setAddClientDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button>
+                            <PlusCircle className="mr-2 h-4 w-4"/>
+                            Ajouter un client
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <form onSubmit={handleAddClient}>
+                            <DialogHeader>
+                                <DialogTitle>Ajouter un nouveau client</DialogTitle>
+                                <DialogDescription>
+                                    Remplissez les informations pour créer un nouveau client.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="name">Nom complet</Label>
+                                    <Input id="name" name="name" placeholder="Ex: Jean Dupont" required />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="email">Adresse e-mail</Label>
+                                    <Input id="email" name="email" type="email" placeholder="Ex: jean.dupont@example.com" required />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="phone">Numéro de téléphone</Label>
+                                    <Input id="phone" name="phone" placeholder="Ex: +242 06 123 4567" required />
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button type="submit">Ajouter le client</Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
             </div>
           </div>
         </CardHeader>
