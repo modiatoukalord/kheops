@@ -209,7 +209,7 @@ export default function ContractManagement() {
                             </DialogHeader>
                             <div className="grid gap-4 py-4">
                                <div className="space-y-2">
-                                    <Label htmlFor="bookingId">Client ou ID de Réservation</Label>
+                                    <Label htmlFor="bookingId">Client ou Réservation</Label>
                                     <Input id="bookingId" name="bookingId" placeholder="Ex: res-001 ou Nom du Client" required />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
@@ -415,3 +415,4 @@ export default function ContractManagement() {
     
 
     
+
