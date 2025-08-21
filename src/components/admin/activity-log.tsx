@@ -94,7 +94,8 @@ type ActivityFormValues = z.infer<typeof activityFormSchema>;
 
 export default function ActivityLog({ activities, setActivities }: ActivityLogProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [isAddActivityDialogOpen, setAddActivityDialogOpen] = useState(false);
+  const [isActivityDialogOpen, setActivityDialogOpen] = useState(false);
+  const [editingActivity, setEditingActivity] = useState<ClientActivity | null>(null);
   const { toast } = useToast();
 
   const form = useForm<ActivityFormValues>({
@@ -123,48 +124,105 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
   
   const totalRevenue = activities.reduce((acc, activity) => acc + activity.amount, 0);
 
-  const handleAddActivity = (data: ActivityFormValues) => {
+  const processActivityData = (data: ActivityFormValues) => {
     const { clientName, phone, items } = data;
-    const newActivities: ClientActivity[] = items.map(item => {
-        let duration;
+
+    if(editingActivity) {
+         const item = items[0];
+         let duration;
         if (item.startTime && item.endTime) {
             try {
                 const start = parse(item.startTime, 'HH:mm', new Date());
                 const end = parse(item.endTime, 'HH:mm', new Date());
-                const diff = differenceInMinutes(end, start);
-                if (diff > 0) {
+                if (end > start) {
                      duration = formatDistanceStrict(end, start, { locale: fr, unit: 'minute' });
                 }
-            } catch (e) {
-                console.error("Invalid time format for duration calculation");
-                duration = undefined;
-            }
+            } catch (e) { console.error("Invalid time format"); }
         }
-
-        return {
-            id: `act-${Date.now()}-${Math.random()}`,
+        const updatedActivity: ClientActivity = {
+            id: editingActivity.id,
             clientName,
             phone,
             description: item.description,
             category: item.category,
             amount: item.amount,
-            date: new Date(),
+            date: editingActivity.date, // Keep original date on edit
             duration,
-        }
-    });
+        };
+        setActivities(prev => prev.map(act => act.id === editingActivity.id ? updatedActivity : act));
+        toast({
+            title: "Activité Modifiée",
+            description: `L'activité pour "${clientName}" a été mise à jour.`,
+        });
+    } else {
+        const newActivities: ClientActivity[] = items.map(item => {
+            let duration;
+            if (item.startTime && item.endTime) {
+                try {
+                    const start = parse(item.startTime, 'HH:mm', new Date());
+                    const end = parse(item.endTime, 'HH:mm', new Date());
+                    if (diff > 0) {
+                         duration = formatDistanceStrict(end, start, { locale: fr, unit: 'minute' });
+                    }
+                } catch (e) {
+                    console.error("Invalid time format for duration calculation");
+                    duration = undefined;
+                }
+            }
 
-    setActivities(prev => [...newActivities, ...prev]);
-    toast({
-      title: "Activités Ajoutées",
-      description: `${items.length} activité(s) pour "${clientName}" ont été ajoutées.`,
-    });
-    setAddActivityDialogOpen(false);
+            return {
+                id: `act-${Date.now()}-${Math.random()}`,
+                clientName,
+                phone,
+                description: item.description,
+                category: item.category,
+                amount: item.amount,
+                date: new Date(),
+                duration,
+            }
+        });
+
+        setActivities(prev => [...newActivities, ...prev]);
+        toast({
+          title: "Activités Ajoutées",
+          description: `${items.length} activité(s) pour "${clientName}" ont été ajoutées.`,
+        });
+    }
+
+    setActivityDialogOpen(false);
+    setEditingActivity(null);
     form.reset({
         clientName: "",
         phone: "",
         items: [{ description: "", category: "Autre", amount: 0, startTime: "", endTime: "" }],
     });
   };
+
+  const handleOpenDialog = (activity: ClientActivity | null) => {
+    if (activity) {
+        setEditingActivity(activity);
+        form.reset({
+            clientName: activity.clientName,
+            phone: activity.phone || '',
+            items: [{
+                description: activity.description,
+                category: activity.category,
+                amount: activity.amount,
+                // Time inputs are not pre-filled for simplicity when editing duration.
+                startTime: '', 
+                endTime: ''
+            }]
+        });
+    } else {
+        setEditingActivity(null);
+        form.reset({
+            clientName: "",
+            phone: "",
+            items: [{ description: "", category: "Autre", amount: 0, startTime: "", endTime: "" }],
+        });
+    }
+    setActivityDialogOpen(true);
+  }
   
   const handleDeleteActivity = (activityId: string) => {
     setActivities(prev => prev.filter(act => act.id !== activityId));
@@ -219,20 +277,26 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                     onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <Dialog open={isAddActivityDialogOpen} onOpenChange={setAddActivityDialogOpen}>
+                <Dialog open={isActivityDialogOpen} onOpenChange={(isOpen) => {
+                    setActivityDialogOpen(isOpen);
+                    if (!isOpen) {
+                        setEditingActivity(null);
+                        form.reset();
+                    }
+                }}>
                     <DialogTrigger asChild>
-                        <Button>
+                        <Button onClick={() => handleOpenDialog(null)}>
                             <PlusCircle className="mr-2 h-4 w-4"/>
                             Ajouter une activité
                         </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-3xl">
                        <Form {...form}>
-                        <form onSubmit={form.handleSubmit(handleAddActivity)}>
+                        <form onSubmit={form.handleSubmit(processActivityData)}>
                             <DialogHeader>
-                                <DialogTitle>Ajouter une nouvelle vente/activité</DialogTitle>
+                                <DialogTitle>{editingActivity ? "Modifier l'activité" : "Ajouter une nouvelle vente/activité"}</DialogTitle>
                                 <DialogDescription>
-                                    Remplissez les informations du client et ajoutez un ou plusieurs articles/services.
+                                    {editingActivity ? "Mettez à jour les informations de l'activité." : "Remplissez les informations du client et ajoutez un ou plusieurs articles/services."}
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="grid gap-6 py-4 max-h-[80vh] overflow-y-auto pr-4">
@@ -246,7 +310,7 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                                         <div key={field.id} className="p-3 border rounded-lg space-y-4">
                                             <div className="flex justify-between items-center">
                                                 <h4 className="font-medium text-primary">Article #{index + 1}</h4>
-                                                {fields.length > 1 && (
+                                                {fields.length > 1 && !editingActivity && (
                                                 <Button type="button" variant="ghost" size="icon" className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
                                                 )}
                                             </div>
@@ -259,11 +323,14 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                                                 <FormField control={form.control} name={`items.${index}.startTime`} render={({ field }) => (<FormItem><Label>Heure de début</Label><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                                 <FormField control={form.control} name={`items.${index}.endTime`} render={({ field }) => (<FormItem><Label>Heure de fin</Label><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
+                                            {editingActivity && <p className="text-xs text-muted-foreground">La date et l'heure de modification n'affectent pas la date d'enregistrement originale.</p>}
                                         </div>
                                     ))}
+                                    {!editingActivity && (
                                     <Button type="button" size="sm" variant="outline" onClick={() => append({ description: "", category: "Autre", amount: 0, startTime: "", endTime: "" })}>
                                         <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un article
                                     </Button>
+                                    )}
                                 </div>
 
                                 <Separator />
@@ -273,7 +340,7 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                                 </div>
                             </div>
                             <DialogFooter className="pt-4 border-t">
-                                <Button type="submit">Enregistrer la vente</Button>
+                                <Button type="submit">{editingActivity ? "Enregistrer les modifications" : "Enregistrer la vente"}</Button>
                             </DialogFooter>
                         </form>
                         </Form>
@@ -340,10 +407,10 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuItem>
+                                <DropdownMenuItem disabled>
                                     <Eye className="mr-2 h-4 w-4" /> Voir les détails
                                 </DropdownMenuItem>
-                                <DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleOpenDialog(activity)}>
                                     <Edit className="mr-2 h-4 w-4" /> Modifier
                                 </DropdownMenuItem>
                                 <DropdownMenuItem className="text-red-500" onClick={() => handleDeleteActivity(activity.id)}>
@@ -369,3 +436,5 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
     </div>
   );
 }
+
+    
