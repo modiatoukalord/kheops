@@ -7,7 +7,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, PlusCircle, CheckCircle2, XCircle, Clock, Calendar as CalendarIcon, GripVertical } from "lucide-react";
+import { MoreHorizontal, PlusCircle, CheckCircle2, XCircle, Clock, Calendar as CalendarIcon, GripVertical, DiscAlbum } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,6 +30,7 @@ export type Booking = {
   id: string;
   artistName: string;
   projectName: string;
+  projectType: string;
   date: Date;
   timeSlot: string;
   service: string;
@@ -57,6 +58,7 @@ export const initialBookings: Booking[] = [
     id: "res-001",
     artistName: "KHEOPS Collective",
     projectName: "Chroniques de l'Aube",
+    projectType: "Album",
     date: new Date("2024-07-31T09:00:00"),
     timeSlot: "09:00 - 11:00",
     service: "Prise de voix + Mix",
@@ -67,6 +69,7 @@ export const initialBookings: Booking[] = [
     id: "res-002",
     artistName: "L'Artiste Anonyme",
     projectName: "Single 'Mirage'",
+    projectType: "Single",
     date: new Date("2024-08-02T14:00:00"),
     timeSlot: "14:00 - 16:00",
     service: "Prise de voix",
@@ -77,6 +80,7 @@ export const initialBookings: Booking[] = [
     id: "res-003",
     artistName: "Mc Solaar",
     projectName: "Projet 'Nouvelle Vague'",
+    projectType: "Mixtape",
     date: new Date("2024-08-05T16:00:00"),
     timeSlot: "16:00 - 18:00",
     service: "Full-package",
@@ -87,6 +91,7 @@ export const initialBookings: Booking[] = [
     id: "res-004",
     artistName: "Aya Nakamura",
     projectName: "Maquette 'Djadja 2'",
+    projectType: "Single",
     date: new Date("2024-08-01T11:00:00"),
     timeSlot: "11:00 - 13:00",
     service: "Prise de voix",
@@ -97,6 +102,7 @@ export const initialBookings: Booking[] = [
     id: "res-005",
     artistName: "Damso",
     projectName: "Album 'QALF 2'",
+    projectType: "Album",
     date: new Date(),
     timeSlot: "18:00 - 20:00",
     service: "Prise de voix + Mix",
@@ -118,6 +124,7 @@ type BookingStatus = keyof typeof bookingStatusConfig;
 
 const availableServices = ["Prise de voix", "Prise de voix + Mix", "Full-package"];
 const availableTimeSlots = ["09:00 - 11:00", "11:00 - 13:00", "14:00 - 16:00", "16:00 - 18:00", "18:00 - 20:00"];
+const projectTypes = ["Single", "Mixtape", "Album", "Autre"];
 
 interface BookingScheduleProps {
   bookings: Booking[];
@@ -135,6 +142,7 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
     defaultValues: {
       artistName: '',
       projectName: '',
+      projectType: '',
       timeSlot: '',
       service: '',
     },
@@ -148,6 +156,7 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
     const newBooking = {
       artistName: data.artistName,
       projectName: data.projectName,
+      projectType: data.projectType,
       date: selectedDate!,
       timeSlot: data.timeSlot,
       service: data.service,
@@ -193,6 +202,22 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
                         <div className="grid gap-4 py-4">
                             <FormField control={form.control} name="artistName" render={({ field }) => (<FormItem className="grid grid-cols-4 items-center gap-4"><Label className="text-right">Artiste</Label><FormControl><Input placeholder="Nom de l'artiste" className="col-span-3" required {...field} /></FormControl></FormItem>)} />
                             <FormField control={form.control} name="projectName" render={({ field }) => (<FormItem className="grid grid-cols-4 items-center gap-4"><Label className="text-right">Projet</Label><FormControl><Input placeholder="Nom du projet" className="col-span-3" required {...field} /></FormControl></FormItem>)} />
+                            
+                            <FormField control={form.control} name="projectType" render={({ field }) => (
+                                <FormItem className="grid grid-cols-4 items-center gap-4">
+                                <Label className="text-right">Type de Projet</Label>
+                                <Select onValueChange={field.onChange} defaultValue={field.value} required>
+                                    <FormControl>
+                                    <SelectTrigger className="col-span-3">
+                                        <SelectValue placeholder="Sélectionner un type" />
+                                    </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                    {projectTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                </FormItem>
+                            )} />
                             
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <Label className="text-right">Date</Label>
@@ -272,7 +297,9 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
                            </div>
                            <div className="flex-grow">
                                 <p className="font-semibold">{booking.artistName}</p>
-                                <p className="text-sm text-muted-foreground">{booking.projectName}</p>
+                                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                   <DiscAlbum className="w-3 h-3"/> {booking.projectName}
+                                </p>
                                 <Badge variant={statusInfo.variant} className="mt-1">
                                     <statusInfo.icon className={`mr-1.5 h-3 w-3 ${statusInfo.color}`} />
                                     {booking.status}
