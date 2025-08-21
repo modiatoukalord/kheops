@@ -10,15 +10,19 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, Send, PenSquare, Download, Clock, CheckCircle2, FileText, PlusCircle, Trash2, FileUp, Edit, DollarSign, Euro } from "lucide-react";
+import { MoreHorizontal, Send, PenSquare, Download, Clock, CheckCircle2, FileText, PlusCircle, Trash2, FileUp, Edit, DollarSign, Calendar as CalendarIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 import { Input } from "@/components/ui/input";
+import { DateRange } from "react-day-picker";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 const initialContracts = [
-    { id: "ctr-001", bookingId: "res-001", clientName: "KHEOPS Collective", status: "Signé" as const, lastUpdate: "2024-07-25", pdfFile: null, value: 100000, paymentStatus: "Payé", type: "Prestation Studio" },
-    { id: "ctr-002", bookingId: "res-003", clientName: "Mc Solaar", status: "Envoyé" as const, lastUpdate: "2024-08-01", pdfFile: null, value: 150000, paymentStatus: "Non Payé", type: "Prestation Studio" },
-    { id: "ctr-003", bookingId: "res-002", clientName: "L'Artiste Anonyme", status: "En attente" as const, lastUpdate: "2024-08-03", pdfFile: null, value: 60000, paymentStatus: "En attente", type: "Prestation Studio" },
+    { id: "ctr-001", bookingId: "res-001", clientName: "KHEOPS Collective", status: "Signé" as const, lastUpdate: "2024-07-25", pdfFile: null, value: 100000, paymentStatus: "Payé", type: "Prestation Studio", startDate: new Date("2024-07-25"), endDate: new Date("2024-08-25") },
+    { id: "ctr-002", bookingId: "res-003", clientName: "Mc Solaar", status: "Envoyé" as const, lastUpdate: "2024-08-01", pdfFile: null, value: 150000, paymentStatus: "Non Payé", type: "Prestation Studio", startDate: new Date("2024-08-01"), endDate: new Date("2024-09-01") },
+    { id: "ctr-003", bookingId: "res-002", clientName: "L'Artiste Anonyme", status: "En attente" as const, lastUpdate: "2024-08-03", pdfFile: null, value: 60000, paymentStatus: "En attente", type: "Prestation Studio", startDate: new Date("2024-08-03"), endDate: undefined },
 ];
 
 // Mock data, in a real app this would come from a shared service or store
@@ -60,6 +64,8 @@ type Contract = {
     value: number;
     paymentStatus: PaymentStatus;
     type: ContractType;
+    startDate?: Date;
+    endDate?: Date;
 };
 
 export default function ContractManagement() {
@@ -68,6 +74,7 @@ export default function ContractManagement() {
     const [isEditDialogOpen, setEditDialogOpen] = useState(false);
     const [editingContract, setEditingContract] = useState<Contract | null>(null);
     const [pdfFile, setPdfFile] = useState<File | null>(null);
+    const [dateRange, setDateRange] = useState<DateRange | undefined>();
     const { toast } = useToast();
 
     const handleContractStatusChange = (contractId: string, newStatus: ContractStatus) => {
@@ -117,6 +124,8 @@ export default function ContractManagement() {
             value: Number(formData.get("value")) || 0,
             paymentStatus: (formData.get("paymentStatus") as PaymentStatus) || 'N/A',
             type: formData.get("type") as ContractType,
+            startDate: dateRange?.from,
+            endDate: dateRange?.to,
         };
 
         setContracts(prev => [newContract, ...prev]);
@@ -127,6 +136,7 @@ export default function ContractManagement() {
 
         setAddDialogOpen(false);
         setPdfFile(null);
+        setDateRange(undefined);
     };
 
     const handleEditContract = (event: React.FormEvent<HTMLFormElement>) => {
@@ -141,7 +151,16 @@ export default function ContractManagement() {
 
         setContracts(contracts.map(c => 
             c.id === editingContract.id 
-            ? { ...c, clientName, value, paymentStatus, type, pdfFile: pdfFile ?? c.pdfFile, lastUpdate: format(new Date(), 'yyyy-MM-dd') } 
+            ? { ...c, 
+                clientName, 
+                value, 
+                paymentStatus, 
+                type, 
+                pdfFile: pdfFile ?? c.pdfFile, 
+                lastUpdate: format(new Date(), 'yyyy-MM-dd'),
+                startDate: dateRange?.from,
+                endDate: dateRange?.to,
+              } 
             : c
         ));
 
@@ -153,11 +172,13 @@ export default function ContractManagement() {
         setEditDialogOpen(false);
         setEditingContract(null);
         setPdfFile(null);
+        setDateRange(undefined);
     };
 
     const handleOpenEditDialog = (contract: Contract) => {
         setEditingContract(contract);
         setPdfFile(contract.pdfFile);
+        setDateRange({ from: contract.startDate, to: contract.endDate });
         setEditDialogOpen(true);
     };
     
@@ -194,7 +215,7 @@ export default function ContractManagement() {
                     <CardTitle>Gestion des Contrats</CardTitle>
                     <CardDescription>Suivez et mettez à jour le statut des contrats de réservation.</CardDescription>
                 </div>
-                 <Dialog open={isAddDialogOpen} onOpenChange={setAddDialogOpen}>
+                 <Dialog open={isAddDialogOpen} onOpenChange={(isOpen) => { setAddDialogOpen(isOpen); if (!isOpen) setDateRange(undefined); }}>
                     <DialogTrigger asChild>
                         <Button>
                             <PlusCircle className="mr-2 h-4 w-4" />
@@ -211,6 +232,45 @@ export default function ContractManagement() {
                                <div className="space-y-2">
                                     <Label htmlFor="bookingId">Client ou Réservation</Label>
                                     <Input id="bookingId" name="bookingId" placeholder="Ex: res-001 ou Nom du Client" required />
+                                </div>
+                                 <div className="space-y-2">
+                                     <Label>Durée du contrat (Début - Fin)</Label>
+                                     <Popover>
+                                        <PopoverTrigger asChild>
+                                        <Button
+                                            id="date"
+                                            variant={"outline"}
+                                            className={cn(
+                                            "w-full justify-start text-left font-normal",
+                                            !dateRange && "text-muted-foreground"
+                                            )}
+                                        >
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {dateRange?.from ? (
+                                                dateRange.to ? (
+                                                    <>
+                                                        {format(dateRange.from, "d MMM y", { locale: fr })} - {format(dateRange.to, "d MMM y", { locale: fr })}
+                                                    </>
+                                                ) : (
+                                                    format(dateRange.from, "d MMM y", { locale: fr })
+                                                )
+                                            ) : (
+                                                <span>Choisir les dates</span>
+                                            )}
+                                        </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar
+                                            initialFocus
+                                            mode="range"
+                                            defaultMonth={dateRange?.from}
+                                            selected={dateRange}
+                                            onSelect={setDateRange}
+                                            numberOfMonths={2}
+                                            locale={fr}
+                                        />
+                                        </PopoverContent>
+                                    </Popover>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
@@ -267,6 +327,7 @@ export default function ContractManagement() {
                         <TableRow>
                             <TableHead>Contrat ID</TableHead>
                             <TableHead>Client</TableHead>
+                            <TableHead>Durée</TableHead>
                             <TableHead>Valeur</TableHead>
                             <TableHead>Paiement</TableHead>
                             <TableHead>Statut Contrat</TableHead>
@@ -284,6 +345,16 @@ export default function ContractManagement() {
                                     </TableCell>
                                     <TableCell>
                                         <div className="font-medium">{contract.clientName}</div>
+                                    </TableCell>
+                                    <TableCell>
+                                        {contract.startDate ? (
+                                            <div>
+                                                <div className="font-medium text-sm">{format(contract.startDate, "d MMM yyyy", { locale: fr })}</div>
+                                                <div className="text-xs text-muted-foreground">au {contract.endDate ? format(contract.endDate, "d MMM yyyy", { locale: fr }) : '...'}</div>
+                                            </div>
+                                        ) : (
+                                            <span className="text-muted-foreground text-xs">Non défini</span>
+                                        )}
                                     </TableCell>
                                     <TableCell>
                                         <div className="font-semibold">{contract.value.toLocaleString('fr-FR')} FCFA</div>
@@ -332,7 +403,7 @@ export default function ContractManagement() {
                             )
                         }) : (
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center h-24">Aucun contrat trouvé.</TableCell>
+                                <TableCell colSpan={7} className="text-center h-24">Aucun contrat trouvé.</TableCell>
                             </TableRow>
                         )}
                     </TableBody>
@@ -343,7 +414,7 @@ export default function ContractManagement() {
                     <p className="text-sm text-muted-foreground">Cliquez sur "Ajouter un contrat" pour commencer.</p>
                 </CardFooter>
             )}
-             <Dialog open={isEditDialogOpen} onOpenChange={setEditDialogOpen}>
+             <Dialog open={isEditDialogOpen} onOpenChange={(isOpen) => { setEditDialogOpen(isOpen); if (!isOpen) setDateRange(undefined); }}>
                 <DialogContent className="sm:max-w-lg">
                     <form onSubmit={handleEditContract}>
                         <DialogHeader>
@@ -359,6 +430,45 @@ export default function ContractManagement() {
                                     defaultValue={editingContract?.clientName}
                                     required 
                                 />
+                            </div>
+                            <div className="space-y-2">
+                                 <Label>Durée du contrat (Début - Fin)</Label>
+                                 <Popover>
+                                    <PopoverTrigger asChild>
+                                    <Button
+                                        id="date-edit"
+                                        variant={"outline"}
+                                        className={cn(
+                                        "w-full justify-start text-left font-normal",
+                                        !dateRange && "text-muted-foreground"
+                                        )}
+                                    >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {dateRange?.from ? (
+                                            dateRange.to ? (
+                                                <>
+                                                    {format(dateRange.from, "d MMM y", { locale: fr })} - {format(dateRange.to, "d MMM y", { locale: fr })}
+                                                </>
+                                            ) : (
+                                                format(dateRange.from, "d MMM y", { locale: fr })
+                                            )
+                                        ) : (
+                                            <span>Choisir les dates</span>
+                                        )}
+                                    </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                        initialFocus
+                                        mode="range"
+                                        defaultMonth={dateRange?.from}
+                                        selected={dateRange}
+                                        onSelect={setDateRange}
+                                        numberOfMonths={2}
+                                        locale={fr}
+                                    />
+                                    </PopoverContent>
+                                </Popover>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
@@ -409,11 +519,3 @@ export default function ContractManagement() {
         </Card>
     );
 }
-
-    
-
-    
-
-    
-
-
