@@ -10,14 +10,15 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, Send, PenSquare, Download, Clock, CheckCircle2, FileText, PlusCircle, Trash2 } from "lucide-react";
+import { MoreHorizontal, Send, PenSquare, Download, Clock, CheckCircle2, FileText, PlusCircle, Trash2, FileUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { Input } from "@/components/ui/input";
 
 const initialContracts = [
-    { id: "ctr-001", bookingId: "res-001", clientName: "KHEOPS Collective", status: "Signé", lastUpdate: "2024-07-25" },
-    { id: "ctr-002", bookingId: "res-003", clientName: "Mc Solaar", status: "Envoyé", lastUpdate: "2024-08-01" },
-    { id: "ctr-003", bookingId: "res-002", clientName: "L'Artiste Anonyme", status: "En attente", lastUpdate: "2024-08-03" },
+    { id: "ctr-001", bookingId: "res-001", clientName: "KHEOPS Collective", status: "Signé" as const, lastUpdate: "2024-07-25", pdfFileName: "contrat_kheops_collective.pdf" },
+    { id: "ctr-002", bookingId: "res-003", clientName: "Mc Solaar", status: "Envoyé" as const, lastUpdate: "2024-08-01", pdfFileName: null },
+    { id: "ctr-003", bookingId: "res-002", clientName: "L'Artiste Anonyme", status: "En attente" as const, lastUpdate: "2024-08-03", pdfFileName: null },
 ];
 
 // Mock data, in a real app this would come from a shared service or store
@@ -43,12 +44,14 @@ type Contract = {
     clientName: string;
     status: "Signé" | "Envoyé" | "En attente" | "Archivé";
     lastUpdate: string;
+    pdfFileName: string | null;
 };
 
 export default function ContractManagement() {
-    const [contracts, setContracts] = useState(initialContracts);
+    const [contracts, setContracts] = useState<Contract[]>(initialContracts);
     const [isDialogOpen, setDialogOpen] = useState(false);
     const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+    const [pdfFile, setPdfFile] = useState<File | null>(null);
     const { toast } = useToast();
 
     const handleContractStatusChange = (contractId: string, newStatus: ContractStatus) => {
@@ -78,6 +81,7 @@ export default function ContractManagement() {
             clientName: booking.artistName,
             status: "En attente",
             lastUpdate: format(new Date(), 'yyyy-MM-dd'),
+            pdfFileName: pdfFile ? pdfFile.name : null,
         };
 
         setContracts(prev => [newContract, ...prev]);
@@ -88,6 +92,7 @@ export default function ContractManagement() {
 
         setDialogOpen(false);
         setSelectedBookingId(null);
+        setPdfFile(null);
     };
     
      const handleDeleteContract = (contractId: string) => {
@@ -120,7 +125,7 @@ export default function ContractManagement() {
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>Créer un nouveau contrat</DialogTitle>
-                            <DialogDescription>Sélectionnez une réservation pour générer un nouveau contrat.</DialogDescription>
+                            <DialogDescription>Sélectionnez une réservation et ajoutez un PDF pour générer un nouveau contrat.</DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-4 py-4">
                            <div className="space-y-2">
@@ -140,6 +145,19 @@ export default function ContractManagement() {
                                     </SelectContent>
                                 </Select>
                             </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="pdf-upload">PDF du Contrat (Optionnel)</Label>
+                                <div className="flex items-center gap-2">
+                                    <FileUp className="h-5 w-5 text-muted-foreground" />
+                                    <Input 
+                                        id="pdf-upload" 
+                                        type="file" 
+                                        accept="application/pdf"
+                                        onChange={(e) => setPdfFile(e.target.files ? e.target.files[0] : null)}
+                                        className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                                    />
+                                </div>
+                            </div>
                         </div>
                         <DialogFooter>
                             <Button onClick={() => setDialogOpen(false)} variant="ghost">Annuler</Button>
@@ -152,8 +170,8 @@ export default function ContractManagement() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Contrat ID</TableHead>
                             <TableHead>Client</TableHead>
+                            <TableHead>Contrat</TableHead>
                             <TableHead>Mise à jour</TableHead>
                             <TableHead>Statut</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
@@ -164,8 +182,13 @@ export default function ContractManagement() {
                             const statusInfo = contractStatusConfig[contract.status];
                             return (
                                 <TableRow key={contract.id}>
-                                    <TableCell className="font-mono">{contract.id}</TableCell>
                                     <TableCell>{contract.clientName}</TableCell>
+                                    <TableCell>
+                                        <div className="flex flex-col">
+                                            <span className="font-mono text-sm">{contract.id}</span>
+                                            {contract.pdfFileName && <span className="text-xs text-muted-foreground">{contract.pdfFileName}</span>}
+                                        </div>
+                                    </TableCell>
                                     <TableCell>{new Date(contract.lastUpdate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</TableCell>
                                     <TableCell>
                                         <Badge variant={statusInfo.variant}>
@@ -181,7 +204,7 @@ export default function ContractManagement() {
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuItem onClick={() => handleContractStatusChange(contract.id, "Envoyé")}><Send className="mr-2 h-4 w-4" />Marquer comme Envoyé</DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => handleContractStatusChange(contract.id, "Signé")}><PenSquare className="mr-2 h-4 w-4" />Marquer comme Signé</DropdownMenuItem>
-                                                <DropdownMenuItem><Download className="mr-2 h-4 w-4" />Télécharger PDF</DropdownMenuItem>
+                                                <DropdownMenuItem disabled={!contract.pdfFileName}><Download className="mr-2 h-4 w-4" />Télécharger PDF</DropdownMenuItem>
                                                 <DropdownMenuItem className="text-red-500" onClick={() => handleDeleteContract(contract.id)}>
                                                     <Trash2 className="mr-2 h-4 w-4" />
                                                     Supprimer
