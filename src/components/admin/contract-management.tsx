@@ -18,11 +18,12 @@ import { Input } from "@/components/ui/input";
 import { DateRange } from "react-day-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { Calendar } from "@/components/ui/calendar";
 
 const initialContracts = [
-    { id: "ctr-001", bookingId: "res-001", clientName: "KHEOPS Collective", status: "Signé" as const, lastUpdate: "2024-07-25", pdfFile: null, value: 100000, paymentStatus: "Payé", type: "Prestation Studio", startDate: new Date("2024-07-25"), endDate: new Date("2024-08-25") },
-    { id: "ctr-002", bookingId: "res-003", clientName: "Mc Solaar", status: "Envoyé" as const, lastUpdate: "2024-08-01", pdfFile: null, value: 150000, paymentStatus: "Non Payé", type: "Prestation Studio", startDate: new Date("2024-08-01"), endDate: new Date("2024-09-01") },
-    { id: "ctr-003", bookingId: "res-002", clientName: "L'Artiste Anonyme", status: "En attente" as const, lastUpdate: "2024-08-03", pdfFile: null, value: 60000, paymentStatus: "En attente", type: "Prestation Studio", startDate: new Date("2024-08-03"), endDate: undefined },
+    { id: "ctr-001", bookingId: "res-001", clientName: "KHEOPS Collective", status: "Signé" as const, lastUpdate: "2024-07-25", pdfFile: null, value: 100000, paymentStatus: "Payé" as const, type: "Prestation Studio" as const, startDate: new Date("2024-07-25"), endDate: new Date("2024-08-25") },
+    { id: "ctr-002", bookingId: "res-003", clientName: "Mc Solaar", status: "Envoyé" as const, lastUpdate: "2024-08-01", pdfFile: null, value: 150000, paymentStatus: "Non Payé" as const, type: "Prestation Studio" as const, startDate: new Date("2024-08-01"), endDate: new Date("2024-09-01") },
+    { id: "ctr-003", bookingId: "res-002", clientName: "L'Artiste Anonyme", status: "En attente" as const, lastUpdate: "2024-08-03", pdfFile: null, value: 60000, paymentStatus: "En attente" as const, type: "Prestation Studio" as const, startDate: new Date("2024-08-03"), endDate: undefined },
 ];
 
 // Mock data, in a real app this would come from a shared service or store
