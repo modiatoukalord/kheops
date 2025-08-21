@@ -7,7 +7,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, PlusCircle, CheckCircle2, XCircle, Clock, Calendar as CalendarIcon } from "lucide-react";
+import { MoreHorizontal, PlusCircle, CheckCircle2, XCircle, Clock, Calendar as CalendarIcon, GripVertical } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -127,16 +127,11 @@ interface BookingScheduleProps {
 
 
 export default function BookingSchedule({ bookings, setBookings, onAddBooking }: BookingScheduleProps) {
-  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [isBookingDialogOpen, setBookingDialogOpen] = useState(false);
   const { toast } = useToast();
   
   const form = useForm();
-
-
-  const upcomingBookings = bookings
-    .filter(booking => booking.date >= new Date())
-    .sort((a,b) => a.date.getTime() - b.date.getTime());
 
   const handleBookingStatusChange = (bookingId: string, newStatus: BookingStatus) => {
     setBookings(bookings.map(b => b.id === bookingId ? { ...b, status: newStatus } : b));
@@ -146,7 +141,7 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
     const newBooking = {
       artistName: data.artistName,
       projectName: data.projectName,
-      date: date!,
+      date: selectedDate!,
       timeSlot: data.timeSlot,
       service: data.service,
       status: "En attente" as BookingStatus,
@@ -160,172 +155,161 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
     setBookingDialogOpen(false);
   };
   
+  const bookingsForSelectedDate = bookings.filter(booking => 
+    selectedDate && booking.date.toDateString() === selectedDate.toDateString()
+  ).sort((a,b) => a.timeSlot.localeCompare(b.timeSlot));
 
   return (
-    <div className="space-y-6">
-      <Card>
-          <CardHeader className="flex flex-row justify-between items-start">
-              <div>
-                  <CardTitle>Réservations à venir</CardTitle>
-                  <CardDescription>Gérez les réservations et leur statut.</CardDescription>
-              </div>
-              <div className="flex gap-2">
-                <Popover>
-                    <PopoverTrigger asChild>
-                        <Button variant="outline">
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            Voir le Calendrier
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={date}
-                        onSelect={setDate}
-                        className="rounded-md border"
-                        locale={fr}
-                        modifiers={{
-                            booked: bookings.filter(b => b.status === 'Confirmé').map(b => b.date),
-                            pending: bookings.filter(b => b.status === 'En attente').map(b => b.date),
-                        }}
-                        modifiersStyles={{
-                            booked: {
-                                color: 'hsl(var(--primary-foreground))',
-                                backgroundColor: 'hsl(var(--primary))',
-                            },
-                            pending: {
-                                borderColor: 'hsl(var(--primary))',
-                            }
-                        }}
-                      />
-                    </PopoverContent>
-                </Popover>
+    <div className="grid md:grid-cols-3 gap-6">
+      <div className="md:col-span-2">
+        <Card>
+            <CardHeader className="flex flex-row justify-between items-start">
+                <div>
+                    <CardTitle>Calendrier de l'Agenda</CardTitle>
+                    <CardDescription>Sélectionnez une date pour voir les réservations.</CardDescription>
+                </div>
                 <Dialog open={isBookingDialogOpen} onOpenChange={setBookingDialogOpen}>
-                  <DialogTrigger asChild>
-                      <Button>
-                          <PlusCircle className="mr-2 h-4 w-4"/>
-                          Ajouter une réservation
-                      </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                      <Form {...form}>
-                        <form onSubmit={form.handleSubmit(handleAddBookingSubmit)}>
-                          <DialogHeader>
-                              <DialogTitle>Ajouter une nouvelle réservation</DialogTitle>
-                              <DialogDescription>
-                                  Remplissez les détails pour créer une nouvelle réservation de studio.
-                              </DialogDescription>
-                          </DialogHeader>
-                          <div className="grid gap-4 py-4">
-                              <FormField control={form.control} name="artistName" render={({ field }) => (<FormItem className="grid grid-cols-4 items-center gap-4"><Label className="text-right">Artiste</Label><FormControl><Input placeholder="Nom de l'artiste" className="col-span-3" required {...field} /></FormControl></FormItem>)} />
-                              <FormField control={form.control} name="projectName" render={({ field }) => (<FormItem className="grid grid-cols-4 items-center gap-4"><Label className="text-right">Projet</Label><FormControl><Input placeholder="Nom du projet" className="col-span-3" required {...field} /></FormControl></FormItem>)} />
-                              
-                              <div className="grid grid-cols-4 items-center gap-4">
-                                  <Label className="text-right">Date</Label>
-                                  <Popover>
-                                      <PopoverTrigger asChild>
-                                          <Button
-                                              variant={"outline"}
-                                              className={cn(
-                                                  "col-span-3 justify-start text-left font-normal",
-                                                  !date && "text-muted-foreground"
-                                              )}
-                                          >
-                                              <CalendarIcon className="mr-2 h-4 w-4" />
-                                              {date ? format(date, "PPP", { locale: fr }) : <span>Choisir une date</span>}
-                                          </Button>
-                                      </PopoverTrigger>
-                                      <PopoverContent className="w-auto p-0">
-                                          <Calendar
-                                              mode="single"
-                                              selected={date}
-                                              onSelect={setDate}
-                                              initialFocus
-                                              locale={fr}
-                                          />
-                                      </PopoverContent>
-                                  </Popover>
-                              </div>
-                              <FormField control={form.control} name="timeSlot" render={({ field }) => (<FormItem className="grid grid-cols-4 items-center gap-4"><Label className="text-right">Créneau</Label><Select onValueChange={field.onChange} defaultValue={field.value} required><FormControl><SelectTrigger className="col-span-3"><SelectValue placeholder="Sélectionner un créneau" /></SelectTrigger></FormControl><SelectContent>{availableTimeSlots.map(slot => <SelectItem key={slot} value={slot}>{slot}</SelectItem>)}</SelectContent></Select></FormItem>)} />
-                              <FormField control={form.control} name="service" render={({ field }) => (<FormItem className="grid grid-cols-4 items-center gap-4"><Label className="text-right">Service</Label><Select onValueChange={field.onChange} defaultValue={field.value} required><FormControl><SelectTrigger className="col-span-3"><SelectValue placeholder="Sélectionner un service" /></SelectTrigger></FormControl><SelectContent>{availableServices.map(service => <SelectItem key={service} value={service}>{service}</SelectItem>)}</SelectContent></Select></FormItem>)} />
+                    <DialogTrigger asChild>
+                        <Button>
+                            <PlusCircle className="mr-2 h-4 w-4"/>
+                            Ajouter une réservation
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <Form {...form}>
+                          <form onSubmit={form.handleSubmit(handleAddBookingSubmit)}>
+                            <DialogHeader>
+                                <DialogTitle>Ajouter une nouvelle réservation</DialogTitle>
+                                <DialogDescription>
+                                    Remplissez les détails pour créer une nouvelle réservation de studio.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <FormField control={form.control} name="artistName" render={({ field }) => (<FormItem className="grid grid-cols-4 items-center gap-4"><Label className="text-right">Artiste</Label><FormControl><Input placeholder="Nom de l'artiste" className="col-span-3" required {...field} /></FormControl></FormItem>)} />
+                                <FormField control={form.control} name="projectName" render={({ field }) => (<FormItem className="grid grid-cols-4 items-center gap-4"><Label className="text-right">Projet</Label><FormControl><Input placeholder="Nom du projet" className="col-span-3" required {...field} /></FormControl></FormItem>)} />
+                                
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label className="text-right">Date</Label>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant={"outline"}
+                                                className={cn(
+                                                    "col-span-3 justify-start text-left font-normal",
+                                                    !selectedDate && "text-muted-foreground"
+                                                )}
+                                            >
+                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                {selectedDate ? format(selectedDate, "PPP", { locale: fr }) : <span>Choisir une date</span>}
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0">
+                                            <Calendar
+                                                mode="single"
+                                                selected={selectedDate}
+                                                onSelect={setSelectedDate}
+                                                initialFocus
+                                                locale={fr}
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+                                <FormField control={form.control} name="timeSlot" render={({ field }) => (<FormItem className="grid grid-cols-4 items-center gap-4"><Label className="text-right">Créneau</Label><Select onValueChange={field.onChange} defaultValue={field.value} required><FormControl><SelectTrigger className="col-span-3"><SelectValue placeholder="Sélectionner un créneau" /></SelectTrigger></FormControl><SelectContent>{availableTimeSlots.map(slot => <SelectItem key={slot} value={slot}>{slot}</SelectItem>)}</SelectContent></Select></FormItem>)} />
+                                <FormField control={form.control} name="service" render={({ field }) => (<FormItem className="grid grid-cols-4 items-center gap-4"><Label className="text-right">Service</Label><Select onValueChange={field.onChange} defaultValue={field.value} required><FormControl><SelectTrigger className="col-span-3"><SelectValue placeholder="Sélectionner un service" /></SelectTrigger></FormControl><SelectContent>{availableServices.map(service => <SelectItem key={service} value={service}>{service}</SelectItem>)}</SelectContent></Select></FormItem>)} />
 
-                          </div>
-                          <DialogFooter>
-                              <Button type="submit">Ajouter la réservation</Button>
-                          </DialogFooter>
-                      </form>
-                      </Form>
-                  </DialogContent>
-              </Dialog>
-              </div>
-          </CardHeader>
-        <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-              <TableHeader>
-                  <TableRow>
-                  <TableHead>Artiste</TableHead>
-                  <TableHead>Date & Heure</TableHead>
-                  <TableHead>Service</TableHead>
-                  <TableHead>Montant</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-              </TableHeader>
-              <TableBody>
-                  {upcomingBookings.length > 0 ? upcomingBookings.map((booking) => {
-                      const statusInfo = bookingStatusConfig[booking.status];
-                      return (
-                          <TableRow key={booking.id}>
-                              <TableCell>
-                                  <div className="font-medium">{booking.artistName}</div>
-                                  <div className="text-sm text-muted-foreground">{booking.projectName}</div>
-                              </TableCell>
-                              <TableCell>
-                                  {booking.date.toLocaleDateString("fr-FR", { day: '2-digit', month: 'short' })} {' - '}
-                                  <span className="font-mono text-sm">{booking.timeSlot}</span>
-                              </TableCell>
-                                <TableCell>{booking.service}</TableCell>
-                                <TableCell className="font-semibold">{booking.amount.toLocaleString('fr-FR')} FCFA</TableCell>
-                              <TableCell>
-                              <Badge variant={statusInfo.variant}>
-                                  <statusInfo.icon className={`mr-2 h-3.5 w-3.5 ${statusInfo.color}`} />
-                                  {booking.status}
-                              </Badge>
-                              </TableCell>
-                              <TableCell className="text-right">
-                              <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon">
-                                      <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => handleBookingStatusChange(booking.id, "Confirmé")}>
-                                      <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
-                                      Confirmer
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleBookingStatusChange(booking.id, "Annulé")}>
-                                      <XCircle className="mr-2 h-4 w-4 text-red-500" />
-                                      Annuler
-                                  </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                              </DropdownMenu>
-                              </TableCell>
-                          </TableRow>
-                      )
-                  }) : (
-                      <TableRow>
-                          <TableCell colSpan={6} className="text-center h-24">Aucune réservation à venir.</TableCell>
-                      </TableRow>
-                  )}
-              </TableBody>
-              </Table>
-            </div>
-        </CardContent>
-      </Card>
-      
-      
+                            </div>
+                            <DialogFooter>
+                                <Button type="submit">Ajouter la réservation</Button>
+                            </DialogFooter>
+                        </form>
+                        </Form>
+                    </DialogContent>
+                </Dialog>
+            </CardHeader>
+            <CardContent className="flex justify-center p-2 sm:p-6">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                  className="rounded-md border"
+                  locale={fr}
+                  modifiers={{
+                      booked: bookings.filter(b => b.status === 'Confirmé').map(b => b.date),
+                      pending: bookings.filter(b => b.status === 'En attente').map(b => b.date),
+                  }}
+                  modifiersStyles={{
+                      booked: {
+                          color: 'hsl(var(--primary-foreground))',
+                          backgroundColor: 'hsl(var(--primary))',
+                      },
+                      pending: {
+                          borderColor: 'hsl(var(--primary))',
+                      }
+                  }}
+                />
+            </CardContent>
+        </Card>
+      </div>
+
+      <div className="md:col-span-1">
+        <Card>
+            <CardHeader>
+                <CardTitle>
+                  Réservations pour le {selectedDate ? format(selectedDate, "d MMMM yyyy", { locale: fr }) : '...'}
+                </CardTitle>
+                <CardDescription>Détails des sessions prévues pour la journée sélectionnée.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {bookingsForSelectedDate.length > 0 ? (
+                <div className="space-y-4">
+                  {bookingsForSelectedDate.map((booking) => {
+                    const statusInfo = bookingStatusConfig[booking.status];
+                    return (
+                        <div key={booking.id} className="flex items-center gap-4 p-3 rounded-lg bg-card-foreground/5">
+                           <div className="font-mono text-sm text-center">
+                             <p className="font-semibold">{booking.timeSlot.split(' - ')[0]}</p>
+                             <GripVertical className="h-4 w-4 mx-auto text-muted-foreground/50"/>
+                             <p>{booking.timeSlot.split(' - ')[1]}</p>
+                           </div>
+                           <div className="flex-grow">
+                                <p className="font-semibold">{booking.artistName}</p>
+                                <p className="text-sm text-muted-foreground">{booking.projectName}</p>
+                                <Badge variant={statusInfo.variant} className="mt-1">
+                                    <statusInfo.icon className={`mr-1.5 h-3 w-3 ${statusInfo.color}`} />
+                                    {booking.status}
+                                </Badge>
+                           </div>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleBookingStatusChange(booking.id, "Confirmé")}>
+                                    <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
+                                    Confirmer
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleBookingStatusChange(booking.id, "Annulé")}>
+                                    <XCircle className="mr-2 h-4 w-4 text-red-500" />
+                                    Annuler
+                                </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="text-center text-muted-foreground py-10">
+                    <CalendarIcon className="h-12 w-12 mx-auto mb-2 text-muted-foreground/50"/>
+                    <p>Aucune réservation pour cette date.</p>
+                </div>
+              )}
+            </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
+
