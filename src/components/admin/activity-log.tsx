@@ -1,12 +1,12 @@
 
 "use client";
 
-import React, { useState } from "react";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import React, { useState, useEffect } from "react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy } from "lucide-react";
+import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy, Trash2, Minus } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +22,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { format, differenceInMinutes, formatDistanceStrict } from "date-fns";
 import { fr } from "date-fns/locale";
+import { useFieldArray, useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import { Separator } from "@/components/ui/separator";
+
 
 export type ClientActivity = {
   id: string;
@@ -48,57 +54,75 @@ const categoryConfig = {
     "Autre": { icon: DollarSign, color: "bg-gray-500/20 text-gray-700 border-gray-500/30" },
 };
 
+const activityItemSchema = z.object({
+  description: z.string().min(1, "Description requise"),
+  category: z.enum(Object.keys(categoryConfig) as [keyof typeof categoryConfig]),
+  amount: z.coerce.number().min(0, "Montant invalide"),
+});
+
+const activityFormSchema = z.object({
+  clientName: z.string().min(1, "Nom du client requis"),
+  phone: z.string().optional(),
+  items: z.array(activityItemSchema).min(1, "Veuillez ajouter au moins une activité."),
+});
+
+type ActivityFormValues = z.infer<typeof activityFormSchema>;
+
+
 export default function ActivityLog({ activities, setActivities }: ActivityLogProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddActivityDialogOpen, setAddActivityDialogOpen] = useState(false);
   const { toast } = useToast();
 
+  const form = useForm<ActivityFormValues>({
+    resolver: zodResolver(activityFormSchema),
+    defaultValues: {
+      clientName: "",
+      phone: "",
+      items: [{ description: "", category: "Autre", amount: 0 }],
+    },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "items",
+  });
+  
+  const watchedItems = form.watch("items");
+  const totalAmount = watchedItems.reduce((acc, current) => acc + (current.amount || 0), 0);
+
+
   const filteredActivities = activities.filter(
     (activity) =>
       activity.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       activity.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ).sort((a, b) => b.date.getTime() - a.date.getTime());
   
   const totalRevenue = activities.reduce((acc, activity) => acc + activity.amount, 0);
 
-  const handleAddActivity = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const clientName = formData.get("clientName") as string;
-    const phone = formData.get("phone") as string;
-    const description = formData.get("description") as string;
-    const category = formData.get("category") as ClientActivity['category'];
-    const amount = parseFloat(formData.get("amount") as string) || 0;
-    const startTime = formData.get("startTime") as string;
-    const endTime = formData.get("endTime") as string;
+  const handleAddActivity = (data: ActivityFormValues) => {
+    const { clientName, phone, items } = data;
+    const newActivities: ClientActivity[] = items.map(item => ({
+        id: `act-${Date.now()}-${Math.random()}`,
+        clientName,
+        phone,
+        description: item.description,
+        category: item.category,
+        amount: item.amount,
+        date: new Date(),
+    }));
 
-    let duration;
-    if (startTime && endTime) {
-        const start = new Date(`1970-01-01T${startTime}`);
-        const end = new Date(`1970-01-01T${endTime}`);
-        if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
-            duration = formatDistanceStrict(start, end, { locale: fr, unit: 'minute' });
-        }
-    }
-
-
-    const newActivity: ClientActivity = {
-      id: `act-${Date.now()}`,
-      clientName,
-      phone,
-      description,
-      category,
-      amount,
-      date: new Date(),
-      duration,
-    };
-
-    setActivities(prev => [newActivity, ...prev]);
+    setActivities(prev => [...newActivities, ...prev]);
     toast({
-      title: "Activité Ajoutée",
-      description: `L'activité pour "${clientName}" a été ajoutée avec succès.`,
+      title: "Activités Ajoutées",
+      description: `${items.length} activité(s) pour "${clientName}" ont été ajoutées.`,
     });
     setAddActivityDialogOpen(false);
+    form.reset({
+        clientName: "",
+        phone: "",
+        items: [{ description: "", category: "Autre", amount: 0 }],
+    });
   };
 
   return (
@@ -152,59 +176,46 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                             Ajouter une activité
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-lg">
-                        <form onSubmit={handleAddActivity}>
+                    <DialogContent className="sm:max-w-2xl">
+                       <Form {...form}>
+                        <form onSubmit={form.handleSubmit(handleAddActivity)}>
                             <DialogHeader>
-                                <DialogTitle>Ajouter une nouvelle activité</DialogTitle>
+                                <DialogTitle>Ajouter une nouvelle vente/activité</DialogTitle>
                                 <DialogDescription>
-                                    Remplissez les informations pour enregistrer une nouvelle activité client.
+                                    Remplissez les informations du client et ajoutez un ou plusieurs articles/services.
                                 </DialogDescription>
                             </DialogHeader>
-                            <div className="grid gap-4 py-4">
+                            <div className="grid gap-6 py-4">
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="clientName">Nom du client</Label>
-                                        <Input id="clientName" name="clientName" placeholder="Ex: Jean Dupont" required />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="phone">Téléphone</Label>
-                                        <Input id="phone" name="phone" placeholder="Ex: +242 06 123 4567" />
-                                    </div>
+                                    <FormField control={form.control} name="clientName" render={({ field }) => (<FormItem><Label>Nom du client</Label><FormControl><Input placeholder="Ex: Jean Dupont" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><Label>Téléphone</Label><FormControl><Input placeholder="Ex: +242 06 123 4567" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="description">Description</Label>
-                                    <Input id="description" name="description" placeholder="Ex: Achat du livre 'Le Labyrinthe d'Osiris'" required />
+                                <Separator />
+                                <div className="space-y-4">
+                                    {fields.map((field, index) => (
+                                        <div key={field.id} className="grid grid-cols-[1fr_auto_auto_auto] items-end gap-2">
+                                            <FormField control={form.control} name={`items.${index}.description`} render={({ field }) => (<FormItem><Label>Description</Label><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name={`items.${index}.category`} render={({ field }) => (<FormItem><Label>Catégorie</Label><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent>{Object.keys(categoryConfig).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name={`items.${index}.amount`} render={({ field }) => (<FormItem><Label>Montant</Label><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                            <Button type="button" variant="ghost" size="icon" className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
+                                        </div>
+                                    ))}
+                                    <Button type="button" size="sm" variant="outline" onClick={() => append({ description: "", category: "Autre", amount: 0 })}>
+                                        <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un article
+                                    </Button>
                                 </div>
-                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="category">Catégorie</Label>
-                                        <Select name="category" required>
-                                            <SelectTrigger><SelectValue placeholder="Sélectionner..."/></SelectTrigger>
-                                            <SelectContent>
-                                                {Object.keys(categoryConfig).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="amount">Montant (FCFA)</Label>
-                                        <Input id="amount" name="amount" type="number" placeholder="Ex: 5000" required />
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="startTime">Heure de début</Label>
-                                        <Input id="startTime" name="startTime" type="time" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="endTime">Heure de fin</Label>
-                                        <Input id="endTime" name="endTime" type="time" />
-                                    </div>
+
+                                <Separator />
+                                <div className="flex justify-end items-center gap-4 text-lg font-bold">
+                                    <span>Total:</span>
+                                    <span>{totalAmount.toLocaleString('fr-FR')} FCFA</span>
                                 </div>
                             </div>
                             <DialogFooter>
-                                <Button type="submit">Ajouter l'activité</Button>
+                                <Button type="submit">Enregistrer la vente</Button>
                             </DialogFooter>
                         </form>
+                        </Form>
                     </DialogContent>
                 </Dialog>
             </div>
@@ -235,8 +246,8 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                       </TableCell>
                       <TableCell>{activity.description}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className={catInfo.color}>
-                          <catInfo.icon className="mr-1.5 h-3.5 w-3.5" />
+                        <Badge variant="secondary" className={catInfo?.color || ''}>
+                          {catInfo?.icon && <catInfo.icon className="mr-1.5 h-3.5 w-3.5" />}
                           {activity.category}
                         </Badge>
                       </TableCell>
