@@ -264,7 +264,8 @@ export default function ContractManagement() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Client / Contrat ID</TableHead>
+                            <TableHead>Contrat ID</TableHead>
+                            <TableHead>Client</TableHead>
                             <TableHead>Valeur</TableHead>
                             <TableHead>Paiement</TableHead>
                             <TableHead>Statut Contrat</TableHead>
@@ -278,8 +279,10 @@ export default function ContractManagement() {
                             return (
                                 <TableRow key={contract.id}>
                                     <TableCell>
+                                        <div className="font-mono text-sm">{contract.id}</div>
+                                    </TableCell>
+                                    <TableCell>
                                         <div className="font-medium">{contract.clientName}</div>
-                                        <div className="text-sm text-muted-foreground font-mono">{contract.id}</div>
                                     </TableCell>
                                     <TableCell>
                                         <div className="font-semibold">{contract.value.toLocaleString('fr-FR')} FCFA</div>
@@ -328,7 +331,7 @@ export default function ContractManagement() {
                             )
                         }) : (
                             <TableRow>
-                                <TableCell colSpan={5} className="text-center h-24">Aucun contrat trouvé.</TableCell>
+                                <TableCell colSpan={6} className="text-center h-24">Aucun contrat trouvé.</TableCell>
                             </TableRow>
                         )}
                     </TableBody>
@@ -405,6 +408,8 @@ export default function ContractManagement() {
         </Card>
     );
 }
+
+    
 
     
 
