@@ -58,7 +58,6 @@ export default function ClientManagement({ clients, setClients }: ClientManageme
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const name = formData.get("name") as string;
-    const email = formData.get("email") as string;
     const phone = formData.get("phone") as string;
     const lastService = formData.get("lastService") as string;
     const totalSpent = parseFloat(formData.get("totalSpent") as string) || 0;
@@ -67,7 +66,7 @@ export default function ClientManagement({ clients, setClients }: ClientManageme
     const newClient: Client = {
       id: `client-${Date.now()}`,
       name,
-      email,
+      email: `${name.toLowerCase().replace(/\s/g, '.')}@example.com`,
       phone,
       lastActivity: new Date().toISOString().split("T")[0],
       totalSpent: totalSpent,
@@ -145,10 +144,6 @@ export default function ClientManagement({ clients, setClients }: ClientManageme
                                 <div className="space-y-2">
                                     <Label htmlFor="name">Nom complet</Label>
                                     <Input id="name" name="name" placeholder="Ex: Jean Dupont" required />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="email">Adresse e-mail</Label>
-                                    <Input id="email" name="email" type="email" placeholder="Ex: jean.dupont@example.com" required />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="phone">Numéro de téléphone</Label>
