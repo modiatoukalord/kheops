@@ -20,7 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { format, differenceInMinutes, formatDistanceStrict } from "date-fns";
+import { format, differenceInMinutes, formatDistanceStrict, parse } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useFieldArray, useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -58,7 +58,20 @@ const activityItemSchema = z.object({
   description: z.string().min(1, "Description requise"),
   category: z.enum(Object.keys(categoryConfig) as [keyof typeof categoryConfig]),
   amount: z.coerce.number().min(0, "Montant invalide"),
+  startTime: z.string().optional(),
+  endTime: z.string().optional(),
+}).refine(data => {
+    if (data.startTime && data.endTime) {
+        const start = parse(data.startTime, 'HH:mm', new Date());
+        const end = parse(data.endTime, 'HH:mm', new Date());
+        return end > start;
+    }
+    return true;
+}, {
+    message: "L'heure de fin doit être après l'heure de début.",
+    path: ["endTime"],
 });
+
 
 const activityFormSchema = z.object({
   clientName: z.string().min(1, "Nom du client requis"),
@@ -79,7 +92,7 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
     defaultValues: {
       clientName: "",
       phone: "",
-      items: [{ description: "", category: "Autre", amount: 0 }],
+      items: [{ description: "", category: "Autre", amount: 0, startTime: "", endTime: "" }],
     },
   });
 
@@ -102,15 +115,33 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
 
   const handleAddActivity = (data: ActivityFormValues) => {
     const { clientName, phone, items } = data;
-    const newActivities: ClientActivity[] = items.map(item => ({
-        id: `act-${Date.now()}-${Math.random()}`,
-        clientName,
-        phone,
-        description: item.description,
-        category: item.category,
-        amount: item.amount,
-        date: new Date(),
-    }));
+    const newActivities: ClientActivity[] = items.map(item => {
+        let duration;
+        if (item.startTime && item.endTime) {
+            try {
+                const start = parse(item.startTime, 'HH:mm', new Date());
+                const end = parse(item.endTime, 'HH:mm', new Date());
+                const diff = differenceInMinutes(end, start);
+                if (diff > 0) {
+                     duration = formatDistanceStrict(end, start, { locale: fr, unit: 'minute' });
+                }
+            } catch (e) {
+                console.error("Invalid time format for duration calculation");
+                duration = undefined;
+            }
+        }
+
+        return {
+            id: `act-${Date.now()}-${Math.random()}`,
+            clientName,
+            phone,
+            description: item.description,
+            category: item.category,
+            amount: item.amount,
+            date: new Date(),
+            duration,
+        }
+    });
 
     setActivities(prev => [...newActivities, ...prev]);
     toast({
@@ -121,7 +152,7 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
     form.reset({
         clientName: "",
         phone: "",
-        items: [{ description: "", category: "Autre", amount: 0 }],
+        items: [{ description: "", category: "Autre", amount: 0, startTime: "", endTime: "" }],
     });
   };
 
@@ -176,7 +207,7 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                             Ajouter une activité
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-2xl">
+                    <DialogContent className="sm:max-w-3xl">
                        <Form {...form}>
                         <form onSubmit={form.handleSubmit(handleAddActivity)}>
                             <DialogHeader>
@@ -185,7 +216,7 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                                     Remplissez les informations du client et ajoutez un ou plusieurs articles/services.
                                 </DialogDescription>
                             </DialogHeader>
-                            <div className="grid gap-6 py-4">
+                            <div className="grid gap-6 py-4 max-h-[80vh] overflow-y-auto pr-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <FormField control={form.control} name="clientName" render={({ field }) => (<FormItem><Label>Nom du client</Label><FormControl><Input placeholder="Ex: Jean Dupont" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><Label>Téléphone</Label><FormControl><Input placeholder="Ex: +242 06 123 4567" {...field} /></FormControl><FormMessage /></FormItem>)} />
@@ -193,14 +224,23 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                                 <Separator />
                                 <div className="space-y-4">
                                     {fields.map((field, index) => (
-                                        <div key={field.id} className="grid grid-cols-[1fr_auto_auto_auto] items-end gap-2">
-                                            <FormField control={form.control} name={`items.${index}.description`} render={({ field }) => (<FormItem><Label>Description</Label><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                            <FormField control={form.control} name={`items.${index}.category`} render={({ field }) => (<FormItem><Label>Catégorie</Label><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent>{Object.keys(categoryConfig).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-                                            <FormField control={form.control} name={`items.${index}.amount`} render={({ field }) => (<FormItem><Label>Montant</Label><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                            <Button type="button" variant="ghost" size="icon" className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
+                                        <div key={field.id} className="p-3 border rounded-lg space-y-4">
+                                            <div className="flex justify-between items-center">
+                                                <h4 className="font-medium text-primary">Article #{index + 1}</h4>
+                                                <Button type="button" variant="ghost" size="icon" className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <FormField control={form.control} name={`items.${index}.description`} render={({ field }) => (<FormItem><Label>Description</Label><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name={`items.${index}.category`} render={({ field }) => (<FormItem><Label>Catégorie</Label><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent>{Object.keys(categoryConfig).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <FormField control={form.control} name={`items.${index}.amount`} render={({ field }) => (<FormItem><Label>Montant</Label><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name={`items.${index}.startTime`} render={({ field }) => (<FormItem><Label>Heure de début</Label><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name={`items.${index}.endTime`} render={({ field }) => (<FormItem><Label>Heure de fin</Label><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                            </div>
                                         </div>
                                     ))}
-                                    <Button type="button" size="sm" variant="outline" onClick={() => append({ description: "", category: "Autre", amount: 0 })}>
+                                    <Button type="button" size="sm" variant="outline" onClick={() => append({ description: "", category: "Autre", amount: 0, startTime: "", endTime: "" })}>
                                         <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un article
                                     </Button>
                                 </div>
@@ -211,7 +251,7 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                                     <span>{totalAmount.toLocaleString('fr-FR')} FCFA</span>
                                 </div>
                             </div>
-                            <DialogFooter>
+                            <DialogFooter className="pt-4 border-t">
                                 <Button type="submit">Enregistrer la vente</Button>
                             </DialogFooter>
                         </form>
@@ -287,3 +327,5 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
     </div>
   );
 }
+
+    
