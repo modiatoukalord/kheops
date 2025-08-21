@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, MoreHorizontal, User, Mail, Calendar, DollarSign, PlusCircle } from "lucide-react";
+import { Search, MoreHorizontal, User, Mail, Calendar, DollarSign, PlusCircle, Phone } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +20,7 @@ export type Client = {
   id: string;
   name: string;
   email: string;
+  phone: string;
   lastActivity: string;
   totalSpent: number;
 };
@@ -98,7 +99,7 @@ export default function ClientManagement({ clients, setClients }: ClientManageme
               <TableHeader>
                 <TableRow>
                   <TableHead>Nom</TableHead>
-                  <TableHead className="hidden sm:table-cell">Email</TableHead>
+                  <TableHead className="hidden sm:table-cell">Téléphone</TableHead>
                   <TableHead className="hidden md:table-cell">Dernière Activité</TableHead>
                   <TableHead>Total Dépensé</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -111,8 +112,8 @@ export default function ClientManagement({ clients, setClients }: ClientManageme
                       <TableCell className="font-medium">{client.name}</TableCell>
                       <TableCell className="hidden sm:table-cell">
                         <div className="flex items-center gap-2">
-                            <Mail className="h-4 w-4 text-muted-foreground" />
-                            {client.email}
+                            <Phone className="h-4 w-4 text-muted-foreground" />
+                            {client.phone}
                         </div>
                       </TableCell>
                        <TableCell className="hidden md:table-cell">

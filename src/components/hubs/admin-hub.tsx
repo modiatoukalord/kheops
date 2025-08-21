@@ -18,10 +18,11 @@ import { initialBookings, Booking } from "@/components/admin/booking-schedule";
 import { initialTransactions } from "@/components/admin/financial-management";
 import { format } from "date-fns";
 
-const initialClients: Client[] = initialBookings.map(booking => ({
+const initialClients: Client[] = initialBookings.map((booking, index) => ({
     id: `client-${booking.id}`,
     name: booking.artistName,
     email: `${booking.artistName.toLowerCase().replace(/\s/g, '.')}@example.com`,
+    phone: `+242 06 555 01${index.toString().padStart(2, '0')}`,
     lastActivity: format(booking.date, "yyyy-MM-dd"),
     totalSpent: booking.amount,
 }));
@@ -71,6 +72,7 @@ export default function AdminHub() {
                     id: `client-${fullBooking.id}`,
                     name: fullBooking.artistName,
                     email: `${fullBooking.artistName.toLowerCase().replace(/\s/g, '.')}@example.com`,
+                    phone: `+242 06 555 ${Math.floor(1000 + Math.random() * 9000).toString()}`,
                     lastActivity: format(fullBooking.date, "yyyy-MM-dd"),
                     totalSpent: fullBooking.amount,
                 }
