@@ -112,7 +112,7 @@ export default function ClientManagement({ clients, setClients }: ClientManageme
             <div>
               <CardTitle>Gestion des Clients</CardTitle>
               <CardDescription>
-                Consultez la liste des clients ayant utilisé des services.
+                Gérez les clients non-abonnés qui utilisent des services à la journée.
               </CardDescription>
             </div>
              <div className="flex items-center gap-2 w-full md:w-auto">
