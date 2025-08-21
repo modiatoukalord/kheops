@@ -16,9 +16,9 @@ import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
 
 const initialContracts = [
-    { id: "ctr-001", bookingId: "res-001", clientName: "KHEOPS Collective", status: "Signé" as const, lastUpdate: "2024-07-25", pdfFileName: "contrat_kheops_collective.pdf" },
-    { id: "ctr-002", bookingId: "res-003", clientName: "Mc Solaar", status: "Envoyé" as const, lastUpdate: "2024-08-01", pdfFileName: null },
-    { id: "ctr-003", bookingId: "res-002", clientName: "L'Artiste Anonyme", status: "En attente" as const, lastUpdate: "2024-08-03", pdfFileName: null },
+    { id: "ctr-001", bookingId: "res-001", clientName: "KHEOPS Collective", status: "Signé" as const, lastUpdate: "2024-07-25", pdfFile: null },
+    { id: "ctr-002", bookingId: "res-003", clientName: "Mc Solaar", status: "Envoyé" as const, lastUpdate: "2024-08-01", pdfFile: null },
+    { id: "ctr-003", bookingId: "res-002", clientName: "L'Artiste Anonyme", status: "En attente" as const, lastUpdate: "2024-08-03", pdfFile: null },
 ];
 
 // Mock data, in a real app this would come from a shared service or store
@@ -44,7 +44,7 @@ type Contract = {
     clientName: string;
     status: "Signé" | "Envoyé" | "En attente" | "Archivé";
     lastUpdate: string;
-    pdfFileName: string | null;
+    pdfFile: File | null;
 };
 
 export default function ContractManagement() {
@@ -81,7 +81,7 @@ export default function ContractManagement() {
             clientName: booking.artistName,
             status: "En attente",
             lastUpdate: format(new Date(), 'yyyy-MM-dd'),
-            pdfFileName: pdfFile ? pdfFile.name : null,
+            pdfFile: pdfFile,
         };
 
         setContracts(prev => [newContract, ...prev]);
@@ -102,6 +102,17 @@ export default function ContractManagement() {
             description: `Le contrat ${contractId} a été supprimé.`,
             variant: "destructive"
         });
+    };
+
+    const handleDownloadPdf = (file: File) => {
+        const url = URL.createObjectURL(file);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = file.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     };
 
     const bookingsWithoutContract = allBookings.filter(
@@ -186,7 +197,7 @@ export default function ContractManagement() {
                                     <TableCell>
                                         <div className="flex flex-col">
                                             <span className="font-mono text-sm">{contract.id}</span>
-                                            {contract.pdfFileName && <span className="text-xs text-muted-foreground">{contract.pdfFileName}</span>}
+                                            {contract.pdfFile && <span className="text-xs text-muted-foreground">{contract.pdfFile.name}</span>}
                                         </div>
                                     </TableCell>
                                     <TableCell>{new Date(contract.lastUpdate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</TableCell>
@@ -204,7 +215,7 @@ export default function ContractManagement() {
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuItem onClick={() => handleContractStatusChange(contract.id, "Envoyé")}><Send className="mr-2 h-4 w-4" />Marquer comme Envoyé</DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => handleContractStatusChange(contract.id, "Signé")}><PenSquare className="mr-2 h-4 w-4" />Marquer comme Signé</DropdownMenuItem>
-                                                <DropdownMenuItem disabled={!contract.pdfFileName}><Download className="mr-2 h-4 w-4" />Télécharger PDF</DropdownMenuItem>
+                                                <DropdownMenuItem disabled={!contract.pdfFile} onClick={() => contract.pdfFile && handleDownloadPdf(contract.pdfFile)}><Download className="mr-2 h-4 w-4" />Télécharger PDF</DropdownMenuItem>
                                                 <DropdownMenuItem className="text-red-500" onClick={() => handleDeleteContract(contract.id)}>
                                                     <Trash2 className="mr-2 h-4 w-4" />
                                                     Supprimer
