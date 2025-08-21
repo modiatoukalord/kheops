@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy, Trash2, Minus } from "lucide-react";
+import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy, Trash2, Minus, MoreHorizontal, Edit, Eye } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -62,9 +68,13 @@ const activityItemSchema = z.object({
   endTime: z.string().optional(),
 }).refine(data => {
     if (data.startTime && data.endTime) {
-        const start = parse(data.startTime, 'HH:mm', new Date());
-        const end = parse(data.endTime, 'HH:mm', new Date());
-        return end > start;
+        try {
+            const start = parse(data.startTime, 'HH:mm', new Date());
+            const end = parse(data.endTime, 'HH:mm', new Date());
+            return end > start;
+        } catch (e) {
+            return false;
+        }
     }
     return true;
 }, {
@@ -155,6 +165,15 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
         items: [{ description: "", category: "Autre", amount: 0, startTime: "", endTime: "" }],
     });
   };
+  
+  const handleDeleteActivity = (activityId: string) => {
+    setActivities(prev => prev.filter(act => act.id !== activityId));
+    toast({
+        title: "Activité Supprimée",
+        description: "L'activité a été supprimée avec succès.",
+        variant: "destructive"
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -227,7 +246,9 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                                         <div key={field.id} className="p-3 border rounded-lg space-y-4">
                                             <div className="flex justify-between items-center">
                                                 <h4 className="font-medium text-primary">Article #{index + 1}</h4>
+                                                {fields.length > 1 && (
                                                 <Button type="button" variant="ghost" size="icon" className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
+                                                )}
                                             </div>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <FormField control={form.control} name={`items.${index}.description`} render={({ field }) => (<FormItem><Label>Description</Label><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
@@ -272,6 +293,7 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                   <TableHead>Date</TableHead>
                   <TableHead>Durée</TableHead>
                   <TableHead className="text-right">Montant</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -310,11 +332,31 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                       <TableCell className="text-right font-semibold text-green-600">
                           {activity.amount.toLocaleString('fr-FR')} FCFA
                       </TableCell>
+                       <TableCell className="text-right">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem>
+                                    <Eye className="mr-2 h-4 w-4" /> Voir les détails
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                    <Edit className="mr-2 h-4 w-4" /> Modifier
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="text-red-500" onClick={() => handleDeleteActivity(activity.id)}>
+                                    <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                       </TableCell>
                     </TableRow>
                   )})
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
+                    <TableCell colSpan={7} className="h-24 text-center">
                       Aucune activité trouvée.
                     </TableCell>
                   </TableRow>
@@ -327,5 +369,3 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
     </div>
   );
 }
-
-    
