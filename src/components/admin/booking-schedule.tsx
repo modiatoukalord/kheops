@@ -131,7 +131,14 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
   const [isBookingDialogOpen, setBookingDialogOpen] = useState(false);
   const { toast } = useToast();
   
-  const form = useForm();
+  const form = useForm({
+    defaultValues: {
+      artistName: '',
+      projectName: '',
+      timeSlot: '',
+      service: '',
+    },
+  });
 
   const handleBookingStatusChange = (bookingId: string, newStatus: BookingStatus) => {
     setBookings(bookings.map(b => b.id === bookingId ? { ...b, status: newStatus } : b));
@@ -153,6 +160,7 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
         description: `La réservation pour ${newBooking.artistName} a été ajoutée.`,
     });
     setBookingDialogOpen(false);
+    form.reset();
   };
   
   const bookingsForSelectedDate = bookings.filter(booking => 
@@ -312,4 +320,3 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
     </div>
   );
 }
-
