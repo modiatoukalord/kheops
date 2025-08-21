@@ -10,24 +10,24 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, Send, PenSquare, Download, Clock, CheckCircle2, FileText, PlusCircle, Trash2, FileUp, Edit } from "lucide-react";
+import { MoreHorizontal, Send, PenSquare, Download, Clock, CheckCircle2, FileText, PlusCircle, Trash2, FileUp, Edit, DollarSign, Euro } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
 
 const initialContracts = [
-    { id: "ctr-001", bookingId: "res-001", clientName: "KHEOPS Collective", status: "Signé" as const, lastUpdate: "2024-07-25", pdfFile: null },
-    { id: "ctr-002", bookingId: "res-003", clientName: "Mc Solaar", status: "Envoyé" as const, lastUpdate: "2024-08-01", pdfFile: null },
-    { id: "ctr-003", bookingId: "res-002", clientName: "L'Artiste Anonyme", status: "En attente" as const, lastUpdate: "2024-08-03", pdfFile: null },
+    { id: "ctr-001", bookingId: "res-001", clientName: "KHEOPS Collective", status: "Signé" as const, lastUpdate: "2024-07-25", pdfFile: null, value: 100000, paymentStatus: "Payé", type: "Prestation Studio" },
+    { id: "ctr-002", bookingId: "res-003", clientName: "Mc Solaar", status: "Envoyé" as const, lastUpdate: "2024-08-01", pdfFile: null, value: 150000, paymentStatus: "Non Payé", type: "Prestation Studio" },
+    { id: "ctr-003", bookingId: "res-002", clientName: "L'Artiste Anonyme", status: "En attente" as const, lastUpdate: "2024-08-03", pdfFile: null, value: 60000, paymentStatus: "En attente", type: "Prestation Studio" },
 ];
 
 // Mock data, in a real app this would come from a shared service or store
 const allBookings = [
-  { id: "res-001", artistName: "KHEOPS Collective" },
-  { id: "res-002", artistName: "L'Artiste Anonyme" },
-  { id: "res-003", artistName: "Mc Solaar" },
-  { id: "res-004", artistName: "Aya Nakamura" },
-  { id: "res-005", artistName: "Damso" },
+  { id: "res-001", artistName: "KHEOPS Collective", amount: 100000 },
+  { id: "res-002", artistName: "L'Artiste Anonyme", amount: 60000 },
+  { id: "res-003", artistName: "Mc Solaar", amount: 150000 },
+  { id: "res-004", artistName: "Aya Nakamura", amount: 60000 },
+  { id: "res-005", artistName: "Damso", amount: 100000 },
 ];
 
 const contractStatusConfig = {
@@ -37,7 +37,18 @@ const contractStatusConfig = {
     "Archivé": { variant: "ghost", icon: FileText },
 };
 
+const paymentStatusConfig = {
+    "Payé": { variant: "default", className: "bg-green-500/80" },
+    "Non Payé": { variant: "destructive" },
+    "En attente": { variant: "secondary" },
+};
+
+const contractTypes = ["Prestation Studio", "Licence Musique", "Distribution", "Partenariat"];
+
 type ContractStatus = keyof typeof contractStatusConfig;
+type PaymentStatus = keyof typeof paymentStatusConfig;
+type ContractType = typeof contractTypes[number];
+
 type Contract = {
     id: string;
     bookingId: string;
@@ -45,6 +56,9 @@ type Contract = {
     status: "Signé" | "Envoyé" | "En attente" | "Archivé";
     lastUpdate: string;
     pdfFile: File | null;
+    value: number;
+    paymentStatus: PaymentStatus;
+    type: ContractType;
 };
 
 export default function ContractManagement() {
@@ -78,6 +92,8 @@ export default function ContractManagement() {
         const booking = allBookings.find(b => b.id === selectedBookingId);
         if (!booking) return;
 
+        const formData = new FormData(event.currentTarget);
+
         const newContract: Contract = {
             id: `ctr-${Date.now()}`,
             bookingId: booking.id,
@@ -85,6 +101,9 @@ export default function ContractManagement() {
             status: "En attente",
             lastUpdate: format(new Date(), 'yyyy-MM-dd'),
             pdfFile: pdfFile,
+            value: Number(formData.get("value")),
+            paymentStatus: formData.get("paymentStatus") as PaymentStatus,
+            type: formData.get("type") as ContractType,
         };
 
         setContracts(prev => [newContract, ...prev]);
@@ -104,10 +123,13 @@ export default function ContractManagement() {
 
         const formData = new FormData(event.currentTarget);
         const clientName = formData.get("clientName") as string;
+        const value = Number(formData.get("value"));
+        const paymentStatus = formData.get("paymentStatus") as PaymentStatus;
+        const type = formData.get("type") as ContractType;
 
         setContracts(contracts.map(c => 
             c.id === editingContract.id 
-            ? { ...c, clientName, pdfFile: pdfFile ?? c.pdfFile, lastUpdate: format(new Date(), 'yyyy-MM-dd') } 
+            ? { ...c, clientName, value, paymentStatus, type, pdfFile: pdfFile ?? c.pdfFile, lastUpdate: format(new Date(), 'yyyy-MM-dd') } 
             : c
         ));
 
@@ -156,6 +178,8 @@ export default function ContractManagement() {
     const bookingsWithoutContract = allBookings.filter(
         booking => !contracts.some(contract => contract.bookingId === booking.id)
     );
+    
+    const selectedBookingDetails = allBookings.find(b => b.id === selectedBookingId);
 
     return (
         <Card>
@@ -171,15 +195,15 @@ export default function ContractManagement() {
                             Ajouter un contrat
                         </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="sm:max-w-lg">
                         <form onSubmit={handleAddContract}>
                             <DialogHeader>
                                 <DialogTitle>Créer un nouveau contrat</DialogTitle>
-                                <DialogDescription>Sélectionnez une réservation et ajoutez un PDF pour générer un nouveau contrat.</DialogDescription>
+                                <DialogDescription>Sélectionnez une réservation et remplissez les détails pour générer un nouveau contrat.</DialogDescription>
                             </DialogHeader>
                             <div className="grid gap-4 py-4">
                                <div className="space-y-2">
-                                    <Label htmlFor="booking">Réservation</Label>
+                                    <Label htmlFor="booking">Réservation Associée</Label>
                                     <Select onValueChange={setSelectedBookingId}>
                                         <SelectTrigger id="booking">
                                             <SelectValue placeholder="Sélectionner une réservation..." />
@@ -194,6 +218,33 @@ export default function ContractManagement() {
                                             )}
                                         </SelectContent>
                                     </Select>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="type">Type de contrat</Label>
+                                        <Select name="type" defaultValue="Prestation Studio" required>
+                                            <SelectTrigger id="type">
+                                                <SelectValue placeholder="Type..." />
+                                            </SelectTrigger>
+                                            <SelectContent>{contractTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="paymentStatus">Statut Paiement</Label>
+                                        <Select name="paymentStatus" defaultValue="En attente" required>
+                                            <SelectTrigger id="paymentStatus">
+                                                <SelectValue placeholder="Statut..." />
+                                            </SelectTrigger>
+                                            <SelectContent>{Object.keys(paymentStatusConfig).map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="value">Valeur du Contrat (FCFA)</Label>
+                                    <div className="relative">
+                                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Input id="value" name="value" type="number" placeholder="Ex: 150000" className="pl-10" required defaultValue={selectedBookingDetails?.amount} />
+                                    </div>
                                 </div>
                                  <div className="space-y-2">
                                     <Label htmlFor="pdf-upload">PDF du Contrat (Optionnel)</Label>
@@ -221,26 +272,30 @@ export default function ContractManagement() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Client</TableHead>
-                            <TableHead>Contrat</TableHead>
-                            <TableHead>Mise à jour</TableHead>
-                            <TableHead>Statut</TableHead>
+                            <TableHead>Client / Contrat ID</TableHead>
+                            <TableHead>Valeur</TableHead>
+                            <TableHead>Paiement</TableHead>
+                            <TableHead>Statut Contrat</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {contracts.length > 0 ? contracts.map(contract => {
                             const statusInfo = contractStatusConfig[contract.status];
+                            const paymentInfo = paymentStatusConfig[contract.paymentStatus];
                             return (
                                 <TableRow key={contract.id}>
-                                    <TableCell>{contract.clientName}</TableCell>
                                     <TableCell>
-                                        <div className="flex flex-col">
-                                            <span className="font-mono text-sm">{contract.id}</span>
-                                            {contract.pdfFile && <span className="text-xs text-muted-foreground">{contract.pdfFile.name}</span>}
-                                        </div>
+                                        <div className="font-medium">{contract.clientName}</div>
+                                        <div className="text-sm text-muted-foreground font-mono">{contract.id}</div>
                                     </TableCell>
-                                    <TableCell>{new Date(contract.lastUpdate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</TableCell>
+                                    <TableCell>
+                                        <div className="font-semibold">{contract.value.toLocaleString('fr-FR')} FCFA</div>
+                                        <div className="text-xs text-muted-foreground">{contract.type}</div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge variant={paymentInfo.variant} className={paymentInfo.className}>{contract.paymentStatus}</Badge>
+                                    </TableCell>
                                     <TableCell>
                                         <Badge variant={statusInfo.variant}>
                                             <statusInfo.icon className="mr-2 h-3.5 w-3.5" />
@@ -293,11 +348,11 @@ export default function ContractManagement() {
                 </CardFooter>
             )}
              <Dialog open={isEditDialogOpen} onOpenChange={setEditDialogOpen}>
-                <DialogContent>
+                <DialogContent className="sm:max-w-lg">
                     <form onSubmit={handleEditContract}>
                         <DialogHeader>
                             <DialogTitle>Modifier le contrat</DialogTitle>
-                            <DialogDescription>Mettez à jour le nom du client ou le fichier PDF pour le contrat de {editingContract?.clientName}.</DialogDescription>
+                            <DialogDescription>Mettez à jour les informations pour le contrat de {editingContract?.clientName}.</DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-4 py-4">
                             <div className="space-y-2">
@@ -308,6 +363,29 @@ export default function ContractManagement() {
                                     defaultValue={editingContract?.clientName}
                                     required 
                                 />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="type-edit">Type de contrat</Label>
+                                    <Select name="type" defaultValue={editingContract?.type} required>
+                                        <SelectTrigger id="type-edit"><SelectValue placeholder="Type..." /></SelectTrigger>
+                                        <SelectContent>{contractTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="paymentStatus-edit">Statut Paiement</Label>
+                                    <Select name="paymentStatus" defaultValue={editingContract?.paymentStatus} required>
+                                        <SelectTrigger id="paymentStatus-edit"><SelectValue placeholder="Statut..." /></SelectTrigger>
+                                        <SelectContent>{Object.keys(paymentStatusConfig).map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="value-edit">Valeur du Contrat (FCFA)</Label>
+                                <div className="relative">
+                                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input id="value-edit" name="value" type="number" placeholder="Ex: 150000" className="pl-10" required defaultValue={editingContract?.value} />
+                                </div>
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="pdf-upload-edit">PDF du Contrat</Label>
@@ -335,3 +413,5 @@ export default function ContractManagement() {
         </Card>
     );
 }
+
+    
