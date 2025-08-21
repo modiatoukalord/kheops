@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, MoreHorizontal, User, Mail, Calendar, DollarSign, PlusCircle, Phone } from "lucide-react";
+import { Search, MoreHorizontal, User, Mail, Calendar, DollarSign, PlusCircle, Phone, Settings2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +23,7 @@ export type Client = {
   phone: string;
   lastActivity: string;
   totalSpent: number;
+  lastService: string;
 };
 
 interface ClientManagementProps {
@@ -100,7 +101,7 @@ export default function ClientManagement({ clients, setClients }: ClientManageme
                 <TableRow>
                   <TableHead>Nom</TableHead>
                   <TableHead className="hidden sm:table-cell">Téléphone</TableHead>
-                  <TableHead className="hidden md:table-cell">Dernière Activité</TableHead>
+                  <TableHead className="hidden md:table-cell">Dernier Service</TableHead>
                   <TableHead>Total Dépensé</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -118,8 +119,8 @@ export default function ClientManagement({ clients, setClients }: ClientManageme
                       </TableCell>
                        <TableCell className="hidden md:table-cell">
                         <div className="flex items-center gap-2">
-                           <Calendar className="h-4 w-4 text-muted-foreground" />
-                           {format(new Date(client.lastActivity), "d MMMM yyyy", { locale: fr })}
+                           <Settings2 className="h-4 w-4 text-muted-foreground" />
+                           {client.lastService}
                         </div>
                       </TableCell>
                       <TableCell>

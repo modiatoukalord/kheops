@@ -25,6 +25,7 @@ const initialClients: Client[] = initialBookings.map((booking, index) => ({
     phone: `+242 06 555 01${index.toString().padStart(2, '0')}`,
     lastActivity: format(booking.date, "yyyy-MM-dd"),
     totalSpent: booking.amount,
+    lastService: booking.service,
 }));
 
 
@@ -62,7 +63,8 @@ export default function AdminHub() {
             updatedClients[existingClientIndex] = {
                 ...existingClient,
                 lastActivity: format(fullBooking.date, "yyyy-MM-dd"),
-                totalSpent: existingClient.totalSpent + fullBooking.amount
+                totalSpent: existingClient.totalSpent + fullBooking.amount,
+                lastService: fullBooking.service,
             };
             return updatedClients;
         } else {
@@ -75,6 +77,7 @@ export default function AdminHub() {
                     phone: `+242 06 555 ${Math.floor(1000 + Math.random() * 9000).toString()}`,
                     lastActivity: format(fullBooking.date, "yyyy-MM-dd"),
                     totalSpent: fullBooking.amount,
+                    lastService: fullBooking.service,
                 }
             ];
         }
