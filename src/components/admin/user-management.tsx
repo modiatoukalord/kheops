@@ -362,9 +362,9 @@ export default function UserManagement({
                                               {subscribers.map((s) => (
                                                 <CommandItem
                                                   key={s.id}
-                                                  value={s.id}
-                                                  onSelect={(currentValue) => {
-                                                    setSelectedSubscriberId(currentValue === selectedSubscriberId ? "" : currentValue);
+                                                  value={`${s.id} ${s.name}`}
+                                                  onSelect={() => {
+                                                    setSelectedSubscriberId(s.id);
                                                     setComboboxOpen(false);
                                                   }}
                                                   className="cursor-pointer"
@@ -490,5 +490,3 @@ export default function UserManagement({
     </div>
   );
 }
-
-    
