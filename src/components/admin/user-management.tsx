@@ -116,6 +116,7 @@ export default function UserManagement({
   const { toast } = useToast();
   const [comboboxOpen, setComboboxOpen] = useState(false);
   const [statusFilters, setStatusFilters] = useState<SubscriberStatus[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
 
   const handleSubscriptionSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -168,6 +169,7 @@ export default function UserManagement({
 
     setDialogOpen(false);
     setSelectedSubscriberId("new");
+    setSearchQuery("");
   };
   
   const handleAction = (action: string, subscriberId: string) => {
@@ -237,6 +239,8 @@ export default function UserManagement({
   const subscriberToRenew = subscribers.find(s => s.id === selectedSubscriberId);
   const isNewSubscriber = selectedSubscriberId === 'new';
 
+  const commandSubscribers = subscribers.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
+
 
   return (
     <div className="space-y-6">
@@ -300,7 +304,7 @@ export default function UserManagement({
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
-                 <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { setDialogOpen(isOpen); if (!isOpen) setSelectedSubscriberId("new");}}>
+                 <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { setDialogOpen(isOpen); if (!isOpen) { setSelectedSubscriberId("new"); setSearchQuery("")} }}>
                     <DialogTrigger asChild>
                         <Button>
                             <PlusCircle className="mr-2 h-4 w-4" />
@@ -330,16 +334,18 @@ export default function UserManagement({
                                         >
                                           <div className="flex items-center gap-2">
                                             {isNewSubscriber ? <UserPlus className="h-4 w-4 text-muted-foreground"/> : <User className="h-4 w-4 text-muted-foreground"/>}
-                                            {isNewSubscriber
-                                            ? "Nouvel Abonné"
-                                            : subscribers.find((s) => s.id === selectedSubscriberId)?.name}
+                                            {subscriberToRenew?.name || "Nouvel Abonné"}
                                           </div>
                                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                       </PopoverTrigger>
                                       <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                         <Command>
-                                          <CommandInput placeholder="Rechercher un abonné..." />
+                                          <CommandInput 
+                                            placeholder="Rechercher un abonné..."
+                                            value={searchQuery}
+                                            onValueChange={setSearchQuery}
+                                          />
                                           <CommandList>
                                             <CommandEmpty>Aucun abonné trouvé.</CommandEmpty>
                                             <CommandGroup>
@@ -347,6 +353,7 @@ export default function UserManagement({
                                                 value="new"
                                                 onSelect={() => {
                                                   setSelectedSubscriberId("new");
+                                                  setSearchQuery("");
                                                   setComboboxOpen(false);
                                                 }}
                                                 className="cursor-pointer"
@@ -359,13 +366,13 @@ export default function UserManagement({
                                                   />
                                                 Nouvel Abonné
                                               </CommandItem>
-                                              {subscribers.map((s) => (
+                                              {commandSubscribers.map((s) => (
                                                 <CommandItem
                                                   key={s.id}
-                                                  value={`${s.id} ${s.name}`}
+                                                  value={s.id}
                                                   onSelect={(currentValue) => {
-                                                    const selectedId = currentValue.split(' ')[0];
-                                                    setSelectedSubscriberId(selectedId === selectedSubscriberId ? "new" : selectedId);
+                                                    setSelectedSubscriberId(currentValue === selectedSubscriberId ? "new" : currentValue);
+                                                    setSearchQuery("");
                                                     setComboboxOpen(false);
                                                   }}
                                                   className="cursor-pointer"
@@ -491,3 +498,5 @@ export default function UserManagement({
     </div>
   );
 }
+
+    
