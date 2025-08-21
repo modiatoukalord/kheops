@@ -19,6 +19,7 @@ import { DateRange } from "react-day-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const initialContracts = [
     { id: "ctr-001", bookingId: "res-001", clientName: "KHEOPS Collective", status: "Signé" as const, lastUpdate: "2024-07-25", pdfFile: null, value: 100000, paymentStatus: "Payé" as const, type: "Prestation Studio" as const, startDate: new Date("2024-07-25"), endDate: new Date("2024-08-25") },
@@ -209,6 +210,99 @@ export default function ContractManagement() {
         URL.revokeObjectURL(url);
     };
 
+    const renderContractTable = (contractList: Contract[]) => (
+        <Table>
+            <TableHeader>
+                <TableRow>
+                    <TableHead>Contrat ID</TableHead>
+                    <TableHead>Client</TableHead>
+                    <TableHead>Durée</TableHead>
+                    <TableHead>Valeur</TableHead>
+                    <TableHead>Paiement</TableHead>
+                    <TableHead>Statut Contrat</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {contractList.length > 0 ? contractList.map(contract => {
+                    const statusInfo = contractStatusConfig[contract.status];
+                    const paymentInfo = paymentStatusConfig[contract.paymentStatus];
+                    return (
+                        <TableRow key={contract.id}>
+                            <TableCell>
+                                <div className="font-mono text-sm">{contract.id}</div>
+                            </TableCell>
+                            <TableCell>
+                                <div className="font-medium">{contract.clientName}</div>
+                            </TableCell>
+                            <TableCell>
+                                {contract.startDate ? (
+                                    <div>
+                                        <div className="font-medium text-sm">{format(contract.startDate, "d MMM yyyy", { locale: fr })}</div>
+                                        <div className="text-xs text-muted-foreground">au {contract.endDate ? format(contract.endDate, "d MMM yyyy", { locale: fr }) : '...'}</div>
+                                    </div>
+                                ) : (
+                                    <span className="text-muted-foreground text-xs">Non défini</span>
+                                )}
+                            </TableCell>
+                            <TableCell>
+                                <div className="font-semibold">{contract.value.toLocaleString('fr-FR')} FCFA</div>
+                                <div className="text-xs text-muted-foreground">{contract.type}</div>
+                            </TableCell>
+                            <TableCell>
+                                <Badge variant={paymentInfo.variant} className={paymentInfo.className}>{contract.paymentStatus}</Badge>
+                            </TableCell>
+                            <TableCell>
+                                <Badge variant={statusInfo.variant}>
+                                    <statusInfo.icon className="mr-2 h-3.5 w-3.5" />
+                                    {contract.status}
+                                </Badge>
+                            </TableCell>
+                            <TableCell className="text-right flex justify-end items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    disabled={!contract.pdfFile}
+                                    onClick={() => contract.pdfFile && handleViewPdf(contract.pdfFile)}
+                                >
+                                    <FileText className="h-4 w-4" />
+                                    <span className="sr-only">Voir le contrat</span>
+                                </Button>
+                                    <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => handleOpenEditDialog(contract)}>
+                                            <Edit className="mr-2 h-4 w-4" />
+                                            Modifier
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onClick={() => handleContractStatusChange(contract.id, "Envoyé")}><Send className="mr-2 h-4 w-4" />Marquer comme Envoyé</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleContractStatusChange(contract.id, "Signé")}><PenSquare className="mr-2 h-4 w-4" />Marquer comme Signé</DropdownMenuItem>
+                                        <DropdownMenuItem disabled={!contract.pdfFile} onClick={() => contract.pdfFile && handleDownloadPdf(contract.pdfFile)}><Download className="mr-2 h-4 w-4" />Télécharger PDF</DropdownMenuItem>
+                                        <DropdownMenuItem className="text-red-500" onClick={() => handleDeleteContract(contract.id)}>
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            Supprimer
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </TableCell>
+                        </TableRow>
+                    )
+                }) : (
+                    <TableRow>
+                        <TableCell colSpan={7} className="text-center h-24">Aucun contrat trouvé.</TableCell>
+                    </TableRow>
+                )}
+            </TableBody>
+        </Table>
+    );
+
+    const studioContracts = contracts.filter(c => c.type === "Prestation Studio");
+    const partnerContracts = contracts.filter(c => c.type !== "Prestation Studio");
+
+
     return (
         <Card>
             <CardHeader className="flex flex-row justify-between items-start">
@@ -323,92 +417,18 @@ export default function ContractManagement() {
                 </Dialog>
             </CardHeader>
             <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Contrat ID</TableHead>
-                            <TableHead>Client</TableHead>
-                            <TableHead>Durée</TableHead>
-                            <TableHead>Valeur</TableHead>
-                            <TableHead>Paiement</TableHead>
-                            <TableHead>Statut Contrat</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {contracts.length > 0 ? contracts.map(contract => {
-                            const statusInfo = contractStatusConfig[contract.status];
-                            const paymentInfo = paymentStatusConfig[contract.paymentStatus];
-                            return (
-                                <TableRow key={contract.id}>
-                                    <TableCell>
-                                        <div className="font-mono text-sm">{contract.id}</div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="font-medium">{contract.clientName}</div>
-                                    </TableCell>
-                                    <TableCell>
-                                        {contract.startDate ? (
-                                            <div>
-                                                <div className="font-medium text-sm">{format(contract.startDate, "d MMM yyyy", { locale: fr })}</div>
-                                                <div className="text-xs text-muted-foreground">au {contract.endDate ? format(contract.endDate, "d MMM yyyy", { locale: fr }) : '...'}</div>
-                                            </div>
-                                        ) : (
-                                            <span className="text-muted-foreground text-xs">Non défini</span>
-                                        )}
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="font-semibold">{contract.value.toLocaleString('fr-FR')} FCFA</div>
-                                        <div className="text-xs text-muted-foreground">{contract.type}</div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge variant={paymentInfo.variant} className={paymentInfo.className}>{contract.paymentStatus}</Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge variant={statusInfo.variant}>
-                                            <statusInfo.icon className="mr-2 h-3.5 w-3.5" />
-                                            {contract.status}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-right flex justify-end items-center gap-2">
-                                        <Button
-                                            variant="outline"
-                                            size="icon"
-                                            disabled={!contract.pdfFile}
-                                            onClick={() => contract.pdfFile && handleViewPdf(contract.pdfFile)}
-                                        >
-                                            <FileText className="h-4 w-4" />
-                                            <span className="sr-only">Voir le contrat</span>
-                                        </Button>
-                                         <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={() => handleOpenEditDialog(contract)}>
-                                                    <Edit className="mr-2 h-4 w-4" />
-                                                    Modifier
-                                                </DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem onClick={() => handleContractStatusChange(contract.id, "Envoyé")}><Send className="mr-2 h-4 w-4" />Marquer comme Envoyé</DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleContractStatusChange(contract.id, "Signé")}><PenSquare className="mr-2 h-4 w-4" />Marquer comme Signé</DropdownMenuItem>
-                                                <DropdownMenuItem disabled={!contract.pdfFile} onClick={() => contract.pdfFile && handleDownloadPdf(contract.pdfFile)}><Download className="mr-2 h-4 w-4" />Télécharger PDF</DropdownMenuItem>
-                                                <DropdownMenuItem className="text-red-500" onClick={() => handleDeleteContract(contract.id)}>
-                                                    <Trash2 className="mr-2 h-4 w-4" />
-                                                    Supprimer
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TableCell>
-                                </TableRow>
-                            )
-                        }) : (
-                            <TableRow>
-                                <TableCell colSpan={7} className="text-center h-24">Aucun contrat trouvé.</TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
+                <Tabs defaultValue="studio">
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="studio">Contrats Studio</TabsTrigger>
+                        <TabsTrigger value="partners">Contrats Partenaires</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="studio">
+                        {renderContractTable(studioContracts)}
+                    </TabsContent>
+                    <TabsContent value="partners">
+                        {renderContractTable(partnerContracts)}
+                    </TabsContent>
+                </Tabs>
             </CardContent>
              {contracts.length === 0 && (
                 <CardFooter className="justify-center">
@@ -520,3 +540,5 @@ export default function ContractManagement() {
         </Card>
     );
 }
+
+    
