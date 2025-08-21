@@ -1,42 +1,40 @@
 "use client";
 
-import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { BookOpen, CalendarDays } from "lucide-react";
+import { BookOpen, CalendarDays, BookCopy, FileText } from "lucide-react";
+import React from "react";
 
 const culturalContent = [
   {
     title: "Le Labyrinthe d'Osiris",
-    category: "Livre",
-    image: "https://placehold.co/400x600.png",
-    hint: "ancient scroll",
+    category: "Livre" as const,
     description: "Plongez dans un thriller mystique au cœur de l'Égypte ancienne.",
   },
   {
     title: "Pharaoh's Legacy Vol. 1",
-    category: "Manga",
-    image: "https://placehold.co/400x600.png",
-    hint: "manga cover",
+    category: "Manga" as const,
     description: "Une aventure épique où des lycéens réveillent un pouvoir ancestral.",
   },
   {
     title: "Les Chroniques de Thot",
-    category: "Livre",
-    image: "https://placehold.co/400x600.png",
-    hint: "egyptian book",
+    category: "Livre" as const,
     description: "Découvrez les secrets de la sagesse et de la magie égyptienne.",
   },
   {
     title: "Article: L'art du Hiéroglyphe",
-    category: "Article",
-    image: "https://placehold.co/400x600.png",
-    hint: "hieroglyphics wall",
+    category: "Article" as const,
     description: "Une analyse approfondie de l'écriture sacrée des pharaons.",
   },
 ];
+
+const categoryIcons: { [key in typeof culturalContent[number]['category']]: React.ElementType } = {
+    Livre: BookOpen,
+    Manga: BookCopy,
+    Article: FileText,
+};
 
 const events = [
   {
@@ -96,21 +94,26 @@ export default function CultureHub() {
           <h2 className="text-3xl font-semibold font-headline">Catalogue de Contenus</h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {culturalContent.map((item) => (
-            <Card key={item.title} className="bg-card border-border/50 overflow-hidden group transition-all duration-300 hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-1">
-              <CardHeader className="p-0">
-                <Image src={item.image} alt={item.title} width={400} height={600} className="w-full h-60 object-cover transition-transform duration-300 group-hover:scale-105" data-ai-hint={item.hint}/>
-              </CardHeader>
-              <CardContent className="p-4 space-y-2">
-                <Badge variant="secondary" className="text-accent-foreground bg-accent/20 border-accent/50">{item.category}</Badge>
-                <CardTitle className="text-lg font-semibold text-primary-foreground">{item.title}</CardTitle>
-                <CardDescription className="text-muted-foreground text-sm">{item.description}</CardDescription>
-                <Button variant="outline" className="w-full mt-2 border-primary/50 text-primary hover:bg-primary/10" onClick={() => handleDiscover(item.title)}>
-                  Découvrir
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+          {culturalContent.map((item) => {
+            const Icon = categoryIcons[item.category];
+            return (
+                <Card key={item.title} className="bg-card border-border/50 flex flex-col justify-between overflow-hidden group transition-all duration-300 hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-1">
+                <CardHeader className="items-center justify-center flex-grow p-6">
+                    <div className="p-5 rounded-full bg-primary/10 text-primary transition-all duration-300 group-hover:scale-110 group-hover:bg-primary/20">
+                      <Icon className="w-16 h-16" />
+                    </div>
+                </CardHeader>
+                <CardContent className="p-4 space-y-2 text-center">
+                    <Badge variant="secondary" className="text-accent-foreground bg-accent/20 border-accent/50">{item.category}</Badge>
+                    <CardTitle className="text-lg font-semibold text-primary-foreground">{item.title}</CardTitle>
+                    <CardDescription className="text-muted-foreground text-sm">{item.description}</CardDescription>
+                    <Button variant="outline" className="w-full mt-2 border-primary/50 text-primary hover:bg-primary/10" onClick={() => handleDiscover(item.title)}>
+                    Découvrir
+                    </Button>
+                </CardContent>
+                </Card>
+            )
+          })}
         </div>
       </section>
 
