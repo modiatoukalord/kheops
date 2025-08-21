@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, Search, Users, CreditCard, Activity, DollarSign, Filter, Phone, CalendarOff, PlusCircle, Check, ChevronsUpDown, CheckCircle, Trash2 } from "lucide-react";
+import { MoreHorizontal, Search, Users, CreditCard, Activity, DollarSign, Filter, Phone, CalendarOff, PlusCircle, Check, ChevronsUpDown, CheckCircle, Trash2, Clock } from "lucide-react";
 import { addMonths, parse, format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import UserProfile from "./user-profile";
@@ -229,7 +229,7 @@ export default function UserManagement({
   const stats = [
     { title: "Abonnés Totaux", value: subscribers.length.toString(), icon: Users },
     { title: "Abonnés Actifs", value: subscribers.filter(s => s.status === 'Actif').length.toString(), icon: CreditCard },
-    { title: "Nouveaux / mois", value: "12", icon: Activity },
+    { title: "Abonnés en attente", value: subscribers.filter(s => s.status === 'En attente').length.toString(), icon: Clock },
     { title: "Revenu total des abonnements", value: `${totalSubscriptionRevenue.toLocaleString('fr-FR')} FCFA`, icon: DollarSign },
   ];
   
@@ -343,8 +343,8 @@ export default function UserManagement({
                                             <CommandGroup>
                                               <CommandItem
                                                 value="new"
-                                                onSelect={(currentValue) => {
-                                                  setSelectedSubscriberId(currentValue === "new" ? "new" : "");
+                                                onSelect={() => {
+                                                  setSelectedSubscriberId("new");
                                                   setComboboxOpen(false);
                                                 }}
                                                 className="cursor-pointer"
@@ -361,7 +361,7 @@ export default function UserManagement({
                                                 <CommandItem
                                                   key={s.id}
                                                   value={s.id}
-                                                  onSelect={(currentValue) => {
+                                                  onSelect={() => {
                                                     setSelectedSubscriberId(s.id === selectedSubscriberId ? "" : s.id);
                                                     setComboboxOpen(false);
                                                   }}
