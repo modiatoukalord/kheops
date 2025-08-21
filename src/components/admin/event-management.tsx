@@ -22,30 +22,38 @@ export const initialEvents = [
   {
     id: "evt-001",
     title: "Tournoi e-sport: La Fureur d'Anubis",
-    date: new Date("2024-07-30T10:00:00"),
+    startDate: new Date("2024-07-30T10:00:00"),
+    endDate: new Date("2024-07-31T18:00:00"),
     category: "Compétition",
   },
   {
     id: "evt-002",
     title: "Conférence: L'Influence de l'Égypte",
-    date: new Date("2024-08-15T15:00:00"),
+    startDate: new Date("2024-08-15T15:00:00"),
     category: "Conférence",
   },
   {
     id: "evt-003",
     title: "Atelier d'écriture de Manga",
-    date: new Date("2024-09-02T14:00:00"),
+    startDate: new Date("2024-09-02T14:00:00"),
     category: "Atelier",
   },
     {
     id: "evt-004",
     title: "Lancement KHEOPS WEAR",
-    date: new Date("2024-08-20T18:00:00"),
+    startDate: new Date("2024-08-20T18:00:00"),
     category: "Lancement",
   },
 ];
 
-export type AppEvent = (typeof initialEvents)[0];
+export type AppEvent = {
+  id: string;
+  title: string;
+  startDate: Date;
+  endDate?: Date;
+  category: string;
+};
+
 
 const categoryColors: { [key: string]: string } = {
   Compétition: "bg-red-500/80 text-white",
@@ -65,8 +73,8 @@ export default function EventManagement({ events, setEvents }: EventManagementPr
   const [isDialogOpen, setDialogOpen] = useState(false);
 
   const upcomingEvents = events
-    .filter(event => event.date >= new Date())
-    .sort((a,b) => a.date.getTime() - b.date.getTime())
+    .filter(event => (event.endDate || event.startDate) >= new Date())
+    .sort((a,b) => a.startDate.getTime() - b.startDate.getTime())
     .slice(0, 5);
     
   const handleAddEvent = (event: React.FormEvent<HTMLFormElement>) => {
@@ -78,7 +86,8 @@ export default function EventManagement({ events, setEvents }: EventManagementPr
         const newEvent: AppEvent = {
             id: `evt-${Date.now()}`,
             title,
-            date: date.from,
+            startDate: date.from,
+            endDate: date.to,
             category: formData.get("category") as string,
         };
         setEvents(prev => [newEvent, ...prev]);
@@ -96,6 +105,21 @@ export default function EventManagement({ events, setEvents }: EventManagementPr
         })
     }
   };
+  
+  const getEventDatesForCalendar = () => {
+    return events.flatMap(e => {
+        if (e.endDate) {
+            const dates = [];
+            let currentDate = new Date(e.startDate);
+            while(currentDate <= e.endDate) {
+                dates.push(new Date(currentDate));
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            return dates;
+        }
+        return e.startDate;
+    });
+  }
 
   return (
     <div className="grid md:grid-cols-3 gap-6">
@@ -153,11 +177,11 @@ export default function EventManagement({ events, setEvents }: EventManagementPr
                                             {date?.from ? (
                                             date.to ? (
                                                 <>
-                                                {format(date.from, "LLL dd, y", { locale: fr })} -{" "}
-                                                {format(date.to, "LLL dd, y", { locale: fr })}
+                                                {format(date.from, "d LLL, y", { locale: fr })} -{" "}
+                                                {format(date.to, "d LLL, y", { locale: fr })}
                                                 </>
                                             ) : (
-                                                format(date.from, "LLL dd, y", { locale: fr })
+                                                format(date.from, "d LLL, y", { locale: fr })
                                             )
                                             ) : (
                                             <span>Choisir une ou plusieurs dates</span>
@@ -187,14 +211,13 @@ export default function EventManagement({ events, setEvents }: EventManagementPr
             </CardHeader>
           <CardContent className="flex justify-center p-2 sm:p-6">
             <Calendar
-              mode="range"
-              selected={date}
-              onSelect={setDate}
+              mode="multiple"
+              selected={getEventDatesForCalendar()}
               className="rounded-md border"
               locale={fr}
               numberOfMonths={2}
               modifiers={{
-                event: events.map(e => e.date),
+                event: getEventDatesForCalendar(),
               }}
               modifiersStyles={{
                 event: {
@@ -215,30 +238,39 @@ export default function EventManagement({ events, setEvents }: EventManagementPr
           <CardContent>
             <div className="space-y-4">
               {upcomingEvents.length > 0 ? (
-                upcomingEvents.map((event) => (
-                  <div key={event.id} className="flex items-start justify-between p-3 rounded-lg bg-card/50">
-                    <div className="flex-grow">
-                      <p className="font-semibold">{event.title}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {event.date.toLocaleDateString("fr-FR", {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        })} - {event.date.toLocaleTimeString("fr-FR", { hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                      <Badge className={`${categoryColors[event.category]} mt-1 border-0`}>{event.category}</Badge>
-                    </div>
-                    <div className="flex gap-2 ml-2">
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-destructive hover:text-destructive-foreground">
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
-                    </div>
-                  </div>
-                ))
+                upcomingEvents.map((event) => {
+                    const formatEventDate = (event: AppEvent) => {
+                        const startDate = format(event.startDate, "d MMM yyyy", { locale: fr });
+                        if (event.endDate) {
+                            const endDate = format(event.endDate, "d MMM yyyy", { locale: fr });
+                            if (startDate === endDate) {
+                                return `${startDate} à ${format(event.startDate, "HH:mm")}`;
+                            }
+                            return `Du ${startDate} au ${endDate}`;
+                        }
+                        return `${startDate} à ${format(event.startDate, "HH:mm")}`;
+                    };
+
+                    return (
+                      <div key={event.id} className="flex items-start justify-between p-3 rounded-lg bg-card/50">
+                        <div className="flex-grow">
+                          <p className="font-semibold">{event.title}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {formatEventDate(event)}
+                          </p>
+                          <Badge className={`${categoryColors[event.category]} mt-1 border-0`}>{event.category}</Badge>
+                        </div>
+                        <div className="flex gap-2 ml-2">
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-destructive hover:text-destructive-foreground">
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </div>
+                      </div>
+                    )
+                })
               ) : (
                 <p className="text-muted-foreground text-center">Aucun événement à venir.</p>
               )}
@@ -252,5 +284,3 @@ export default function EventManagement({ events, setEvents }: EventManagementPr
     </div>
   );
 }
-
-    

@@ -9,6 +9,8 @@ import { BookOpen, CalendarDays, BookCopy, FileText, Film, Puzzle } from "lucide
 import React from "react";
 import type { Content } from "@/components/admin/content-management";
 import type { AppEvent } from "@/components/admin/event-management";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 type CulturalContent = Pick<Content, 'title' | 'type'> & { description: string };
 
@@ -47,8 +49,8 @@ export default function CultureHub({ content, events }: CultureHubProps) {
     }));
     
   const upcomingEvents = events
-    .filter(event => event.date >= new Date())
-    .sort((a,b) => a.date.getTime() - b.date.getTime());
+    .filter(event => (event.endDate || event.startDate) >= new Date())
+    .sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
 
 
   const handleMembership = () => {
@@ -118,17 +120,28 @@ export default function CultureHub({ content, events }: CultureHubProps) {
         </div>
         <div className="space-y-4">
           {upcomingEvents.map((event) => {
-            const eventDate = event.date.toLocaleDateString("fr-FR", { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
+            const formatEventDate = (event: AppEvent) => {
+                const startDate = format(event.startDate, "d MMM", { locale: fr });
+                if (event.endDate) {
+                    const endDate = format(event.endDate, "d MMM yyyy", { locale: fr });
+                    if (event.startDate.getMonth() === event.endDate.getMonth()) {
+                         return `Du ${format(event.startDate, "d")} au ${endDate}`;
+                    }
+                    return `Du ${startDate} au ${endDate}`;
+                }
+                return `Le ${startDate} ${format(event.startDate, "yyyy")}`;
+            };
+
             return (
              <Card key={event.title} className="bg-card border-border/50 flex flex-col md:flex-row items-center p-4 gap-4 transition-all duration-300 hover:border-accent">
                 <div className="flex-shrink-0 text-center md:text-left">
-                    <p className="text-lg font-bold text-primary">{eventDate.split(' ')[0]} {eventDate.split(' ')[1]}</p>
-                    <p className="text-sm text-muted-foreground">{eventDate.split(' ')[2]}</p>
+                    <p className="text-lg font-bold text-primary">{format(event.startDate, "d MMM", { locale: fr }).toUpperCase()}</p>
+                    <p className="text-sm text-muted-foreground">{format(event.startDate, "yyyy")}</p>
                 </div>
                 <div className="border-l border-border/50 h-16 hidden md:block mx-4"></div>
                 <div className="flex-grow text-center md:text-left">
                     <h3 className="text-xl font-semibold">{event.title}</h3>
-                    <p className="text-muted-foreground">{event.category}</p>
+                    <p className="text-muted-foreground">{formatEventDate(event)}</p>
                 </div>
                 <Button className="flex-shrink-0 bg-accent text-accent-foreground hover:bg-accent/80" onClick={() => handleRegistration(event.title)}>S'inscrire</Button>
              </Card>
@@ -138,5 +151,3 @@ export default function CultureHub({ content, events }: CultureHubProps) {
     </div>
   );
 }
-
-    
