@@ -97,12 +97,16 @@ export default function ContractManagement() {
         setPdfFile(null);
     };
 
-    const handleEditContract = () => {
+    const handleEditContract = (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
         if (!editingContract) return;
+
+        const formData = new FormData(event.currentTarget);
+        const clientName = formData.get("clientName") as string;
 
         setContracts(contracts.map(c => 
             c.id === editingContract.id 
-            ? { ...c, pdfFile: pdfFile, lastUpdate: format(new Date(), 'yyyy-MM-dd') } 
+            ? { ...c, clientName, pdfFile: pdfFile, lastUpdate: format(new Date(), 'yyyy-MM-dd') } 
             : c
         ));
 
@@ -287,30 +291,42 @@ export default function ContractManagement() {
             )}
              <Dialog open={isEditDialogOpen} onOpenChange={setEditDialogOpen}>
                 <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Modifier le contrat</DialogTitle>
-                        <DialogDescription>Ajoutez ou remplacez le fichier PDF pour le contrat de {editingContract?.clientName}.</DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="pdf-upload-edit">PDF du Contrat</Label>
-                            <div className="flex items-center gap-2">
-                                <FileUp className="h-5 w-5 text-muted-foreground" />
+                    <form onSubmit={handleEditContract}>
+                        <DialogHeader>
+                            <DialogTitle>Modifier le contrat</DialogTitle>
+                            <DialogDescription>Mettez à jour le nom du client ou le fichier PDF pour le contrat de {editingContract?.clientName}.</DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="clientName-edit">Nom du Client</Label>
                                 <Input 
-                                    id="pdf-upload-edit" 
-                                    type="file" 
-                                    accept="application/pdf"
-                                    onChange={(e) => setPdfFile(e.target.files ? e.target.files[0] : null)}
-                                    className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                                    id="clientName-edit" 
+                                    name="clientName"
+                                    defaultValue={editingContract?.clientName}
+                                    required 
                                 />
                             </div>
-                            {editingContract?.pdfFile && <p className="text-sm text-muted-foreground mt-2">Fichier actuel: {editingContract.pdfFile.name}</p>}
+                            <div className="space-y-2">
+                                <Label htmlFor="pdf-upload-edit">PDF du Contrat</Label>
+                                <div className="flex items-center gap-2">
+                                    <FileUp className="h-5 w-5 text-muted-foreground" />
+                                    <Input 
+                                        id="pdf-upload-edit" 
+                                        type="file" 
+                                        accept="application/pdf"
+                                        onChange={(e) => setPdfFile(e.target.files ? e.target.files[0] : null)}
+                                        className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                                    />
+                                </div>
+                                {pdfFile && <p className="text-sm text-muted-foreground mt-2">Nouveau fichier: {pdfFile.name}</p>}
+                                {!pdfFile && editingContract?.pdfFile && <p className="text-sm text-muted-foreground mt-2">Fichier actuel: {editingContract.pdfFile.name}</p>}
+                            </div>
                         </div>
-                    </div>
-                    <DialogFooter>
-                        <Button onClick={() => setEditDialogOpen(false)} variant="ghost">Annuler</Button>
-                        <Button onClick={handleEditContract}>Enregistrer les modifications</Button>
-                    </DialogFooter>
+                        <DialogFooter>
+                            <Button onClick={() => setEditDialogOpen(false)} variant="ghost" type="button">Annuler</Button>
+                            <Button type="submit">Enregistrer les modifications</Button>
+                        </DialogFooter>
+                    </form>
                 </DialogContent>
             </Dialog>
         </Card>
