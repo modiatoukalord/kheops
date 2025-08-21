@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy, Trash2, Minus, MoreHorizontal, Edit, Eye, Printer, Pyramid } from "lucide-react";
+import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy, Trash2, Minus, MoreHorizontal, Edit, Eye, Printer, Pyramid, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -26,13 +26,16 @@ import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { format, differenceInMinutes, formatDistanceStrict, parse } from "date-fns";
+import { format, differenceInMinutes, formatDistanceStrict, parse, isSameDay } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useFieldArray, useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 
 export type ClientActivity = {
@@ -94,6 +97,7 @@ type ActivityFormValues = z.infer<typeof activityFormSchema>;
 
 export default function ActivityLog({ activities, setActivities }: ActivityLogProps) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [dateFilter, setDateFilter] = useState<Date | undefined>();
   const [isActivityDialogOpen, setActivityDialogOpen] = useState(false);
   const [isDetailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<ClientActivity | null>(null);
@@ -121,9 +125,13 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
 
 
   const filteredActivities = activities.filter(
-    (activity) =>
-      activity.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      activity.description.toLowerCase().includes(searchTerm.toLowerCase())
+    (activity) => {
+      const matchesSearch =
+        activity.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        activity.description.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesDate = !dateFilter || isSameDay(activity.date, dateFilter);
+      return matchesSearch && matchesDate;
+    }
   ).sort((a, b) => b.date.getTime() - a.date.getTime());
   
   const totalRevenue = activities.reduce((acc, activity) => acc + activity.amount, 0);
@@ -286,6 +294,24 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                     onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
+                 <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant={"outline"} className={cn("w-[200px] justify-start text-left font-normal", !dateFilter && "text-muted-foreground")}>
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dateFilter ? format(dateFilter, "PPP", { locale: fr }) : <span>Filtrer par date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={dateFilter}
+                        onSelect={setDateFilter}
+                        initialFocus
+                        locale={fr}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  {dateFilter && <Button variant="ghost" size="icon" onClick={() => setDateFilter(undefined)}><X className="h-4 w-4"/></Button>}
                 <Dialog open={isActivityDialogOpen} onOpenChange={(isOpen) => {
                     setActivityDialogOpen(isOpen);
                     if (!isOpen) {
@@ -296,7 +322,7 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                     <DialogTrigger asChild>
                         <Button onClick={() => handleOpenDialog(null)}>
                             <PlusCircle className="mr-2 h-4 w-4"/>
-                            Ajouter une activité
+                            Ajouter
                         </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-3xl">
@@ -526,3 +552,5 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
     </div>
   );
 }
+
+    
