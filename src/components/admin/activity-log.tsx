@@ -180,7 +180,19 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="duration">Durée (Optionnel)</Label>
-                                    <Input id="duration" name="duration" placeholder="Ex: 2 heures" />
+                                    <Select name="duration">
+                                        <SelectTrigger id="duration">
+                                            <SelectValue placeholder="Sélectionner une durée" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="30 minutes">30 minutes</SelectItem>
+                                            <SelectItem value="1 heure">1 heure</SelectItem>
+                                            <SelectItem value="1 heure 30">1 heure 30</SelectItem>
+                                            <SelectItem value="2 heures">2 heures</SelectItem>
+                                            <SelectItem value="3 heures">3 heures</SelectItem>
+                                            <SelectItem value="4 heures">4 heures</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                             </div>
                             <DialogFooter>
