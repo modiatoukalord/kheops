@@ -363,8 +363,9 @@ export default function UserManagement({
                                                 <CommandItem
                                                   key={s.id}
                                                   value={`${s.id} ${s.name}`}
-                                                  onSelect={() => {
-                                                    setSelectedSubscriberId(s.id);
+                                                  onSelect={(currentValue) => {
+                                                    const selectedId = currentValue.split(' ')[0];
+                                                    setSelectedSubscriberId(selectedId === selectedSubscriberId ? "new" : selectedId);
                                                     setComboboxOpen(false);
                                                   }}
                                                   className="cursor-pointer"
