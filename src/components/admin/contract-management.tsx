@@ -64,7 +64,8 @@ export default function ContractManagement() {
         });
     };
     
-    const handleAddContract = () => {
+    const handleAddContract = (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
         if (!selectedBookingId) {
              toast({
                 title: "Erreur",
@@ -106,7 +107,7 @@ export default function ContractManagement() {
 
         setContracts(contracts.map(c => 
             c.id === editingContract.id 
-            ? { ...c, clientName, pdfFile: pdfFile, lastUpdate: format(new Date(), 'yyyy-MM-dd') } 
+            ? { ...c, clientName, pdfFile: pdfFile ?? c.pdfFile, lastUpdate: format(new Date(), 'yyyy-MM-dd') } 
             : c
         ));
 
@@ -171,46 +172,48 @@ export default function ContractManagement() {
                         </Button>
                     </DialogTrigger>
                     <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Créer un nouveau contrat</DialogTitle>
-                            <DialogDescription>Sélectionnez une réservation et ajoutez un PDF pour générer un nouveau contrat.</DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                           <div className="space-y-2">
-                                <Label htmlFor="booking">Réservation</Label>
-                                <Select onValueChange={setSelectedBookingId}>
-                                    <SelectTrigger id="booking">
-                                        <SelectValue placeholder="Sélectionner une réservation..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {bookingsWithoutContract.length > 0 ? (
-                                            bookingsWithoutContract.map(booking => (
-                                                <SelectItem key={booking.id} value={booking.id}>{booking.artistName} - (ID: {booking.id})</SelectItem>
-                                            ))
-                                        ) : (
-                                            <SelectItem value="none" disabled>Aucune réservation sans contrat</SelectItem>
-                                        )}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                             <div className="space-y-2">
-                                <Label htmlFor="pdf-upload">PDF du Contrat (Optionnel)</Label>
-                                <div className="flex items-center gap-2">
-                                    <FileUp className="h-5 w-5 text-muted-foreground" />
-                                    <Input 
-                                        id="pdf-upload" 
-                                        type="file" 
-                                        accept="application/pdf"
-                                        onChange={(e) => setPdfFile(e.target.files ? e.target.files[0] : null)}
-                                        className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
-                                    />
+                        <form onSubmit={handleAddContract}>
+                            <DialogHeader>
+                                <DialogTitle>Créer un nouveau contrat</DialogTitle>
+                                <DialogDescription>Sélectionnez une réservation et ajoutez un PDF pour générer un nouveau contrat.</DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                               <div className="space-y-2">
+                                    <Label htmlFor="booking">Réservation</Label>
+                                    <Select onValueChange={setSelectedBookingId}>
+                                        <SelectTrigger id="booking">
+                                            <SelectValue placeholder="Sélectionner une réservation..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {bookingsWithoutContract.length > 0 ? (
+                                                bookingsWithoutContract.map(booking => (
+                                                    <SelectItem key={booking.id} value={booking.id}>{booking.artistName} - (ID: {booking.id})</SelectItem>
+                                                ))
+                                            ) : (
+                                                <SelectItem value="none" disabled>Aucune réservation sans contrat</SelectItem>
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                 <div className="space-y-2">
+                                    <Label htmlFor="pdf-upload">PDF du Contrat (Optionnel)</Label>
+                                    <div className="flex items-center gap-2">
+                                        <FileUp className="h-5 w-5 text-muted-foreground" />
+                                        <Input 
+                                            id="pdf-upload" 
+                                            type="file" 
+                                            accept="application/pdf"
+                                            onChange={(e) => setPdfFile(e.target.files ? e.target.files[0] : null)}
+                                            className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <DialogFooter>
-                            <Button onClick={() => setAddDialogOpen(false)} variant="ghost">Annuler</Button>
-                            <Button onClick={handleAddContract} disabled={!selectedBookingId}>Créer le contrat</Button>
-                        </DialogFooter>
+                            <DialogFooter>
+                                <Button onClick={() => setAddDialogOpen(false)} variant="ghost" type="button">Annuler</Button>
+                                <Button type="submit" disabled={!selectedBookingId}>Créer le contrat</Button>
+                            </DialogFooter>
+                        </form>
                     </DialogContent>
                 </Dialog>
             </CardHeader>
