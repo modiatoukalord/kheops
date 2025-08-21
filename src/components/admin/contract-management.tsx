@@ -104,6 +104,12 @@ export default function ContractManagement() {
         });
     };
 
+    const handleViewPdf = (file: File) => {
+        const url = URL.createObjectURL(file);
+        window.open(url, '_blank');
+        URL.revokeObjectURL(url);
+    };
+    
     const handleDownloadPdf = (file: File) => {
         const url = URL.createObjectURL(file);
         const a = document.createElement('a');
@@ -207,7 +213,16 @@ export default function ContractManagement() {
                                             {contract.status}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="text-right">
+                                    <TableCell className="text-right flex justify-end items-center gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            disabled={!contract.pdfFile}
+                                            onClick={() => contract.pdfFile && handleViewPdf(contract.pdfFile)}
+                                        >
+                                            <FileText className="h-4 w-4" />
+                                            <span className="sr-only">Voir le contrat</span>
+                                        </Button>
                                          <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
