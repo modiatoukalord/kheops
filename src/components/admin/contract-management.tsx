@@ -6,11 +6,11 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, Send, PenSquare, Download, Clock, CheckCircle2, FileText, PlusCircle, Trash2, FileUp } from "lucide-react";
+import { MoreHorizontal, Send, PenSquare, Download, Clock, CheckCircle2, FileText, PlusCircle, Trash2, FileUp, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
@@ -49,7 +49,9 @@ type Contract = {
 
 export default function ContractManagement() {
     const [contracts, setContracts] = useState<Contract[]>(initialContracts);
-    const [isDialogOpen, setDialogOpen] = useState(false);
+    const [isAddDialogOpen, setAddDialogOpen] = useState(false);
+    const [isEditDialogOpen, setEditDialogOpen] = useState(false);
+    const [editingContract, setEditingContract] = useState<Contract | null>(null);
     const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
     const [pdfFile, setPdfFile] = useState<File | null>(null);
     const { toast } = useToast();
@@ -90,9 +92,34 @@ export default function ContractManagement() {
             description: `Le contrat pour ${booking.artistName} a été créé.`,
         });
 
-        setDialogOpen(false);
+        setAddDialogOpen(false);
         setSelectedBookingId(null);
         setPdfFile(null);
+    };
+
+    const handleEditContract = () => {
+        if (!editingContract) return;
+
+        setContracts(contracts.map(c => 
+            c.id === editingContract.id 
+            ? { ...c, pdfFile: pdfFile, lastUpdate: format(new Date(), 'yyyy-MM-dd') } 
+            : c
+        ));
+
+        toast({
+            title: "Contrat mis à jour",
+            description: `Le contrat pour ${editingContract.clientName} a été mis à jour.`,
+        });
+
+        setEditDialogOpen(false);
+        setEditingContract(null);
+        setPdfFile(null);
+    };
+
+    const handleOpenEditDialog = (contract: Contract) => {
+        setEditingContract(contract);
+        setPdfFile(contract.pdfFile);
+        setEditDialogOpen(true);
     };
     
      const handleDeleteContract = (contractId: string) => {
@@ -132,7 +159,7 @@ export default function ContractManagement() {
                     <CardTitle>Gestion des Contrats</CardTitle>
                     <CardDescription>Suivez et mettez à jour le statut des contrats de réservation.</CardDescription>
                 </div>
-                 <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
+                 <Dialog open={isAddDialogOpen} onOpenChange={setAddDialogOpen}>
                     <DialogTrigger asChild>
                         <Button>
                             <PlusCircle className="mr-2 h-4 w-4" />
@@ -177,7 +204,7 @@ export default function ContractManagement() {
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button onClick={() => setDialogOpen(false)} variant="ghost">Annuler</Button>
+                            <Button onClick={() => setAddDialogOpen(false)} variant="ghost">Annuler</Button>
                             <Button onClick={handleAddContract} disabled={!selectedBookingId}>Créer le contrat</Button>
                         </DialogFooter>
                     </DialogContent>
@@ -228,6 +255,11 @@ export default function ContractManagement() {
                                                 <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onClick={() => handleOpenEditDialog(contract)}>
+                                                    <Edit className="mr-2 h-4 w-4" />
+                                                    Modifier
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
                                                 <DropdownMenuItem onClick={() => handleContractStatusChange(contract.id, "Envoyé")}><Send className="mr-2 h-4 w-4" />Marquer comme Envoyé</DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => handleContractStatusChange(contract.id, "Signé")}><PenSquare className="mr-2 h-4 w-4" />Marquer comme Signé</DropdownMenuItem>
                                                 <DropdownMenuItem disabled={!contract.pdfFile} onClick={() => contract.pdfFile && handleDownloadPdf(contract.pdfFile)}><Download className="mr-2 h-4 w-4" />Télécharger PDF</DropdownMenuItem>
@@ -253,6 +285,34 @@ export default function ContractManagement() {
                     <p className="text-sm text-muted-foreground">Cliquez sur "Ajouter un contrat" pour commencer.</p>
                 </CardFooter>
             )}
+             <Dialog open={isEditDialogOpen} onOpenChange={setEditDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Modifier le contrat</DialogTitle>
+                        <DialogDescription>Ajoutez ou remplacez le fichier PDF pour le contrat de {editingContract?.clientName}.</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="pdf-upload-edit">PDF du Contrat</Label>
+                            <div className="flex items-center gap-2">
+                                <FileUp className="h-5 w-5 text-muted-foreground" />
+                                <Input 
+                                    id="pdf-upload-edit" 
+                                    type="file" 
+                                    accept="application/pdf"
+                                    onChange={(e) => setPdfFile(e.target.files ? e.target.files[0] : null)}
+                                    className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                                />
+                            </div>
+                            {editingContract?.pdfFile && <p className="text-sm text-muted-foreground mt-2">Fichier actuel: {editingContract.pdfFile.name}</p>}
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button onClick={() => setEditDialogOpen(false)} variant="ghost">Annuler</Button>
+                        <Button onClick={handleEditContract}>Enregistrer les modifications</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </Card>
     );
 }
