@@ -18,14 +18,36 @@ import { initialBookings, Booking } from "@/components/admin/booking-schedule";
 import { initialTransactions } from "@/components/admin/financial-management";
 import { format } from "date-fns";
 
-const initialActivities: ClientActivity[] = initialBookings.map((booking, index) => ({
-    id: `act-${booking.id}`,
-    clientName: booking.artistName,
-    description: `Réservation: ${booking.projectName}`,
-    category: "Réservation Studio",
-    amount: booking.amount,
-    date: booking.date,
-}));
+const initialActivities: ClientActivity[] = [
+    ...initialBookings.map((booking, index) => ({
+        id: `act-${booking.id}`,
+        clientName: booking.artistName,
+        description: `Réservation: ${booking.projectName}`,
+        category: "Réservation Studio" as const,
+        amount: booking.amount,
+        date: booking.date,
+    })),
+     {
+        id: "act-livre-001",
+        clientName: "Amina Dubois",
+        phone: "+242 06 123 4567",
+        description: "Achat: Le Labyrinthe d'Osiris",
+        category: "Livre" as const,
+        amount: 12000,
+        date: new Date("2024-07-28"),
+        duration: undefined,
+    },
+    {
+        id: "act-jeu-001",
+        clientName: "Binta Traoré",
+        phone: "+242 05 987 6543",
+        description: "Session de jeu: 2h sur console",
+        category: "Session de jeu" as const,
+        amount: 2000,
+        date: new Date("2024-07-29"),
+        duration: "2 heures",
+    }
+];
 
 
 type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities";
@@ -249,5 +271,3 @@ export default function AdminHub() {
     </div>
   );
 }
-
-    

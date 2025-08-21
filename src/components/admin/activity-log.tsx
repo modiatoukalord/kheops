@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock } from "lucide-react";
+import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -28,7 +28,7 @@ export type ClientActivity = {
   clientName: string;
   phone?: string;
   description: string;
-  category: "Achat de livre" | "Session de jeu" | "Réservation Studio" | "Autre";
+  category: "Livre" | "Manga" | "Jeu de société" | "Session de jeu" | "Réservation Studio" | "Autre";
   amount: number;
   date: Date;
   duration?: string;
@@ -40,7 +40,9 @@ interface ActivityLogProps {
 }
 
 const categoryConfig = {
-    "Achat de livre": { icon: Book, color: "bg-blue-500/20 text-blue-700 border-blue-500/30" },
+    "Livre": { icon: Book, color: "bg-blue-500/20 text-blue-700 border-blue-500/30" },
+    "Manga": { icon: BookCopy, color: "bg-orange-500/20 text-orange-700 border-orange-500/30" },
+    "Jeu de société": { icon: Puzzle, color: "bg-green-500/20 text-green-700 border-green-500/30" },
     "Session de jeu": { icon: Gamepad2, color: "bg-red-500/20 text-red-700 border-red-500/30" },
     "Réservation Studio": { icon: MicVocal, color: "bg-purple-500/20 text-purple-700 border-purple-500/30" },
     "Autre": { icon: DollarSign, color: "bg-gray-500/20 text-gray-700 border-gray-500/30" },
@@ -74,7 +76,9 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
     if (startTime && endTime) {
         const start = new Date(`1970-01-01T${startTime}`);
         const end = new Date(`1970-01-01T${endTime}`);
-        duration = formatDistanceStrict(start, end, { locale: fr, unit: 'minute' });
+        if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+            duration = formatDistanceStrict(start, end, { locale: fr, unit: 'minute' });
+        }
     }
 
 
@@ -272,5 +276,3 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
     </div>
   );
 }
-
-    
