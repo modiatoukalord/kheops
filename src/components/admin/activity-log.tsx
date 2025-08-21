@@ -20,7 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
+import { format, differenceInMinutes, formatDistanceStrict } from "date-fns";
 import { fr } from "date-fns/locale";
 
 export type ClientActivity = {
@@ -67,7 +67,15 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
     const description = formData.get("description") as string;
     const category = formData.get("category") as ClientActivity['category'];
     const amount = parseFloat(formData.get("amount") as string) || 0;
-    const duration = formData.get("duration") as string;
+    const startTime = formData.get("startTime") as string;
+    const endTime = formData.get("endTime") as string;
+
+    let duration;
+    if (startTime && endTime) {
+        const start = new Date(`1970-01-01T${startTime}`);
+        const end = new Date(`1970-01-01T${endTime}`);
+        duration = formatDistanceStrict(start, end, { locale: fr, unit: 'minute' });
+    }
 
 
     const newActivity: ClientActivity = {
@@ -178,21 +186,15 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                                         <Input id="amount" name="amount" type="number" placeholder="Ex: 5000" required />
                                     </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="duration">Durée (Optionnel)</Label>
-                                    <Select name="duration">
-                                        <SelectTrigger id="duration">
-                                            <SelectValue placeholder="Sélectionner une durée" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="30 minutes">30 minutes</SelectItem>
-                                            <SelectItem value="1 heure">1 heure</SelectItem>
-                                            <SelectItem value="1 heure 30">1 heure 30</SelectItem>
-                                            <SelectItem value="2 heures">2 heures</SelectItem>
-                                            <SelectItem value="3 heures">3 heures</SelectItem>
-                                            <SelectItem value="4 heures">4 heures</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="startTime">Heure de début</Label>
+                                        <Input id="startTime" name="startTime" type="time" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="endTime">Heure de fin</Label>
+                                        <Input id="endTime" name="endTime" type="time" />
+                                    </div>
                                 </div>
                             </div>
                             <DialogFooter>
@@ -270,3 +272,5 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
     </div>
   );
 }
+
+    
