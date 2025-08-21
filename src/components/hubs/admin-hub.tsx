@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase } from "lucide-react";
+import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity } from "lucide-react";
 import UserManagement, { Subscriber } from "@/components/admin/user-management";
 import ContentManagement from "@/components/admin/content-management";
 import BookingSchedule from "@/components/admin/booking-schedule";
@@ -12,24 +12,23 @@ import SiteSettings from "@/components/admin/site-settings";
 import EventManagement from "@/components/admin/event-management";
 import FinancialManagement, { Transaction } from "@/components/admin/financial-management";
 import ContractManagement from "@/components/admin/contract-management";
-import ClientManagement, { Client } from "@/components/admin/client-management";
+import ActivityLog, { ClientActivity } from "@/components/admin/activity-log";
 import { initialSubscribers } from "@/components/admin/user-management";
 import { initialBookings, Booking } from "@/components/admin/booking-schedule";
 import { initialTransactions } from "@/components/admin/financial-management";
 import { format } from "date-fns";
 
-const initialClients: Client[] = initialBookings.map((booking, index) => ({
-    id: `client-${booking.id}`,
-    name: booking.artistName,
-    email: `${booking.artistName.toLowerCase().replace(/\s/g, '.')}@example.com`,
-    phone: `+242 06 555 01${index.toString().padStart(2, '0')}`,
-    lastActivity: format(booking.date, "yyyy-MM-dd"),
-    totalSpent: booking.amount,
-    lastService: booking.service,
+const initialActivities: ClientActivity[] = initialBookings.map((booking, index) => ({
+    id: `act-${booking.id}`,
+    clientName: booking.artistName,
+    description: `Réservation: ${booking.projectName}`,
+    category: "Réservation Studio",
+    amount: booking.amount,
+    date: booking.date,
 }));
 
 
-type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "clients";
+type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities";
 
 export default function AdminHub() {
   const [activeView, setActiveView] = useState<AdminView>("dashboard");
@@ -37,7 +36,7 @@ export default function AdminHub() {
   const [bookings, setBookings] = useState<Booking[]>(initialBookings);
   const [subscribers, setSubscribers] = useState<Subscriber[]>(initialSubscribers);
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
-  const [clients, setClients] = useState<Client[]>(initialClients);
+  const [activities, setActivities] = useState<ClientActivity[]>(initialActivities);
 
   const handleAddBooking = (newBooking: Omit<Booking, 'id'>) => {
     const fullBooking = { ...newBooking, id: `res-${Date.now()}`};
@@ -54,34 +53,16 @@ export default function AdminHub() {
     };
     setTransactions(prev => [newTransaction, ...prev]);
 
-    // Add or update client
-    setClients(prevClients => {
-        const existingClientIndex = prevClients.findIndex(c => c.name === fullBooking.artistName);
-        if (existingClientIndex > -1) {
-            const updatedClients = [...prevClients];
-            const existingClient = updatedClients[existingClientIndex];
-            updatedClients[existingClientIndex] = {
-                ...existingClient,
-                lastActivity: format(fullBooking.date, "yyyy-MM-dd"),
-                totalSpent: existingClient.totalSpent + fullBooking.amount,
-                lastService: fullBooking.service,
-            };
-            return updatedClients;
-        } else {
-            return [
-                ...prevClients,
-                {
-                    id: `client-${fullBooking.id}`,
-                    name: fullBooking.artistName,
-                    email: `${fullBooking.artistName.toLowerCase().replace(/\s/g, '.')}@example.com`,
-                    phone: `+242 06 555 ${Math.floor(1000 + Math.random() * 9000).toString()}`,
-                    lastActivity: format(fullBooking.date, "yyyy-MM-dd"),
-                    totalSpent: fullBooking.amount,
-                    lastService: fullBooking.service,
-                }
-            ];
-        }
-    });
+    // Add a corresponding activity
+    const newActivity: ClientActivity = {
+        id: `act-${fullBooking.id}`,
+        clientName: fullBooking.artistName,
+        description: `Réservation: ${fullBooking.projectName}`,
+        category: "Réservation Studio",
+        amount: fullBooking.amount,
+        date: fullBooking.date,
+    };
+    setActivities(prev => [newActivity, ...prev]);
   };
   
   const handleValidateSubscription = (subscriber: Subscriber) => {
@@ -123,7 +104,7 @@ export default function AdminHub() {
     events: { component: EventManagement, title: "Gestion des Événements", props: {} },
     financial: { component: FinancialManagement, title: "Gestion Financière", props: { transactions, setTransactions } },
     contracts: { component: ContractManagement, title: "Gestion des Contrats", props: {} },
-    clients: { component: ClientManagement, title: "Gestion des Clients", props: { clients, setClients } },
+    activities: { component: ActivityLog, title: "Journal d'Activité", props: { activities, setActivities } },
   };
 
 
@@ -147,11 +128,11 @@ export default function AdminHub() {
       hoverColor: "hover:bg-blue-600/90",
     },
      {
-      title: "Gestion des Clients",
-      description: "Suivre les clients non-abonnés.",
-      icon: Briefcase,
+      title: "Journal d'Activité",
+      description: "Suivre les achats et services ponctuels.",
+      icon: Activity,
       action: "Consulter",
-      view: "clients" as AdminView,
+      view: "activities" as AdminView,
       color: "bg-indigo-500/80",
       textColor: "text-white",
       hoverColor: "hover:bg-indigo-600/90",
