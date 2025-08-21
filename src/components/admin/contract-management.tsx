@@ -66,7 +66,6 @@ export default function ContractManagement() {
     const [isAddDialogOpen, setAddDialogOpen] = useState(false);
     const [isEditDialogOpen, setEditDialogOpen] = useState(false);
     const [editingContract, setEditingContract] = useState<Contract | null>(null);
-    const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
     const [pdfFile, setPdfFile] = useState<File | null>(null);
     const { toast } = useToast();
 
@@ -80,19 +79,37 @@ export default function ContractManagement() {
     
     const handleAddContract = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (!selectedBookingId) {
+        
+        const formData = new FormData(event.currentTarget);
+        const bookingId = formData.get("bookingId") as string;
+        
+        if (!bookingId) {
              toast({
                 title: "Erreur",
-                description: "Veuillez sélectionner une réservation.",
+                description: "Veuillez saisir un ID de réservation.",
                 variant: "destructive"
             });
             return;
         }
 
-        const booking = allBookings.find(b => b.id === selectedBookingId);
-        if (!booking) return;
-
-        const formData = new FormData(event.currentTarget);
+        const booking = allBookings.find(b => b.id === bookingId);
+        if (!booking) {
+             toast({
+                title: "Erreur",
+                description: "Aucune réservation trouvée pour cet ID.",
+                variant: "destructive"
+            });
+            return;
+        }
+        
+        if (contracts.some(c => c.bookingId === bookingId)) {
+             toast({
+                title: "Erreur",
+                description: "Un contrat existe déjà pour cette réservation.",
+                variant: "destructive"
+            });
+            return;
+        }
 
         const newContract: Contract = {
             id: `ctr-${Date.now()}`,
@@ -113,7 +130,6 @@ export default function ContractManagement() {
         });
 
         setAddDialogOpen(false);
-        setSelectedBookingId(null);
         setPdfFile(null);
     };
 
@@ -175,12 +191,6 @@ export default function ContractManagement() {
         URL.revokeObjectURL(url);
     };
 
-    const bookingsWithoutContract = allBookings.filter(
-        booking => !contracts.some(contract => contract.bookingId === booking.id)
-    );
-    
-    const selectedBookingDetails = allBookings.find(b => b.id === selectedBookingId);
-
     return (
         <Card>
             <CardHeader className="flex flex-row justify-between items-start">
@@ -199,25 +209,12 @@ export default function ContractManagement() {
                         <form onSubmit={handleAddContract}>
                             <DialogHeader>
                                 <DialogTitle>Créer un nouveau contrat</DialogTitle>
-                                <DialogDescription>Sélectionnez une réservation et remplissez les détails pour générer un nouveau contrat.</DialogDescription>
+                                <DialogDescription>Saisissez l'ID de réservation et remplissez les détails pour générer un nouveau contrat.</DialogDescription>
                             </DialogHeader>
                             <div className="grid gap-4 py-4">
                                <div className="space-y-2">
-                                    <Label htmlFor="booking">Réservation Associée</Label>
-                                    <Select onValueChange={setSelectedBookingId}>
-                                        <SelectTrigger id="booking">
-                                            <SelectValue placeholder="Sélectionner une réservation..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {bookingsWithoutContract.length > 0 ? (
-                                                bookingsWithoutContract.map(booking => (
-                                                    <SelectItem key={booking.id} value={booking.id}>{booking.artistName} - (ID: {booking.id})</SelectItem>
-                                                ))
-                                            ) : (
-                                                <SelectItem value="none" disabled>Aucune réservation sans contrat</SelectItem>
-                                            )}
-                                        </SelectContent>
-                                    </Select>
+                                    <Label htmlFor="bookingId">ID de la Réservation</Label>
+                                    <Input id="bookingId" name="bookingId" placeholder="Ex: res-001" required />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
@@ -243,7 +240,7 @@ export default function ContractManagement() {
                                     <Label htmlFor="value">Valeur du Contrat (FCFA)</Label>
                                     <div className="relative">
                                         <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                        <Input id="value" name="value" type="number" placeholder="Ex: 150000" className="pl-10" required defaultValue={selectedBookingDetails?.amount} />
+                                        <Input id="value" name="value" type="number" placeholder="Ex: 150000" className="pl-10" required />
                                     </div>
                                 </div>
                                  <div className="space-y-2">
@@ -262,7 +259,7 @@ export default function ContractManagement() {
                             </div>
                             <DialogFooter>
                                 <Button onClick={() => setAddDialogOpen(false)} variant="ghost" type="button">Annuler</Button>
-                                <Button type="submit" disabled={!selectedBookingId}>Créer le contrat</Button>
+                                <Button type="submit">Créer le contrat</Button>
                             </DialogFooter>
                         </form>
                     </DialogContent>
