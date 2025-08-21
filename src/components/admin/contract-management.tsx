@@ -41,6 +41,7 @@ const paymentStatusConfig = {
     "Payé": { variant: "default", className: "bg-green-500/80" },
     "Non Payé": { variant: "destructive" },
     "En attente": { variant: "secondary" },
+    "N/A": { variant: "outline", className: "border-dashed" },
 };
 
 const contractTypes = ["Prestation Studio", "Licence Musique", "Distribution", "Partenariat"];
@@ -113,8 +114,8 @@ export default function ContractManagement() {
             status: "En attente",
             lastUpdate: format(new Date(), 'yyyy-MM-dd'),
             pdfFile: pdfFile,
-            value: Number(formData.get("value")),
-            paymentStatus: formData.get("paymentStatus") as PaymentStatus,
+            value: Number(formData.get("value")) || 0,
+            paymentStatus: (formData.get("paymentStatus") as PaymentStatus) || 'N/A',
             type: formData.get("type") as ContractType,
         };
 
@@ -134,8 +135,8 @@ export default function ContractManagement() {
 
         const formData = new FormData(event.currentTarget);
         const clientName = formData.get("clientName") as string;
-        const value = Number(formData.get("value"));
-        const paymentStatus = formData.get("paymentStatus") as PaymentStatus;
+        const value = Number(formData.get("value")) || 0;
+        const paymentStatus = (formData.get("paymentStatus") as PaymentStatus) || 'N/A';
         const type = formData.get("type") as ContractType;
 
         setContracts(contracts.map(c => 
@@ -223,7 +224,7 @@ export default function ContractManagement() {
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="paymentStatus">Statut Paiement</Label>
-                                        <Select name="paymentStatus" defaultValue="En attente" required>
+                                        <Select name="paymentStatus" defaultValue="En attente">
                                             <SelectTrigger id="paymentStatus">
                                                 <SelectValue placeholder="Statut..." />
                                             </SelectTrigger>
@@ -235,7 +236,7 @@ export default function ContractManagement() {
                                     <Label htmlFor="value">Valeur du Contrat (FCFA)</Label>
                                     <div className="relative">
                                         <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                        <Input id="value" name="value" type="number" placeholder="Ex: 150000" className="pl-10" required />
+                                        <Input id="value" name="value" type="number" placeholder="Ex: 150000" className="pl-10" />
                                     </div>
                                 </div>
                                  <div className="space-y-2">
@@ -369,7 +370,7 @@ export default function ContractManagement() {
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="paymentStatus-edit">Statut Paiement</Label>
-                                    <Select name="paymentStatus" defaultValue={editingContract?.paymentStatus} required>
+                                    <Select name="paymentStatus" defaultValue={editingContract?.paymentStatus}>
                                         <SelectTrigger id="paymentStatus-edit"><SelectValue placeholder="Statut..." /></SelectTrigger>
                                         <SelectContent>{Object.keys(paymentStatusConfig).map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent>
                                     </Select>
@@ -379,7 +380,7 @@ export default function ContractManagement() {
                                 <Label htmlFor="value-edit">Valeur du Contrat (FCFA)</Label>
                                 <div className="relative">
                                     <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <Input id="value-edit" name="value" type="number" placeholder="Ex: 150000" className="pl-10" required defaultValue={editingContract?.value} />
+                                    <Input id="value-edit" name="value" type="number" placeholder="Ex: 150000" className="pl-10" defaultValue={editingContract?.value} />
                                 </div>
                             </div>
                             <div className="space-y-2">
