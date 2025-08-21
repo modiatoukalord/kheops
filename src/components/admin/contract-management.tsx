@@ -81,28 +81,23 @@ export default function ContractManagement() {
         event.preventDefault();
         
         const formData = new FormData(event.currentTarget);
-        const bookingId = formData.get("bookingId") as string;
+        const bookingIdOrClientName = formData.get("bookingId") as string;
         
-        if (!bookingId) {
+        if (!bookingIdOrClientName) {
              toast({
                 title: "Erreur",
-                description: "Veuillez saisir un ID de réservation.",
+                description: "Veuillez saisir un ID de réservation ou un nom de client.",
                 variant: "destructive"
             });
             return;
         }
 
-        const booking = allBookings.find(b => b.id === bookingId);
-        if (!booking) {
-             toast({
-                title: "Erreur",
-                description: "Aucune réservation trouvée pour cet ID.",
-                variant: "destructive"
-            });
-            return;
-        }
+        const booking = allBookings.find(b => b.id === bookingIdOrClientName);
         
-        if (contracts.some(c => c.bookingId === bookingId)) {
+        let clientName = booking ? booking.artistName : bookingIdOrClientName;
+        let bookingId = booking ? booking.id : `client-${Date.now()}`;
+
+        if (contracts.some(c => c.bookingId === bookingId && booking)) {
              toast({
                 title: "Erreur",
                 description: "Un contrat existe déjà pour cette réservation.",
@@ -113,8 +108,8 @@ export default function ContractManagement() {
 
         const newContract: Contract = {
             id: `ctr-${Date.now()}`,
-            bookingId: booking.id,
-            clientName: booking.artistName,
+            bookingId: bookingId,
+            clientName: clientName,
             status: "En attente",
             lastUpdate: format(new Date(), 'yyyy-MM-dd'),
             pdfFile: pdfFile,
@@ -126,7 +121,7 @@ export default function ContractManagement() {
         setContracts(prev => [newContract, ...prev]);
         toast({
             title: "Contrat Ajouté",
-            description: `Le contrat pour ${booking.artistName} a été créé.`,
+            description: `Le contrat pour ${clientName} a été créé.`,
         });
 
         setAddDialogOpen(false);
@@ -213,8 +208,8 @@ export default function ContractManagement() {
                             </DialogHeader>
                             <div className="grid gap-4 py-4">
                                <div className="space-y-2">
-                                    <Label htmlFor="bookingId">ID de la Réservation</Label>
-                                    <Input id="bookingId" name="bookingId" placeholder="Ex: res-001" required />
+                                    <Label htmlFor="bookingId">Client ou ID de Réservation</Label>
+                                    <Input id="bookingId" name="bookingId" placeholder="Ex: res-001 ou Nom du Client" required />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
@@ -410,5 +405,7 @@ export default function ContractManagement() {
         </Card>
     );
 }
+
+    
 
     
