@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal } from "lucide-react";
+import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -26,10 +26,12 @@ import { fr } from "date-fns/locale";
 export type ClientActivity = {
   id: string;
   clientName: string;
+  phone?: string;
   description: string;
   category: "Achat de livre" | "Session de jeu" | "Réservation Studio" | "Autre";
   amount: number;
   date: Date;
+  duration?: string;
 };
 
 interface ActivityLogProps {
@@ -61,18 +63,22 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const clientName = formData.get("clientName") as string;
+    const phone = formData.get("phone") as string;
     const description = formData.get("description") as string;
     const category = formData.get("category") as ClientActivity['category'];
     const amount = parseFloat(formData.get("amount") as string) || 0;
+    const duration = formData.get("duration") as string;
 
 
     const newActivity: ClientActivity = {
       id: `act-${Date.now()}`,
       clientName,
+      phone,
       description,
       category,
       amount,
       date: new Date(),
+      duration,
     };
 
     setActivities(prev => [newActivity, ...prev]);
@@ -134,7 +140,7 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                             Ajouter une activité
                         </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="sm:max-w-lg">
                         <form onSubmit={handleAddActivity}>
                             <DialogHeader>
                                 <DialogTitle>Ajouter une nouvelle activité</DialogTitle>
@@ -143,9 +149,15 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="grid gap-4 py-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="clientName">Nom du client</Label>
-                                    <Input id="clientName" name="clientName" placeholder="Ex: Jean Dupont" required />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="clientName">Nom du client</Label>
+                                        <Input id="clientName" name="clientName" placeholder="Ex: Jean Dupont" required />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="phone">Téléphone</Label>
+                                        <Input id="phone" name="phone" placeholder="Ex: +242 06 123 4567" />
+                                    </div>
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="description">Description</Label>
@@ -166,6 +178,10 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                                         <Input id="amount" name="amount" type="number" placeholder="Ex: 5000" required />
                                     </div>
                                 </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="duration">Durée (Optionnel)</Label>
+                                    <Input id="duration" name="duration" placeholder="Ex: 2 heures" />
+                                </div>
                             </div>
                             <DialogFooter>
                                 <Button type="submit">Ajouter l'activité</Button>
@@ -185,6 +201,7 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                   <TableHead>Description</TableHead>
                   <TableHead>Catégorie</TableHead>
                   <TableHead>Date</TableHead>
+                  <TableHead>Durée</TableHead>
                   <TableHead className="text-right">Montant</TableHead>
                 </TableRow>
               </TableHeader>
@@ -194,7 +211,10 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                     const catInfo = categoryConfig[activity.category];
                     return (
                     <TableRow key={activity.id}>
-                      <TableCell className="font-medium">{activity.clientName}</TableCell>
+                      <TableCell>
+                        <div className="font-medium">{activity.clientName}</div>
+                        {activity.phone && <div className="text-xs text-muted-foreground flex items-center gap-1.5"><Phone className="h-3 w-3"/>{activity.phone}</div>}
+                      </TableCell>
                       <TableCell>{activity.description}</TableCell>
                       <TableCell>
                         <Badge variant="secondary" className={catInfo.color}>
@@ -208,6 +228,16 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                            {format(activity.date, "d MMM yyyy", { locale: fr })}
                         </div>
                       </TableCell>
+                      <TableCell>
+                        {activity.duration ? (
+                            <div className="flex items-center gap-2">
+                                <Clock className="h-4 w-4 text-muted-foreground"/>
+                                {activity.duration}
+                            </div>
+                        ) : (
+                            <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right font-semibold text-green-600">
                           {activity.amount.toLocaleString('fr-FR')} FCFA
                       </TableCell>
@@ -215,7 +245,7 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                   )})
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
+                    <TableCell colSpan={6} className="h-24 text-center">
                       Aucune activité trouvée.
                     </TableCell>
                   </TableRow>
@@ -228,5 +258,3 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
     </div>
   );
 }
-
-    
