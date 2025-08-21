@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature } from "lucide-react";
+import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase } from "lucide-react";
 import UserManagement, { Subscriber } from "@/components/admin/user-management";
 import ContentManagement from "@/components/admin/content-management";
 import BookingSchedule from "@/components/admin/booking-schedule";
@@ -12,13 +12,22 @@ import SiteSettings from "@/components/admin/site-settings";
 import EventManagement from "@/components/admin/event-management";
 import FinancialManagement, { Transaction } from "@/components/admin/financial-management";
 import ContractManagement from "@/components/admin/contract-management";
+import ClientManagement, { Client } from "@/components/admin/client-management";
 import { initialSubscribers } from "@/components/admin/user-management";
 import { initialBookings, Booking } from "@/components/admin/booking-schedule";
 import { initialTransactions } from "@/components/admin/financial-management";
 import { format } from "date-fns";
 
+const initialClients: Client[] = initialBookings.map(booking => ({
+    id: `client-${booking.id}`,
+    name: booking.artistName,
+    email: `${booking.artistName.toLowerCase().replace(/\s/g, '.')}@example.com`,
+    lastActivity: format(booking.date, "yyyy-MM-dd"),
+    totalSpent: booking.amount,
+}));
 
-type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts";
+
+type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "clients";
 
 export default function AdminHub() {
   const [activeView, setActiveView] = useState<AdminView>("dashboard");
@@ -26,6 +35,7 @@ export default function AdminHub() {
   const [bookings, setBookings] = useState<Booking[]>(initialBookings);
   const [subscribers, setSubscribers] = useState<Subscriber[]>(initialSubscribers);
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
+  const [clients, setClients] = useState<Client[]>(initialClients);
 
   const handleAddBooking = (newBooking: Omit<Booking, 'id'>) => {
     const fullBooking = { ...newBooking, id: `res-${Date.now()}`};
@@ -41,6 +51,32 @@ export default function AdminHub() {
         status: "En attente"
     };
     setTransactions(prev => [newTransaction, ...prev]);
+
+    // Add or update client
+    setClients(prevClients => {
+        const existingClientIndex = prevClients.findIndex(c => c.name === fullBooking.artistName);
+        if (existingClientIndex > -1) {
+            const updatedClients = [...prevClients];
+            const existingClient = updatedClients[existingClientIndex];
+            updatedClients[existingClientIndex] = {
+                ...existingClient,
+                lastActivity: format(fullBooking.date, "yyyy-MM-dd"),
+                totalSpent: existingClient.totalSpent + fullBooking.amount
+            };
+            return updatedClients;
+        } else {
+            return [
+                ...prevClients,
+                {
+                    id: `client-${fullBooking.id}`,
+                    name: fullBooking.artistName,
+                    email: `${fullBooking.artistName.toLowerCase().replace(/\s/g, '.')}@example.com`,
+                    lastActivity: format(fullBooking.date, "yyyy-MM-dd"),
+                    totalSpent: fullBooking.amount,
+                }
+            ];
+        }
+    });
   };
   
   const handleValidateSubscription = (subscriber: Subscriber) => {
@@ -82,6 +118,7 @@ export default function AdminHub() {
     events: { component: EventManagement, title: "Gestion des Événements", props: {} },
     financial: { component: FinancialManagement, title: "Gestion Financière", props: { transactions, setTransactions } },
     contracts: { component: ContractManagement, title: "Gestion des Contrats", props: {} },
+    clients: { component: ClientManagement, title: "Gestion des Clients", props: { clients, setClients } },
   };
 
 
@@ -103,6 +140,16 @@ export default function AdminHub() {
       color: "bg-blue-500/80",
       textColor: "text-white",
       hoverColor: "hover:bg-blue-600/90",
+    },
+     {
+      title: "Gestion des Clients",
+      description: "Suivre les clients non-abonnés.",
+      icon: Briefcase,
+      action: "Consulter",
+      view: "clients" as AdminView,
+      color: "bg-indigo-500/80",
+      textColor: "text-white",
+      hoverColor: "hover:bg-indigo-600/90",
     },
     {
       title: "Gestion des Contenus",
