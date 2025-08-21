@@ -60,6 +60,9 @@ export default function ClientManagement({ clients, setClients }: ClientManageme
     const name = formData.get("name") as string;
     const email = formData.get("email") as string;
     const phone = formData.get("phone") as string;
+    const lastService = formData.get("lastService") as string;
+    const totalSpent = parseFloat(formData.get("totalSpent") as string) || 0;
+
 
     const newClient: Client = {
       id: `client-${Date.now()}`,
@@ -67,8 +70,8 @@ export default function ClientManagement({ clients, setClients }: ClientManageme
       email,
       phone,
       lastActivity: new Date().toISOString().split("T")[0],
-      totalSpent: 0,
-      lastService: "N/A",
+      totalSpent: totalSpent,
+      lastService: lastService || "N/A",
     };
 
     setClients(prev => [newClient, ...prev]);
@@ -150,6 +153,14 @@ export default function ClientManagement({ clients, setClients }: ClientManageme
                                 <div className="space-y-2">
                                     <Label htmlFor="phone">Numéro de téléphone</Label>
                                     <Input id="phone" name="phone" placeholder="Ex: +242 06 123 4567" required />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="lastService">Dernier Service</Label>
+                                    <Input id="lastService" name="lastService" placeholder="Ex: Prise de voix + Mix" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="totalSpent">Total Dépensé (FCFA)</Label>
+                                    <Input id="totalSpent" name="totalSpent" type="number" placeholder="Ex: 50000" />
                                 </div>
                             </div>
                             <DialogFooter>
