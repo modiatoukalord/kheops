@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, Search, Users, CreditCard, Activity, DollarSign, Filter, Phone, CalendarOff, PlusCircle, Check, ChevronsUpDown, CheckCircle, Trash2, Clock } from "lucide-react";
+import { MoreHorizontal, Search, Users, CreditCard, Activity, DollarSign, Filter, Phone, CalendarOff, PlusCircle, Check, ChevronsUpDown, CheckCircle, Trash2, Clock, User, UserPlus } from "lucide-react";
 import { addMonths, parse, format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import UserProfile from "./user-profile";
@@ -112,7 +112,7 @@ export default function UserManagement({
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [selectedSubscriber, setSelectedSubscriber] = useState<Subscriber | null>(null);
-  const [selectedSubscriberId, setSelectedSubscriberId] = useState<string>("");
+  const [selectedSubscriberId, setSelectedSubscriberId] = useState<string>("new");
   const { toast } = useToast();
   const [comboboxOpen, setComboboxOpen] = useState(false);
   const [statusFilters, setStatusFilters] = useState<SubscriberStatus[]>([]);
@@ -124,16 +124,14 @@ export default function UserManagement({
     const name = formData.get("name") as string;
     const phone = formData.get("phone") as string;
     const durationMonths = parseInt(formData.get("duration") as string, 10);
-    const subscriberIdToUpdate = selectedSubscriberId;
     
     const today = new Date();
     const startDate = format(today, 'dd-MM-yyyy');
     
     const amount = (KHEOPS_MEMBER_FEE) * durationMonths;
 
-    if (subscriberIdToUpdate && subscriberIdToUpdate !== 'new') {
-        // Handle renewal
-        const subscriberToRenew = subscribers.find(s => s.id === subscriberIdToUpdate);
+    if (selectedSubscriberId && selectedSubscriberId !== 'new') {
+        const subscriberToRenew = subscribers.find(s => s.id === selectedSubscriberId);
         if (!subscriberToRenew) return;
 
         const updatedSubscriber = {
@@ -152,7 +150,6 @@ export default function UserManagement({
         });
 
     } else {
-        // Handle new subscriber
         const newSubscriber = {
             name,
             phone,
@@ -170,7 +167,7 @@ export default function UserManagement({
     }
 
     setDialogOpen(false);
-    setSelectedSubscriberId("");
+    setSelectedSubscriberId("new");
   };
   
   const handleAction = (action: string, subscriberId: string) => {
@@ -238,6 +235,7 @@ export default function UserManagement({
   }
 
   const subscriberToRenew = subscribers.find(s => s.id === selectedSubscriberId);
+  const isNewSubscriber = selectedSubscriberId === 'new';
 
 
   return (
@@ -289,7 +287,6 @@ export default function UserManagement({
                       <DropdownMenuCheckboxItem
                         key={status}
                         checked={statusFilters.includes(status)}
-                        onSelect={(event) => event.preventDefault()}
                         onCheckedChange={(checked) => {
                           setStatusFilters(
                             checked
@@ -303,39 +300,44 @@ export default function UserManagement({
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
-                 <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { setDialogOpen(isOpen); if (!isOpen) setSelectedSubscriberId("");}}>
+                 <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { setDialogOpen(isOpen); if (!isOpen) setSelectedSubscriberId("new");}}>
                     <DialogTrigger asChild>
                         <Button>
                             <PlusCircle className="mr-2 h-4 w-4" />
                             Ajouter ou Renouveler
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
+                    <DialogContent className="sm:max-w-md">
                         <form onSubmit={handleSubscriptionSubmit}>
                             <DialogHeader>
-                                <DialogTitle>Ajouter ou Renouveler un Abonnement</DialogTitle>
+                                <DialogTitle>{isNewSubscriber ? "Nouvel Abonnement" : "Renouveler l'Abonnement"}</DialogTitle>
                                 <DialogDescription>
-                                    Sélectionnez un abonné à renouveler ou remplissez les champs pour un nouvel abonné.
+                                    {isNewSubscriber 
+                                    ? "Remplissez les champs pour un nouvel abonné. Pour renouveler, sélectionnez un abonné existant."
+                                    : `Vous renouvelez l'abonnement pour ${subscriberToRenew?.name}.`}
                                 </DialogDescription>
                             </DialogHeader>
-                            <div className="grid gap-4 py-4">
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="subscriberToRenew" className="text-right">Abonné</Label>
+                            <div className="space-y-4 py-4">
+                                <div>
+                                    <Label>Abonné (Existant ou Nouveau)</Label>
                                     <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
                                       <PopoverTrigger asChild>
                                         <Button
                                           variant="outline"
                                           role="combobox"
                                           aria-expanded={comboboxOpen}
-                                          className="col-span-3 justify-between"
+                                          className="w-full justify-between"
                                         >
-                                          {selectedSubscriberId && selectedSubscriberId !== 'new'
-                                            ? subscribers.find((s) => s.id === selectedSubscriberId)?.name
-                                            : "Sélectionner un abonné..."}
+                                          <div className="flex items-center gap-2">
+                                            {isNewSubscriber ? <UserPlus className="h-4 w-4 text-muted-foreground"/> : <User className="h-4 w-4 text-muted-foreground"/>}
+                                            {isNewSubscriber
+                                            ? "Nouvel Abonné"
+                                            : subscribers.find((s) => s.id === selectedSubscriberId)?.name}
+                                          </div>
                                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                       </PopoverTrigger>
-                                      <PopoverContent className="w-[300px] p-0">
+                                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                         <Command>
                                           <CommandInput placeholder="Rechercher un abonné..." />
                                           <CommandList>
@@ -352,17 +354,17 @@ export default function UserManagement({
                                                 <Check
                                                     className={cn(
                                                       "mr-2 h-4 w-4",
-                                                      selectedSubscriberId === "new" || !selectedSubscriberId ? "opacity-100" : "opacity-0"
+                                                      selectedSubscriberId === "new" ? "opacity-100" : "opacity-0"
                                                     )}
                                                   />
-                                                -- Nouvel Abonné --
+                                                Nouvel Abonné
                                               </CommandItem>
                                               {subscribers.map((s) => (
                                                 <CommandItem
                                                   key={s.id}
                                                   value={s.id}
-                                                  onSelect={() => {
-                                                    setSelectedSubscriberId(s.id === selectedSubscriberId ? "" : s.id);
+                                                  onSelect={(currentValue) => {
+                                                    setSelectedSubscriberId(currentValue === selectedSubscriberId ? "" : currentValue);
                                                     setComboboxOpen(false);
                                                   }}
                                                   className="cursor-pointer"
@@ -382,21 +384,27 @@ export default function UserManagement({
                                       </PopoverContent>
                                     </Popover>
                                 </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="name" className="text-right">Nom</Label>
-                                    <Input id="name" name="name" placeholder="Ex: Jean Dupont" className="col-span-3" required defaultValue={subscriberToRenew?.name} disabled={!!subscriberToRenew} />
+                                <div className="space-y-2">
+                                    <Label htmlFor="name">Nom complet</Label>
+                                    <div className="relative">
+                                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Input id="name" name="name" placeholder="Ex: Jean Dupont" className="pl-10" required defaultValue={subscriberToRenew?.name} disabled={!isNewSubscriber} />
+                                    </div>
                                 </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="phone" className="text-right">Téléphone</Label>
-                                    <Input id="phone" name="phone" placeholder="Ex: +242 06 123 4567" className="col-span-3" required defaultValue={subscriberToRenew?.phone} disabled={!!subscriberToRenew} />
+                                <div className="space-y-2">
+                                    <Label htmlFor="phone">Téléphone</Label>
+                                    <div className="relative">
+                                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Input id="phone" name="phone" placeholder="Ex: +242 06 123 4567" className="pl-10" required defaultValue={subscriberToRenew?.phone} disabled={!isNewSubscriber} />
+                                    </div>
                                 </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="duration" className="text-right">Durée (mois)</Label>
-                                    <Input id="duration" name="duration" type="number" placeholder="Ex: 3" className="col-span-3" required defaultValue="1" min="1" />
+                                <div className="space-y-2">
+                                    <Label htmlFor="duration">Durée (en mois)</Label>
+                                    <Input id="duration" name="duration" type="number" placeholder="Ex: 3" required defaultValue="1" min="1" />
                                 </div>
                             </div>
                             <DialogFooter>
-                                <Button type="submit">Valider</Button>
+                                <Button type="submit">{isNewSubscriber ? "Ajouter l'abonné" : "Renouveler"}</Button>
                             </DialogFooter>
                         </form>
                     </DialogContent>
