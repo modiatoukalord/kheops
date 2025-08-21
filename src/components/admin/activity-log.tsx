@@ -444,40 +444,40 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
       </Card>
       
         <Dialog open={isDetailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
-            <DialogContent className="sm:max-w-md p-0 printable-area">
-                <div ref={receiptRef} className="p-6">
+            <DialogContent className="sm:max-w-md p-0">
+                <div ref={receiptRef} className="p-6 bg-white text-black printable-area">
                     <DialogHeader className="space-y-4">
-                        <div className="flex items-center gap-3">
-                           <Pyramid className="h-8 w-8 text-primary" />
-                           <DialogTitle className="text-2xl font-bold font-headline tracking-wider">KHEOPS</DialogTitle>
+                        <div className="flex items-center gap-3 text-primary">
+                           <Pyramid className="h-8 w-8" />
+                           <DialogTitle className="text-2xl font-bold font-headline tracking-wider text-black">KHEOPS</DialogTitle>
                         </div>
-                        <h3 className="text-xl font-semibold text-center">Reçu d'Activité</h3>
+                        <h3 className="text-xl font-semibold text-center text-gray-800">Reçu d'Activité</h3>
                     </DialogHeader>
                     <div className="grid gap-4 py-6">
-                        <div className="space-y-2 text-sm">
+                        <div className="space-y-2 text-sm text-gray-700">
                             <p><strong>Client:</strong> {detailsActivity?.clientName}</p>
                             {detailsActivity?.phone && <p><strong>Téléphone:</strong> {detailsActivity.phone}</p>}
                             <p><strong>Date:</strong> {detailsActivity ? format(detailsActivity.date, "d MMMM yyyy 'à' HH:mm", { locale: fr }) : ''}</p>
                         </div>
-                        <Separator />
+                        <Separator className="bg-gray-300" />
                         <div className="space-y-2">
-                           <p className="font-semibold">Détails de la transaction:</p>
-                           <div className="p-3 rounded-md bg-muted/50">
+                           <p className="font-semibold text-gray-800">Détails de la transaction:</p>
+                           <div className="p-3 rounded-md bg-gray-100">
                              <div className="flex justify-between">
                                 <div>
-                                    <p className="font-medium">{detailsActivity?.description}</p>
-                                    <p className="text-xs text-muted-foreground">{detailsActivity?.category} {detailsActivity?.duration && `(${detailsActivity.duration})`}</p>
+                                    <p className="font-medium text-gray-900">{detailsActivity?.description}</p>
+                                    <p className="text-xs text-gray-500">{detailsActivity?.category} {detailsActivity?.duration && `(${detailsActivity.duration})`}</p>
                                 </div>
-                                <p className="font-semibold">{detailsActivity?.amount.toLocaleString('fr-FR')} FCFA</p>
+                                <p className="font-semibold text-gray-900">{detailsActivity?.amount.toLocaleString('fr-FR')} FCFA</p>
                              </div>
                            </div>
                         </div>
-                        <Separator />
-                        <div className="flex justify-end font-bold text-lg">
+                        <Separator className="bg-gray-300"/>
+                        <div className="flex justify-end font-bold text-lg text-black">
                             <p>TOTAL: {detailsActivity?.amount.toLocaleString('fr-FR')} FCFA</p>
                         </div>
                     </div>
-                    <DialogDescription className="text-center text-xs">
+                    <DialogDescription className="text-center text-xs text-gray-500">
                         Merci de votre visite.
                     </DialogDescription>
                 </div>
@@ -490,22 +490,37 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
             </DialogContent>
         </Dialog>
         <style jsx global>{`
+            @page {
+                size: auto;
+                margin: 0mm;
+            }
             @media print {
-            body * {
-                visibility: hidden;
-            }
-            .printable-area, .printable-area * {
-                visibility: visible;
-            }
-            .printable-area {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-            }
-            .no-print {
-                display: none;
-            }
+                body {
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                    visibility: hidden;
+                    margin: 0;
+                    padding: 0;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 100vh;
+                    background: white;
+                }
+                .printable-area, .printable-area * {
+                    visibility: visible;
+                }
+                .printable-area {
+                    position: static;
+                    width: 100%;
+                    max-width: 400px;
+                    margin: auto;
+                    box-shadow: none;
+                    border: 1px solid #ccc;
+                }
+                .no-print {
+                    display: none;
+                }
             }
         `}</style>
     </div>
