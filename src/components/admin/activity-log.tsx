@@ -1,12 +1,12 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy, Trash2, Minus, MoreHorizontal, Edit, Eye } from "lucide-react";
+import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy, Trash2, Minus, MoreHorizontal, Edit, Eye, Printer, Pyramid } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -95,8 +95,12 @@ type ActivityFormValues = z.infer<typeof activityFormSchema>;
 export default function ActivityLog({ activities, setActivities }: ActivityLogProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isActivityDialogOpen, setActivityDialogOpen] = useState(false);
+  const [isDetailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<ClientActivity | null>(null);
+  const [detailsActivity, setDetailsActivity] = useState<ClientActivity | null>(null);
+
   const { toast } = useToast();
+  const receiptRef = useRef<HTMLDivElement>(null);
 
   const form = useForm<ActivityFormValues>({
     resolver: zodResolver(activityFormSchema),
@@ -161,6 +165,7 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                 try {
                     const start = parse(item.startTime, 'HH:mm', new Date());
                     const end = parse(item.endTime, 'HH:mm', new Date());
+                    const diff = differenceInMinutes(end, start);
                     if (diff > 0) {
                          duration = formatDistanceStrict(end, start, { locale: fr, unit: 'minute' });
                     }
@@ -231,6 +236,10 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
         description: "L'activité a été supprimée avec succès.",
         variant: "destructive"
     });
+  };
+
+  const handlePrintReceipt = () => {
+    window.print();
   };
 
   return (
@@ -407,7 +416,7 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuItem disabled>
+                                <DropdownMenuItem onClick={() => { setDetailsActivity(activity); setDetailsDialogOpen(true); }}>
                                     <Eye className="mr-2 h-4 w-4" /> Voir les détails
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleOpenDialog(activity)}>
@@ -433,8 +442,72 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
           </div>
         </CardContent>
       </Card>
+      
+        <Dialog open={isDetailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
+            <DialogContent className="sm:max-w-md p-0 printable-area">
+                <div ref={receiptRef} className="p-6">
+                    <DialogHeader className="space-y-4">
+                        <div className="flex items-center gap-3">
+                           <Pyramid className="h-8 w-8 text-primary" />
+                           <DialogTitle className="text-2xl font-bold font-headline tracking-wider">KHEOPS</DialogTitle>
+                        </div>
+                        <h3 className="text-xl font-semibold text-center">Reçu d'Activité</h3>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-6">
+                        <div className="space-y-2 text-sm">
+                            <p><strong>Client:</strong> {detailsActivity?.clientName}</p>
+                            {detailsActivity?.phone && <p><strong>Téléphone:</strong> {detailsActivity.phone}</p>}
+                            <p><strong>Date:</strong> {detailsActivity ? format(detailsActivity.date, "d MMMM yyyy 'à' HH:mm", { locale: fr }) : ''}</p>
+                        </div>
+                        <Separator />
+                        <div className="space-y-2">
+                           <p className="font-semibold">Détails de la transaction:</p>
+                           <div className="p-3 rounded-md bg-muted/50">
+                             <div className="flex justify-between">
+                                <div>
+                                    <p className="font-medium">{detailsActivity?.description}</p>
+                                    <p className="text-xs text-muted-foreground">{detailsActivity?.category} {detailsActivity?.duration && `(${detailsActivity.duration})`}</p>
+                                </div>
+                                <p className="font-semibold">{detailsActivity?.amount.toLocaleString('fr-FR')} FCFA</p>
+                             </div>
+                           </div>
+                        </div>
+                        <Separator />
+                        <div className="flex justify-end font-bold text-lg">
+                            <p>TOTAL: {detailsActivity?.amount.toLocaleString('fr-FR')} FCFA</p>
+                        </div>
+                    </div>
+                    <DialogDescription className="text-center text-xs">
+                        Merci de votre visite.
+                    </DialogDescription>
+                </div>
+                <DialogFooter className="p-6 pt-0 border-t no-print">
+                    <Button onClick={handlePrintReceipt}>
+                        <Printer className="mr-2 h-4 w-4"/>
+                        Imprimer le reçu
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+        <style jsx global>{`
+            @media print {
+            body * {
+                visibility: hidden;
+            }
+            .printable-area, .printable-area * {
+                visibility: visible;
+            }
+            .printable-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+            .no-print {
+                display: none;
+            }
+            }
+        `}</style>
     </div>
   );
 }
-
-    
