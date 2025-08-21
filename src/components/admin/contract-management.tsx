@@ -44,7 +44,7 @@ const paymentStatusConfig = {
     "N/A": { variant: "outline", className: "border-dashed" },
 };
 
-const contractTypes = ["Prestation Studio", "Licence Musique", "Distribution", "Partenariat"];
+const contractTypes = ["Prestation Studio", "Licence Musique", "Distribution", "Partenariat", "Autres"];
 
 type ContractStatus = keyof typeof contractStatusConfig;
 type PaymentStatus = keyof typeof paymentStatusConfig;
@@ -415,4 +415,5 @@ export default function ContractManagement() {
     
 
     
+
 
