@@ -1,61 +1,55 @@
+
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { BookOpen, CalendarDays, BookCopy, FileText } from "lucide-react";
+import { BookOpen, CalendarDays, BookCopy, FileText, Film, Puzzle } from "lucide-react";
 import React from "react";
+import type { Content } from "@/components/admin/content-management";
+import type { AppEvent } from "@/components/admin/event-management";
 
-const culturalContent = [
-  {
-    title: "Le Labyrinthe d'Osiris",
-    category: "Livre" as const,
-    description: "Plongez dans un thriller mystique au cœur de l'Égypte ancienne.",
-  },
-  {
-    title: "Pharaoh's Legacy Vol. 1",
-    category: "Manga" as const,
-    description: "Une aventure épique où des lycéens réveillent un pouvoir ancestral.",
-  },
-  {
-    title: "Les Chroniques de Thot",
-    category: "Livre" as const,
-    description: "Découvrez les secrets de la sagesse et de la magie égyptienne.",
-  },
-  {
-    title: "Article: L'art du Hiéroglyphe",
-    category: "Article" as const,
-    description: "Une analyse approfondie de l'écriture sacrée des pharaons.",
-  },
-];
+type CulturalContent = Pick<Content, 'title' | 'type'> & { description: string };
 
-const categoryIcons: { [key in typeof culturalContent[number]['category']]: React.ElementType } = {
+const contentDescriptions: { [key: string]: string } = {
+  "Le Labyrinthe d'Osiris": "Plongez dans un thriller mystique au cœur de l'Égypte ancienne.",
+  "Pharaoh's Legacy Vol. 1": "Une aventure épique où des lycéens réveillent un pouvoir ancestral.",
+  "Les Chroniques de Thot": "Découvrez les secrets de la sagesse et de la magie égyptienne.",
+  "L'art du Hiéroglyphe": "Une analyse approfondie de l'écriture sacrée des pharaons.",
+};
+
+
+const categoryIcons: { [key in Content['type']]: React.ElementType } = {
     Livre: BookOpen,
     Manga: BookCopy,
     Article: FileText,
+    Film: Film,
+    "Jeu de société": Puzzle,
 };
 
-const events = [
-  {
-    title: "Tournoi e-sport: La Fureur d'Anubis",
-    date: "30 JUIL. 2024",
-    description: "Compétition féroce sur le dernier jeu de stratégie en vogue. Lots exclusifs à gagner.",
-  },
-  {
-    title: "Conférence: L'Influence de l'Égypte sur la Pop Culture",
-    date: "15 AOÛT 2024",
-    description: "Rencontre avec des experts pour décrypter l'omniprésence des mythes égyptiens.",
-  },
-  {
-    title: "Atelier d'écriture de Manga",
-    date: "02 SEPT. 2024",
-    description: "Apprenez les bases de la narration et du dessin avec des artistes confirmés.",
-  },
-];
 
-export default function CultureHub() {
+interface CultureHubProps {
+    content: Content[];
+    events: AppEvent[];
+}
+
+
+export default function CultureHub({ content, events }: CultureHubProps) {
   const { toast } = useToast();
+
+  const culturalContent: CulturalContent[] = content
+    .filter(c => c.status === "Publié")
+    .map(c => ({
+        title: c.title,
+        type: c.type,
+        description: contentDescriptions[c.title] || "Description à venir."
+    }));
+    
+  const upcomingEvents = events
+    .filter(event => event.date >= new Date())
+    .sort((a,b) => a.date.getTime() - b.date.getTime());
+
 
   const handleMembership = () => {
     toast({
@@ -95,7 +89,7 @@ export default function CultureHub() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {culturalContent.map((item) => {
-            const Icon = categoryIcons[item.category];
+            const Icon = categoryIcons[item.type];
             return (
                 <Card key={item.title} className="bg-card border-border/50 flex flex-col justify-between overflow-hidden group transition-all duration-300 hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-1">
                 <CardHeader className="items-center justify-center flex-grow p-6">
@@ -104,7 +98,7 @@ export default function CultureHub() {
                     </div>
                 </CardHeader>
                 <CardContent className="p-4 space-y-2 text-center">
-                    <Badge variant="secondary" className="text-accent-foreground bg-accent/20 border-accent/50">{item.category}</Badge>
+                    <Badge variant="secondary" className="text-accent-foreground bg-accent/20 border-accent/50">{item.type}</Badge>
                     <CardTitle className="text-lg font-semibold text-primary-foreground">{item.title}</CardTitle>
                     <CardDescription className="text-muted-foreground text-sm">{item.description}</CardDescription>
                     <Button variant="outline" className="w-full mt-2 border-primary/50 text-primary hover:bg-primary/10" onClick={() => handleDiscover(item.title)}>
@@ -123,22 +117,26 @@ export default function CultureHub() {
           <h2 className="text-3xl font-semibold font-headline">Événements & Compétitions</h2>
         </div>
         <div className="space-y-4">
-          {events.map((event) => (
+          {upcomingEvents.map((event) => {
+            const eventDate = event.date.toLocaleDateString("fr-FR", { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
+            return (
              <Card key={event.title} className="bg-card border-border/50 flex flex-col md:flex-row items-center p-4 gap-4 transition-all duration-300 hover:border-accent">
                 <div className="flex-shrink-0 text-center md:text-left">
-                    <p className="text-lg font-bold text-primary">{event.date.split(' ')[0]}</p>
-                    <p className="text-sm text-muted-foreground">{event.date.substring(event.date.indexOf(' ') + 1)}</p>
+                    <p className="text-lg font-bold text-primary">{eventDate.split(' ')[0]} {eventDate.split(' ')[1]}</p>
+                    <p className="text-sm text-muted-foreground">{eventDate.split(' ')[2]}</p>
                 </div>
                 <div className="border-l border-border/50 h-16 hidden md:block mx-4"></div>
                 <div className="flex-grow text-center md:text-left">
                     <h3 className="text-xl font-semibold">{event.title}</h3>
-                    <p className="text-muted-foreground">{event.description}</p>
+                    <p className="text-muted-foreground">{event.category}</p>
                 </div>
                 <Button className="flex-shrink-0 bg-accent text-accent-foreground hover:bg-accent/80" onClick={() => handleRegistration(event.title)}>S'inscrire</Button>
              </Card>
-          ))}
+          )})}
         </div>
       </section>
     </div>
   );
 }
+
+    

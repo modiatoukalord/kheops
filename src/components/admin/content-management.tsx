@@ -64,7 +64,7 @@ import {
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
-const initialContent = [
+export const initialContent = [
   {
     id: "cont-001",
     title: "Le Labyrinthe d'Osiris",
@@ -99,7 +99,7 @@ const initialContent = [
   },
 ];
 
-type Content = (typeof initialContent)[0];
+export type Content = (typeof initialContent)[0];
 type ContentStatus = Content["status"];
 type ContentType = Content["type"];
 
@@ -117,8 +117,13 @@ const typeConfig: { [key in ContentType]: { icon: React.ElementType, label: stri
   "Jeu de société": { icon: Puzzle, label: "Jeu de société" },
 };
 
-export default function ContentManagement() {
-  const [content, setContent] = useState(initialContent);
+interface ContentManagementProps {
+  content: Content[];
+  setContent: React.Dispatch<React.SetStateAction<Content[]>>;
+}
+
+
+export default function ContentManagement({ content, setContent }: ContentManagementProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
@@ -390,3 +395,5 @@ export default function ContentManagement() {
     </Card>
   );
 }
+
+    

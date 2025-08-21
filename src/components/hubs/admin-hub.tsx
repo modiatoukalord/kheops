@@ -5,17 +5,14 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity } from "lucide-react";
-import UserManagement, { Subscriber } from "@/components/admin/user-management";
-import ContentManagement from "@/components/admin/content-management";
-import BookingSchedule from "@/components/admin/booking-schedule";
+import UserManagement, { Subscriber, initialSubscribers as iSubscribers } from "@/components/admin/user-management";
+import ContentManagement, { initialContent as iContent, Content } from "@/components/admin/content-management";
+import BookingSchedule, { initialBookings, Booking } from "@/components/admin/booking-schedule";
 import SiteSettings from "@/components/admin/site-settings";
-import EventManagement from "@/components/admin/event-management";
+import EventManagement, { initialEvents as iEvents, AppEvent } from "@/components/admin/event-management";
 import FinancialManagement, { Transaction } from "@/components/admin/financial-management";
 import ContractManagement from "@/components/admin/contract-management";
 import ActivityLog, { ClientActivity } from "@/components/admin/activity-log";
-import { initialSubscribers } from "@/components/admin/user-management";
-import { initialBookings, Booking } from "@/components/admin/booking-schedule";
-import { initialTransactions } from "@/components/admin/financial-management";
 import { format } from "date-fns";
 
 const initialActivities: ClientActivity[] = [
@@ -49,14 +46,30 @@ const initialActivities: ClientActivity[] = [
     }
 ];
 
+const initialTransactions: Transaction[] = [
+    { id: "txn-001", date: "2024-07-25", description: "Abonnement Premium - F. N'diaye", type: "Revenu", amount: 15000, status: "Complété" },
+    { id: "txn-002", date: "2024-07-24", description: "Achat matériel studio (micros)", type: "Dépense", amount: -150000, status: "Complété" },
+    { id: "txn-003", date: "2024-07-23", description: "Paiement location espace", type: "Dépense", amount: -250000, status: "Complété" },
+    { id: "txn-004", date: "2024-07-22", description: "Réservation studio - K. Collective", type: "Revenu", amount: 75000, status: "Complété" },
+    { id: "txn-005", date: "2024-07-21", description: "Abonnement Membre - B. Traoré", type: "Revenu", amount: 5000, status: "En attente" },
+    { id: "txn-006", date: "2024-06-15", description: "Abonnement Premium - M. Sow", type: "Revenu", amount: 15000, status: "Complété" },
+];
+
 
 type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities";
 
-export default function AdminHub() {
+export type AdminHubProps = {
+  content: Content[];
+  setContent: React.Dispatch<React.SetStateAction<Content[]>>;
+  events: AppEvent[];
+  setEvents: React.Dispatch<React.SetStateAction<AppEvent[]>>;
+}
+
+export default function AdminHub({ content, setContent, events, setEvents }: AdminHubProps) {
   const [activeView, setActiveView] = useState<AdminView>("dashboard");
 
   const [bookings, setBookings] = useState<Booking[]>(initialBookings);
-  const [subscribers, setSubscribers] = useState<Subscriber[]>(initialSubscribers);
+  const [subscribers, setSubscribers] = useState<Subscriber[]>(iSubscribers);
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
   const [activities, setActivities] = useState<ClientActivity[]>(initialActivities);
 
@@ -120,10 +133,10 @@ export default function AdminHub() {
 
   const adminViews = {
     users: { component: UserManagement, title: "Gestion des Abonnements", props: { subscribers, setSubscribers, onValidateSubscription: handleValidateSubscription, onAddSubscriber: handleAddSubscriber, onRenewSubscriber: handleRenewSubscriber } },
-    content: { component: ContentManagement, title: "Gestion des Contenus", props: {} },
+    content: { component: ContentManagement, title: "Gestion des Contenus", props: { content, setContent } },
     bookings: { component: BookingSchedule, title: "Planning des Réservations", props: { bookings, setBookings, onAddBooking: handleAddBooking } },
     settings: { component: SiteSettings, title: "Paramètres du Site", props: {} },
-    events: { component: EventManagement, title: "Gestion des Événements", props: {} },
+    events: { component: EventManagement, title: "Gestion des Événements", props: { events, setEvents } },
     financial: { component: FinancialManagement, title: "Gestion Financière", props: { transactions, setTransactions } },
     contracts: { component: ContractManagement, title: "Gestion des Contrats", props: {} },
     activities: { component: ActivityLog, title: "Journal d'Activité", props: { activities, setActivities } },
@@ -266,8 +279,10 @@ export default function AdminHub() {
           </div>
         </section>
       ) : (
-         ViewComponent && <ViewComponent {...viewProps} />
+         ViewComponent && <ViewComponent {...viewProps as any} />
       )}
     </div>
   );
 }
+
+    

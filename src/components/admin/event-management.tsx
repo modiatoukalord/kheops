@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
-const initialEvents = [
+export const initialEvents = [
   {
     id: "evt-001",
     title: "Tournoi e-sport: La Fureur d'Anubis",
@@ -45,6 +45,8 @@ const initialEvents = [
   },
 ];
 
+export type AppEvent = (typeof initialEvents)[0];
+
 const categoryColors: { [key: string]: string } = {
   Compétition: "bg-red-500/80 text-white",
   Conférence: "bg-blue-500/80 text-white",
@@ -52,9 +54,13 @@ const categoryColors: { [key: string]: string } = {
   Lancement: "bg-purple-500/80 text-white",
 };
 
-export default function EventManagement() {
+interface EventManagementProps {
+  events: AppEvent[];
+  setEvents: React.Dispatch<React.SetStateAction<AppEvent[]>>;
+}
+
+export default function EventManagement({ events, setEvents }: EventManagementProps) {
   const [date, setDate] = useState<DateRange | undefined>();
-  const [events, setEvents] = useState(initialEvents);
   const { toast } = useToast();
   const [isDialogOpen, setDialogOpen] = useState(false);
 
@@ -69,7 +75,7 @@ export default function EventManagement() {
     const title = formData.get("title") as string;
     
     if (date?.from && title) {
-        const newEvent = {
+        const newEvent: AppEvent = {
             id: `evt-${Date.now()}`,
             title,
             date: date.from,
