@@ -56,12 +56,13 @@ export type AdminHubProps = {
   setContent: React.Dispatch<React.SetStateAction<Content[]>>;
   events: AppEvent[];
   setEvents: React.Dispatch<React.SetStateAction<AppEvent[]>>;
+  bookings: Booking[];
+  setBookings: React.Dispatch<React.SetStateAction<Booking[]>>;
 }
 
-export default function AdminHub({ content, setContent, events, setEvents }: AdminHubProps) {
+export default function AdminHub({ content, setContent, events, setEvents, bookings, setBookings }: AdminHubProps) {
   const [activeView, setActiveView] = useState<AdminView>("dashboard");
 
-  const [bookings, setBookings] = useState<Booking[]>(initialBookings);
   const [subscribers, setSubscribers] = useState<Subscriber[]>(iSubscribers);
   const [transactions, setTransactions] = useState<Transaction[]>(iTransactions);
   const [activities, setActivities] = useState<ClientActivity[]>(initialActivities);
@@ -336,5 +337,3 @@ export default function AdminHub({ content, setContent, events, setEvents }: Adm
     </div>
   );
 }
-
-    

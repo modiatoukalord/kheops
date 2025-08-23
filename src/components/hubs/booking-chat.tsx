@@ -16,10 +16,15 @@ import { Send, User, Calendar as CalendarIcon, Bot, CheckCircle, Clock } from 'l
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { Booking } from '@/components/admin/booking-schedule';
+
+type BookingData = Omit<Booking, 'id' | 'status' | 'amount'>;
+
 
 interface BookingChatProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  onBookingSubmit: (data: BookingData) => void;
 }
 
 type Message = {
@@ -38,17 +43,18 @@ const initialQuestions = [
   "Merci ! Votre demande de réservation a été enregistrée. Nous vous contacterons bientôt pour confirmer."
 ];
 
-export default function BookingChat({ isOpen, onOpenChange }: BookingChatProps) {
+export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit }: BookingChatProps) {
   const [step, setStep] = useState(0);
   const [messages, setMessages] = useState<Message[]>([]);
   const [formData, setFormData] = useState({
     artistName: '',
     projectName: '',
-    projectType: '',
+    projectType: 'Autre' as "Single" | "Mixtape" | "Album" | "Autre",
     service: '',
     date: new Date(),
-    phone: ''
+    timeSlot: '09:00 - 11:00',
   });
+  const [phone, setPhone] = useState('');
   const [inputValue, setInputValue] = useState('');
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -60,11 +66,12 @@ export default function BookingChat({ isOpen, onOpenChange }: BookingChatProps) 
       setFormData({
         artistName: '',
         projectName: '',
-        projectType: '',
+        projectType: 'Autre',
         service: '',
         date: new Date(),
-        phone: ''
+        timeSlot: '09:00 - 11:00',
       });
+      setPhone('');
     }
   }, [isOpen]);
 
@@ -81,11 +88,10 @@ export default function BookingChat({ isOpen, onOpenChange }: BookingChatProps) 
   }, [messages]);
 
 
-  const handleNextStep = (answer: string, displayAnswer?: string | JSX.Element) => {
+  const handleNextStep = (answer: any, displayAnswer?: string | JSX.Element) => {
     const userMessageContent = displayAnswer || answer;
     setMessages(prev => [...prev, { sender: 'user', content: userMessageContent, id: Date.now() }]);
     
-    // Update form data based on current step
     const currentStep = step;
     const newFormData = { ...formData };
     if (currentStep === 0) newFormData.artistName = answer;
@@ -93,35 +99,46 @@ export default function BookingChat({ isOpen, onOpenChange }: BookingChatProps) 
     else if (currentStep === 2) newFormData.projectType = answer;
     else if (currentStep === 3) newFormData.service = answer;
     else if (currentStep === 4) newFormData.date = new Date(answer);
-    else if (currentStep === 5) newFormData.phone = answer;
+    else if (currentStep === 5) setPhone(answer);
     setFormData(newFormData);
 
     const nextStep = currentStep + 1;
-    if (nextStep < initialQuestions.length) {
+    if (nextStep < initialQuestions.length -1) {
       setTimeout(() => {
         setMessages(prev => [...prev, { sender: 'bot', content: initialQuestions[nextStep], id: Date.now() + 1 }]);
         setStep(nextStep);
       }, 500);
     } else {
-        toast({
-            title: "Réservation Envoyée !",
-            description: "Nous avons bien reçu votre demande. Confirmation à venir.",
-        });
-        setTimeout(() => onOpenChange(false), 1000);
+        const finalBookingData: BookingData = { ...newFormData };
+        onBookingSubmit(finalBookingData);
+
+        setTimeout(() => {
+            setMessages(prev => [...prev, { sender: 'bot', content: initialQuestions[nextStep], id: Date.now() + 1 }]);
+            setStep(nextStep);
+             toast({
+                title: "Réservation Envoyée !",
+                description: "Nous avons bien reçu votre demande. Confirmation à venir.",
+            });
+        }, 500);
+
+        setTimeout(() => onOpenChange(false), 3000);
     }
     setInputValue('');
   };
   
   const renderCurrentInput = () => {
+    if (step >= initialQuestions.length -1 ) return null;
+
     switch (step) {
       case 2: // Project Type
         return (
-          <Select onValueChange={(value) => handleNextStep(value)}>
+          <Select onValueChange={(value: Booking['projectType']) => handleNextStep(value)}>
             <SelectTrigger className="w-full"><SelectValue placeholder="Choisir un type..." /></SelectTrigger>
             <SelectContent>
               <SelectItem value="Single">Single</SelectItem>
               <SelectItem value="Mixtape">Mixtape</SelectItem>
               <SelectItem value="Album">Album</SelectItem>
+              <SelectItem value="Autre">Autre</SelectItem>
             </SelectContent>
           </Select>
         );
@@ -232,7 +249,7 @@ export default function BookingChat({ isOpen, onOpenChange }: BookingChatProps) 
                            <CheckCircle className="h-5 w-5 text-green-500" />
                            Demande envoyée !
                         </div>
-                        <p className="mt-1 text-xs text-muted-foreground">Nous vous contacterons sur le numéro {formData.phone} pour finaliser la réservation.</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Nous vous contacterons sur le numéro {phone} pour finaliser la réservation.</p>
                      </div>
                  </div>
             )}

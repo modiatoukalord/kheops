@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Music, Headphones, DiscAlbum, MessageSquare, Send } from "lucide-react";
 import Image from 'next/image';
 import BookingChat from '@/components/hubs/booking-chat';
+import { Booking } from '@/components/admin/booking-schedule';
 
 const recentProjects = [
   {
@@ -41,7 +42,11 @@ const services = [
     { name: "Production complète", description: "De la composition à la piste finale.", icon: DiscAlbum },
 ];
 
-export default function StudioHub() {
+interface StudioHubProps {
+  onAddBooking: (booking: Omit<Booking, 'id' | 'status' | 'amount'>) => void;
+}
+
+export default function StudioHub({ onAddBooking }: StudioHubProps) {
   const [isChatOpen, setChatOpen] = useState(false);
     
   return (
@@ -117,7 +122,7 @@ export default function StudioHub() {
          </Card>
       </section>
 
-      <BookingChat isOpen={isChatOpen} onOpenChange={setChatOpen} />
+      <BookingChat isOpen={isChatOpen} onOpenChange={setChatOpen} onBookingSubmit={onAddBooking} />
     </div>
   );
 }

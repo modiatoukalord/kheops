@@ -10,6 +10,7 @@ import WearHub from "@/components/hubs/wear-hub";
 import AdminHub from "@/components/hubs/admin-hub";
 import { initialContent, Content } from "@/components/admin/content-management";
 import { initialEvents, AppEvent } from "@/components/admin/event-management";
+import { Booking, initialBookings } from "@/components/admin/booking-schedule";
 
 type Hubs = {
   [key: string]: ComponentType<any>;
@@ -26,12 +27,26 @@ export default function Home() {
   const [activeHub, setActiveHub] = useState("culture");
   const [content, setContent] = useState<Content[]>(initialContent);
   const [events, setEvents] = useState<AppEvent[]>(initialEvents);
+  const [bookings, setBookings] = useState<Booking[]>(initialBookings);
+
+  const handleAddBooking = (newBookingData: Omit<Booking, 'id' | 'status' | 'amount' | 'date'> & { date: Date }) => {
+    const newBooking: Booking = {
+      ...newBookingData,
+      id: `res-${Date.now()}`,
+      status: "En attente",
+      // Dummy amount for now, can be calculated based on service
+      amount: 50000, 
+    };
+    setBookings(prev => [newBooking, ...prev]);
+  };
+
 
   const ActiveComponent = hubComponents[activeHub];
 
   const componentProps: { [key: string]: any } = {
     culture: { content, events },
-    admin: { content, setContent, events, setEvents },
+    studio: { onAddBooking: handleAddBooking },
+    admin: { content, setContent, events, setEvents, bookings, setBookings },
   };
 
   return (
@@ -45,5 +60,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
