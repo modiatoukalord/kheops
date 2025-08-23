@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Landmark, ArrowUpRight, ArrowDownLeft, PlusCircle, Search, Calendar, Filter } from "lucide-react";
+import { Landmark, ArrowUpRight, ArrowDownLeft, PlusCircle, Search, Calendar, Filter, Building, Users, ShoppingCart, Megaphone, Settings } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,23 +29,25 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { format } from "date-fns";
 
 export type Transaction = {
   id: string;
   date: string;
   description: string;
   type: "Revenu" | "Dépense";
+  category: "Abonnement" | "Prestation Studio" | "Vente" | "Paiement Plateforme" | "Loyer" | "Salaires" | "Marketing" | "Équipement" | "Autre";
   amount: number;
   status: "Complété" | "En attente" | "Annulé";
 };
 
 export const initialTransactions: Transaction[] = [
-    { id: "txn-001", date: "2024-07-25", description: "Abonnement Premium - F. N'diaye", type: "Revenu", amount: 15000, status: "Complété" },
-    { id: "txn-002", date: "2024-07-24", description: "Achat matériel studio (micros)", type: "Dépense", amount: -150000, status: "Complété" },
-    { id: "txn-003", date: "2024-07-23", description: "Paiement location espace", type: "Dépense", amount: -250000, status: "Complété" },
-    { id: "txn-004", date: "2024-07-22", description: "Réservation studio - K. Collective", type: "Revenu", amount: 75000, status: "Complété" },
-    { id: "txn-005", date: "2024-07-21", description: "Abonnement Membre - B. Traoré", type: "Revenu", amount: 5000, status: "En attente" },
-    { id: "txn-006", date: "2024-06-15", description: "Abonnement Premium - M. Sow", type: "Revenu", amount: 15000, status: "Complété" },
+    { id: "txn-001", date: "2024-07-25", description: "Abonnement Premium - F. N'diaye", type: "Revenu", category: "Abonnement", amount: 15000, status: "Complété" },
+    { id: "txn-002", date: "2024-07-24", description: "Achat matériel studio (micros)", type: "Dépense", category: "Équipement", amount: -150000, status: "Complété" },
+    { id: "txn-003", date: "2024-07-23", description: "Paiement location espace", type: "Dépense", category: "Loyer", amount: -250000, status: "Complété" },
+    { id: "txn-004", date: "2024-07-22", description: "Réservation studio - K. Collective", type: "Revenu", category: "Prestation Studio", amount: 75000, status: "Complété" },
+    { id: "txn-005", date: "2024-07-21", description: "Abonnement Membre - B. Traoré", type: "Revenu", category: "Abonnement", amount: 5000, status: "En attente" },
+    { id: "txn-006", date: "2024-06-15", description: "Abonnement Premium - M. Sow", type: "Revenu", category: "Abonnement", amount: 15000, status: "Complété" },
 ];
 
 const monthlyChartData = [
@@ -64,6 +66,15 @@ const statusVariant: { [key: string]: "default" | "secondary" | "destructive" } 
   "Annulé": "destructive",
 };
 
+const expenseCategories = {
+    "Loyer": { icon: Building },
+    "Salaires": { icon: Users },
+    "Marketing": { icon: Megaphone },
+    "Équipement": { icon: ShoppingCart },
+    "Autre": { icon: Settings },
+};
+const revenueCategories = ["Abonnement", "Prestation Studio", "Vente", "Paiement Plateforme", "Autre"];
+
 interface FinancialManagementProps {
   transactions: Transaction[];
   setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
@@ -74,12 +85,33 @@ export default function FinancialManagement({ transactions, setTransactions }: F
   const [isDialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
   const [typeFilters, setTypeFilters] = useState<("Revenu" | "Dépense")[]>([]);
+  const [transactionType, setTransactionType] = useState<"Revenu" | "Dépense">("Dépense");
+
 
   const handleAddTransaction = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const description = formData.get("description") as string;
+    const type = formData.get("type") as "Revenu" | "Dépense";
+    const category = formData.get("category") as Transaction['category'];
+    let amount = Number(formData.get("amount"));
+
+    if (type === "Dépense" && amount > 0) {
+        amount = -amount;
+    }
     
+    const newTransaction: Transaction = {
+        id: `txn-${Date.now()}`,
+        date: format(new Date(), 'yyyy-MM-dd'),
+        description,
+        type,
+        category,
+        amount,
+        status: "Complété"
+    };
+
+    setTransactions(prev => [newTransaction, ...prev]);
+
     toast({
         title: "Transaction Ajoutée",
         description: `La transaction "${description}" a été ajoutée avec succès.`,
@@ -91,7 +123,7 @@ export default function FinancialManagement({ transactions, setTransactions }: F
     const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = typeFilters.length === 0 || typeFilters.includes(transaction.type);
     return matchesSearch && matchesType;
-  });
+  }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   
   const totalRevenue = transactions.filter(t => t.type === 'Revenu').reduce((acc, t) => acc + t.amount, 0);
   const totalExpenses = transactions.filter(t => t.type === 'Dépense').reduce((acc, t) => acc + t.amount, 0);
@@ -196,28 +228,42 @@ export default function FinancialManagement({ transactions, setTransactions }: F
                     <DialogTrigger asChild>
                         <Button><PlusCircle className="mr-2 h-4 w-4" />Ajouter</Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
+                    <DialogContent className="sm:max-w-md">
                         <form onSubmit={handleAddTransaction}>
                             <DialogHeader>
                                 <DialogTitle>Ajouter une Transaction</DialogTitle>
                                 <DialogDescription>Remplissez les détails de la nouvelle transaction.</DialogDescription>
                             </DialogHeader>
                             <div className="grid gap-4 py-4">
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="description" className="text-right">Description</Label>
-                                    <Input id="description" name="description" placeholder="Ex: Achat de matériel" className="col-span-3" required />
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="amount" className="text-right">Montant</Label>
-                                    <Input id="amount" name="amount" type="number" placeholder="Ex: 50000" className="col-span-3" required />
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="type" className="text-right">Type</Label>
-                                    <Select name="type" required>
-                                        <SelectTrigger className="col-span-3"><SelectValue placeholder="Sélectionner un type" /></SelectTrigger>
+                                <div className="space-y-2">
+                                    <Label>Type de Transaction</Label>
+                                    <Select name="type" required defaultValue={transactionType} onValueChange={(value: "Revenu" | "Dépense") => setTransactionType(value)}>
+                                        <SelectTrigger><SelectValue/></SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="revenu">Revenu</SelectItem>
-                                            <SelectItem value="depense">Dépense</SelectItem>
+                                            <SelectItem value="Dépense">Dépense</SelectItem>
+                                            <SelectItem value="Revenu">Revenu</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="description">Description</Label>
+                                    <Input id="description" name="description" placeholder="Ex: Achat de matériel" required />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="amount">Montant (FCFA)</Label>
+                                    <Input id="amount" name="amount" type="number" placeholder="Ex: 50000" required />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="category">Catégorie</Label>
+                                    <Select name="category" required>
+                                        <SelectTrigger><SelectValue placeholder="Sélectionner une catégorie" /></SelectTrigger>
+                                        <SelectContent>
+                                            {transactionType === 'Dépense' ? 
+                                             Object.entries(expenseCategories).map(([key, { icon: Icon }]) => (
+                                                 <SelectItem key={key} value={key}><div className="flex items-center gap-2"><Icon className="h-4 w-4"/> {key}</div></SelectItem>
+                                             )) :
+                                             revenueCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)
+                                            }
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -239,6 +285,7 @@ export default function FinancialManagement({ transactions, setTransactions }: F
                   <TableHead>Date</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead>Type</TableHead>
+                  <TableHead>Catégorie</TableHead>
                   <TableHead>Statut</TableHead>
                   <TableHead className="text-right">Montant (FCFA)</TableHead>
                 </TableRow>
@@ -246,7 +293,7 @@ export default function FinancialManagement({ transactions, setTransactions }: F
               <TableBody>
                 {filteredTransactions.map((transaction) => (
                   <TableRow key={transaction.id}>
-                    <TableCell className="hidden md:table-cell">
+                    <TableCell>
                         <div className="flex items-center gap-2">
                            <Calendar className="h-4 w-4 text-muted-foreground" />
                            {new Date(transaction.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}
@@ -256,6 +303,7 @@ export default function FinancialManagement({ transactions, setTransactions }: F
                     <TableCell>
                         <Badge variant={transaction.type === 'Revenu' ? 'secondary' : 'destructive'} className={`${transaction.type === 'Revenu' ? 'bg-green-500/20 text-green-700 border-green-500/30' : 'bg-red-500/20 text-red-700 border-red-500/30'}`}>{transaction.type}</Badge>
                     </TableCell>
+                     <TableCell className="text-muted-foreground">{transaction.category}</TableCell>
                     <TableCell>
                         <Badge variant={statusVariant[transaction.status] || "default"}>{transaction.status}</Badge>
                     </TableCell>
