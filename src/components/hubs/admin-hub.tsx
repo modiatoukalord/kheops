@@ -4,16 +4,17 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube } from "lucide-react";
+import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home } from "lucide-react";
 import UserManagement, { Subscriber, initialSubscribers as iSubscribers } from "@/components/admin/user-management";
 import ContentManagement, { initialContent as iContent, Content } from "@/components/admin/content-management";
 import BookingSchedule, { initialBookings, Booking } from "@/components/admin/booking-schedule";
 import SiteSettings from "@/components/admin/site-settings";
 import EventManagement, { initialEvents as iEvents, AppEvent } from "@/components/admin/event-management";
-import FinancialManagement, { Transaction } from "@/components/admin/financial-management";
+import FinancialManagement, { Transaction, initialTransactions as iTransactions } from "@/components/admin/financial-management";
 import ContractManagement from "@/components/admin/contract-management";
 import ActivityLog, { ClientActivity } from "@/components/admin/activity-log";
 import PlatformManagement, { Payout, initialPayouts as iPayouts } from "@/components/admin/platform-management";
+import FixedCostsManagement, { FixedCost, initialFixedCosts as iFixedCosts } from "@/components/admin/fixed-costs-management";
 import { format } from "date-fns";
 
 const initialActivities: ClientActivity[] = [
@@ -47,17 +48,8 @@ const initialActivities: ClientActivity[] = [
     }
 ];
 
-const initialTransactions: Transaction[] = [
-    { id: "txn-001", date: "2024-07-25", description: "Abonnement Premium - F. N'diaye", type: "Revenu", amount: 15000, status: "Complété" },
-    { id: "txn-002", date: "2024-07-24", description: "Achat matériel studio (micros)", type: "Dépense", amount: -150000, status: "Complété" },
-    { id: "txn-003", date: "2024-07-23", description: "Paiement location espace", type: "Dépense", amount: -250000, status: "Complété" },
-    { id: "txn-004", date: "2024-07-22", description: "Réservation studio - K. Collective", type: "Revenu", amount: 75000, status: "Complété" },
-    { id: "txn-005", date: "2024-07-21", description: "Abonnement Membre - B. Traoré", type: "Revenu", amount: 5000, status: "En attente" },
-    { id: "txn-006", date: "2024-06-15", description: "Abonnement Premium - M. Sow", type: "Revenu", amount: 15000, status: "Complété" },
-];
 
-
-type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities" | "platforms";
+type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities" | "platforms" | "fixed-costs";
 
 export type AdminHubProps = {
   content: Content[];
@@ -71,9 +63,11 @@ export default function AdminHub({ content, setContent, events, setEvents }: Adm
 
   const [bookings, setBookings] = useState<Booking[]>(initialBookings);
   const [subscribers, setSubscribers] = useState<Subscriber[]>(iSubscribers);
-  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
+  const [transactions, setTransactions] = useState<Transaction[]>(iTransactions);
   const [activities, setActivities] = useState<ClientActivity[]>(initialActivities);
   const [payouts, setPayouts] = useState<Payout[]>(iPayouts);
+  const [fixedCosts, setFixedCosts] = useState<FixedCost[]>(iFixedCosts);
+
 
   const handleAddBooking = (newBooking: Omit<Booking, 'id'>) => {
     const fullBooking = { ...newBooking, id: `res-${Date.now()}`};
@@ -85,6 +79,7 @@ export default function AdminHub({ content, setContent, events, setEvents }: Adm
         date: format(fullBooking.date, "yyyy-MM-dd"),
         description: `Réservation studio - ${fullBooking.artistName}`,
         type: "Revenu",
+        category: "Prestation Studio",
         amount: fullBooking.amount,
         status: "En attente"
     };
@@ -109,6 +104,7 @@ export default function AdminHub({ content, setContent, events, setEvents }: Adm
         date: format(new Date(), "yyyy-MM-dd"),
         description: `Abonnement - ${subscriber.name}`,
         type: "Revenu",
+        category: "Abonnement",
         amount: parseFloat(subscriber.amount.replace(/\s/g, '').replace('FCFA', '')),
         status: "Complété"
     };
@@ -141,7 +137,24 @@ export default function AdminHub({ content, setContent, events, setEvents }: Adm
         date: format(new Date(fullPayout.date.split('/').reverse().join('-')), 'yyyy-MM-dd'),
         description: `Paiement plateforme - ${fullPayout.platform}`,
         type: "Revenu",
+        category: "Paiement Plateforme",
         amount: parseFloat(fullPayout.amount.replace(/\s/g, '').replace('FCFA', '')),
+        status: "Complété"
+    };
+    setTransactions(prev => [newTransaction, ...prev]);
+  };
+  
+  const handleAddFixedCost = (newCost: Omit<FixedCost, 'id'>) => {
+    const fullCost = { ...newCost, id: `fc-${Date.now()}` };
+    setFixedCosts(prev => [fullCost, ...prev]);
+
+    const newTransaction: Transaction = {
+        id: `txn-fc-${fullCost.id}`,
+        date: format(fullCost.paymentDate, "yyyy-MM-dd"),
+        description: `Charge Fixe: ${fullCost.name}`,
+        type: "Dépense",
+        category: fullCost.category,
+        amount: -fullCost.amount,
         status: "Complété"
     };
     setTransactions(prev => [newTransaction, ...prev]);
@@ -158,6 +171,7 @@ export default function AdminHub({ content, setContent, events, setEvents }: Adm
     contracts: { component: ContractManagement, title: "Gestion des Contrats", props: {} },
     activities: { component: ActivityLog, title: "Journal d'Activité", props: { activities, setActivities } },
     platforms: { component: PlatformManagement, title: "Gestion des Plateformes", props: { payouts, setPayouts, onAddPayout: handleAddPayout } },
+    "fixed-costs": { component: FixedCostsManagement, title: "Gestion des Charges Fixes", props: { fixedCosts, setFixedCosts, onAddFixedCost: handleAddFixedCost } },
   };
 
 
@@ -241,6 +255,16 @@ export default function AdminHub({ content, setContent, events, setEvents }: Adm
         hoverColor: "hover:bg-yellow-600/90",
     },
     {
+      title: "Charges Fixes",
+      description: "Gérer les dépenses récurrentes (loyer, salaires...).",
+      icon: Home,
+      action: "Gérer",
+      view: "fixed-costs" as AdminView,
+      color: "bg-orange-500/80",
+      textColor: "text-white",
+      hoverColor: "hover:bg-orange-600/90",
+    },
+    {
       title: "Gestion des Plateformes",
       description: "Suivre les revenus des plateformes (YouTube, TikTok...).",
       icon: Youtube,
@@ -256,9 +280,9 @@ export default function AdminHub({ content, setContent, events, setEvents }: Adm
         icon: Settings,
         action: "Configurer",
         view: "settings" as AdminView,
-        color: "bg-orange-500/80",
+        color: "bg-slate-500/80",
         textColor: "text-white",
-        hoverColor: "hover:bg-orange-600/90",
+        hoverColor: "hover:bg-slate-600/90",
     }
   ];
 
@@ -312,5 +336,3 @@ export default function AdminHub({ content, setContent, events, setEvents }: Adm
     </div>
   );
 }
-
-    
