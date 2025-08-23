@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Landmark, ArrowUpRight, ArrowDownLeft, PlusCircle, Search, Calendar, Filter, Building, Users, ShoppingCart, Megaphone, Settings } from "lucide-react";
 import {
   DropdownMenu,
@@ -134,6 +134,24 @@ export default function FinancialManagement({ transactions, setTransactions }: F
     { title: "Dépenses Totales", value: `${Math.abs(totalExpenses).toLocaleString('fr-FR')} FCFA`, icon: ArrowDownLeft, change: "+5% ce mois", color: "text-red-500" },
     { title: "Bénéfice Net", value: `${netProfit.toLocaleString('fr-FR')} FCFA`, icon: ArrowUpRight, change: "+20% ce mois", color: "text-green-500" },
   ];
+  
+  const revenueByCategoryData = useMemo(() => {
+    const revenueData = transactions
+      .filter(t => t.type === 'Revenu' && t.status === 'Complété')
+      .reduce((acc, t) => {
+        if (!acc[t.category]) {
+          acc[t.category] = 0;
+        }
+        acc[t.category] += t.amount;
+        return acc;
+      }, {} as { [key in Transaction['category']]?: number });
+
+    return Object.entries(revenueData).map(([name, total]) => ({
+      name,
+      total,
+    }));
+  }, [transactions]);
+
 
   return (
     <div className="space-y-6">
@@ -152,31 +170,57 @@ export default function FinancialManagement({ transactions, setTransactions }: F
             ))}
        </section>
 
-       <Card>
-            <CardHeader>
-                <CardTitle>Flux de trésorerie mensuel</CardTitle>
-                <CardDescription>Comparaison des revenus et dépenses sur les derniers mois.</CardDescription>
-            </CardHeader>
-            <CardContent className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={monthlyChartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.5)"/>
-                        <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))"/>
-                        <YAxis stroke="hsl(var(--muted-foreground))" tickFormatter={(value) => `${Number(value) / 1000}k`}/>
-                        <Tooltip
-                             contentStyle={{
-                                backgroundColor: 'hsl(var(--background))',
-                                borderColor: 'hsl(var(--border))',
-                                color: 'hsl(var(--foreground))'
-                            }}
-                        />
-                        <Legend />
-                        <Line type="monotone" dataKey="Revenus" stroke="hsl(var(--primary))" strokeWidth={2} name="Revenus"/>
-                        <Line type="monotone" dataKey="Dépenses" stroke="hsl(var(--destructive))" strokeWidth={2} name="Dépenses"/>
-                    </LineChart>
-                </ResponsiveContainer>
-            </CardContent>
-       </Card>
+       <section className="grid gap-6 lg:grid-cols-2">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Flux de trésorerie mensuel</CardTitle>
+                    <CardDescription>Comparaison des revenus et dépenses sur les derniers mois.</CardDescription>
+                </CardHeader>
+                <CardContent className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={monthlyChartData}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.5)"/>
+                            <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))"/>
+                            <YAxis stroke="hsl(var(--muted-foreground))" tickFormatter={(value) => `${Number(value) / 1000}k`}/>
+                            <Tooltip
+                                 contentStyle={{
+                                    backgroundColor: 'hsl(var(--background))',
+                                    borderColor: 'hsl(var(--border))',
+                                    color: 'hsl(var(--foreground))'
+                                }}
+                            />
+                            <Legend />
+                            <Line type="monotone" dataKey="Revenus" stroke="hsl(var(--primary))" strokeWidth={2} name="Revenus"/>
+                            <Line type="monotone" dataKey="Dépenses" stroke="hsl(var(--destructive))" strokeWidth={2} name="Dépenses"/>
+                        </LineChart>
+                    </ResponsiveContainer>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Répartition des Revenus</CardTitle>
+                    <CardDescription>Visualisation des sources de revenus par catégorie.</CardDescription>
+                </CardHeader>
+                <CardContent className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={revenueByCategoryData}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.5)"/>
+                            <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" angle={-45} textAnchor="end" height={50}/>
+                            <YAxis stroke="hsl(var(--muted-foreground))" tickFormatter={(value) => `${Number(value) / 1000}k`}/>
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: 'hsl(var(--background))',
+                                    borderColor: 'hsl(var(--border))',
+                                    color: 'hsl(var(--foreground))'
+                                }}
+                                cursor={{ fill: 'hsl(var(--accent)/0.2)'}}
+                            />
+                            <Bar dataKey="total" fill="hsl(var(--primary))" name="Total"/>
+                        </BarChart>
+                    </ResponsiveContainer>
+                </CardContent>
+            </Card>
+       </section>
 
       <Card>
         <CardHeader>
@@ -320,3 +364,5 @@ export default function FinancialManagement({ transactions, setTransactions }: F
     </div>
   );
 }
+
+    
