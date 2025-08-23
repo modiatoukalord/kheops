@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { ComponentType } from "react";
 import Header from "@/components/layout/header";
 import CultureHub from "@/components/hubs/culture-hub";
@@ -11,6 +11,9 @@ import AdminHub from "@/components/hubs/admin-hub";
 import { initialContent, Content } from "@/components/admin/content-management";
 import { initialEvents, AppEvent } from "@/components/admin/event-management";
 import { Booking, initialBookings } from "@/components/admin/booking-schedule";
+import { db } from "@/lib/firebase";
+import { collection, addDoc, getDocs, query, orderBy, Timestamp } from "firebase/firestore";
+
 
 type Hubs = {
   [key: string]: ComponentType<any>;
@@ -27,17 +30,61 @@ export default function Home() {
   const [activeHub, setActiveHub] = useState("culture");
   const [content, setContent] = useState<Content[]>(initialContent);
   const [events, setEvents] = useState<AppEvent[]>(initialEvents);
-  const [bookings, setBookings] = useState<Booking[]>(initialBookings);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleAddBooking = (newBookingData: Omit<Booking, 'id' | 'status' | 'amount' | 'date'> & { date: Date }) => {
-    const newBooking: Booking = {
-      ...newBookingData,
-      id: `res-${Date.now()}`,
-      status: "En attente",
-      // Dummy amount for now, can be calculated based on service
-      amount: 50000, 
+  useEffect(() => {
+    const fetchBookings = async () => {
+      try {
+        const q = query(collection(db, "bookings"), orderBy("date", "desc"));
+        const querySnapshot = await getDocs(q);
+        const bookingsData = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            date: (data.date as Timestamp).toDate(),
+            // Ensure tracks also have dates converted
+            tracks: data.tracks?.map((track: any) => ({
+              ...track,
+              date: (track.date as Timestamp).toDate(),
+            }))
+          } as Booking;
+        });
+        setBookings(bookingsData);
+      } catch (error) {
+        console.error("Error fetching bookings: ", error);
+        // Fallback to initial data on error
+        setBookings(initialBookings);
+      } finally {
+        setIsLoading(false);
+      }
     };
-    setBookings(prev => [newBooking, ...prev]);
+
+    fetchBookings();
+  }, []);
+
+
+  const handleAddBooking = async (newBookingData: Omit<Booking, 'id' | 'status' | 'amount'>) => {
+    try {
+        const bookingPayload = {
+            ...newBookingData,
+            status: "En attente" as const,
+            amount: 50000, // Dummy amount
+        };
+
+        const docRef = await addDoc(collection(db, "bookings"), bookingPayload);
+        
+        const newBooking: Booking = {
+            ...bookingPayload,
+            id: docRef.id,
+        };
+        
+        setBookings(prev => [newBooking, ...prev]);
+
+    } catch (error) {
+        console.error("Error adding document: ", error);
+    }
   };
 
 
