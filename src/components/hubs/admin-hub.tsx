@@ -13,7 +13,7 @@ import EventManagement, { initialEvents as iEvents, AppEvent } from "@/component
 import FinancialManagement, { Transaction } from "@/components/admin/financial-management";
 import ContractManagement from "@/components/admin/contract-management";
 import ActivityLog, { ClientActivity } from "@/components/admin/activity-log";
-import PlatformManagement from "@/components/admin/platform-management";
+import PlatformManagement, { Payout, initialPayouts as iPayouts } from "@/components/admin/platform-management";
 import { format } from "date-fns";
 
 const initialActivities: ClientActivity[] = [
@@ -73,6 +73,7 @@ export default function AdminHub({ content, setContent, events, setEvents }: Adm
   const [subscribers, setSubscribers] = useState<Subscriber[]>(iSubscribers);
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
   const [activities, setActivities] = useState<ClientActivity[]>(initialActivities);
+  const [payouts, setPayouts] = useState<Payout[]>(iPayouts);
 
   const handleAddBooking = (newBooking: Omit<Booking, 'id'>) => {
     const fullBooking = { ...newBooking, id: `res-${Date.now()}`};
@@ -131,6 +132,21 @@ export default function AdminHub({ content, setContent, events, setEvents }: Adm
      handleValidateSubscription(subscriberToRenew);
   };
 
+  const handleAddPayout = (newPayout: Omit<Payout, 'id'>) => {
+    const fullPayout = { ...newPayout, id: `p-${Date.now()}` };
+    setPayouts(prev => [fullPayout, ...prev]);
+
+    const newTransaction: Transaction = {
+        id: `txn-payout-${fullPayout.id}`,
+        date: format(new Date(fullPayout.date.split('/').reverse().join('-')), 'yyyy-MM-dd'),
+        description: `Paiement plateforme - ${fullPayout.platform}`,
+        type: "Revenu",
+        amount: parseFloat(fullPayout.amount.replace(/\s/g, '').replace('FCFA', '')),
+        status: "Complété"
+    };
+    setTransactions(prev => [newTransaction, ...prev]);
+  };
+
 
   const adminViews = {
     users: { component: UserManagement, title: "Gestion des Abonnements", props: { subscribers, setSubscribers, onValidateSubscription: handleValidateSubscription, onAddSubscriber: handleAddSubscriber, onRenewSubscriber: handleRenewSubscriber } },
@@ -141,7 +157,7 @@ export default function AdminHub({ content, setContent, events, setEvents }: Adm
     financial: { component: FinancialManagement, title: "Gestion Financière", props: { transactions, setTransactions } },
     contracts: { component: ContractManagement, title: "Gestion des Contrats", props: {} },
     activities: { component: ActivityLog, title: "Journal d'Activité", props: { activities, setActivities } },
-    platforms: { component: PlatformManagement, title: "Gestion des Plateformes", props: {} },
+    platforms: { component: PlatformManagement, title: "Gestion des Plateformes", props: { payouts, setPayouts, onAddPayout: handleAddPayout } },
   };
 
 
@@ -296,3 +312,5 @@ export default function AdminHub({ content, setContent, events, setEvents }: Adm
     </div>
   );
 }
+
+    

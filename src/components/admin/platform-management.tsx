@@ -58,7 +58,7 @@ const platformData = {
     }
 }
 
-type Payout = {
+export type Payout = {
     id: string;
     platform: 'YouTube' | 'TikTok' | 'Facebook' | 'Spotify';
     date: string;
@@ -66,14 +66,19 @@ type Payout = {
     status: 'Payé' | 'En attente' | 'Annulé';
 }
 
-const initialPayouts: Payout[] = [
+export const initialPayouts: Payout[] = [
     { id: 'p-001', platform: 'YouTube', date: '15/07/2024', amount: '1,500,000 FCFA', status: 'Payé' },
     { id: 'p-002', platform: 'TikTok', date: '12/07/2024', amount: '750,000 FCFA', status: 'Payé' },
     { id: 'p-003', platform: 'YouTube', date: '15/06/2024', amount: '1,350,000 FCFA', status: 'Payé' },
 ]
 
-export default function PlatformManagement() {
-  const [payouts, setPayouts] = useState<Payout[]>(initialPayouts);
+interface PlatformManagementProps {
+    payouts: Payout[];
+    setPayouts: React.Dispatch<React.SetStateAction<Payout[]>>;
+    onAddPayout: (payout: Omit<Payout, 'id'>) => void;
+}
+
+export default function PlatformManagement({ payouts, setPayouts, onAddPayout }: PlatformManagementProps) {
   const [isDialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
 
@@ -84,15 +89,15 @@ export default function PlatformManagement() {
     const date = formData.get("date") as string;
     const amount = formData.get("amount") as string;
 
-    const newPayout: Payout = {
-        id: `p-${Date.now()}`,
+    const newPayout: Omit<Payout, 'id'> = {
         platform,
         date: new Date(date).toLocaleDateString('fr-FR'),
         amount: `${Number(amount).toLocaleString('fr-FR')} FCFA`,
         status: "En attente",
     };
+    
+    onAddPayout(newPayout);
 
-    setPayouts(prev => [newPayout, ...prev]);
     toast({
         title: "Opération Ajoutée",
         description: `Le paiement de ${platform} a été ajouté.`,
@@ -335,3 +340,5 @@ export default function PlatformManagement() {
     </div>
   );
 }
+
+    
