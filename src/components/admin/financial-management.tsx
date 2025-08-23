@@ -203,9 +203,9 @@ export default function FinancialManagement({ transactions, setTransactions }: F
                 </CardHeader>
                 <CardContent className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={revenueByCategoryData}>
+                        <LineChart data={revenueByCategoryData}>
                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.5)"/>
-                            <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" angle={-45} textAnchor="end" height={50}/>
+                            <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" angle={-45} textAnchor="end" height={50} interval={0} />
                             <YAxis stroke="hsl(var(--muted-foreground))" tickFormatter={(value) => `${Number(value) / 1000}k`}/>
                             <Tooltip
                                 contentStyle={{
@@ -213,10 +213,11 @@ export default function FinancialManagement({ transactions, setTransactions }: F
                                     borderColor: 'hsl(var(--border))',
                                     color: 'hsl(var(--foreground))'
                                 }}
-                                cursor={{ fill: 'hsl(var(--accent)/0.2)'}}
+                                cursor={{ stroke: 'hsl(var(--accent))', strokeWidth: 2, strokeDasharray: '3 3' }}
                             />
-                            <Bar dataKey="total" fill="hsl(var(--primary))" name="Total"/>
-                        </BarChart>
+                             <Legend />
+                            <Line type="monotone" dataKey="total" stroke="hsl(var(--primary))" strokeWidth={2} name="Total"/>
+                        </LineChart>
                     </ResponsiveContainer>
                 </CardContent>
             </Card>
@@ -364,5 +365,3 @@ export default function FinancialManagement({ transactions, setTransactions }: F
     </div>
   );
 }
-
-    
