@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity } from "lucide-react";
+import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube } from "lucide-react";
 import UserManagement, { Subscriber, initialSubscribers as iSubscribers } from "@/components/admin/user-management";
 import ContentManagement, { initialContent as iContent, Content } from "@/components/admin/content-management";
 import BookingSchedule, { initialBookings, Booking } from "@/components/admin/booking-schedule";
@@ -13,6 +13,7 @@ import EventManagement, { initialEvents as iEvents, AppEvent } from "@/component
 import FinancialManagement, { Transaction } from "@/components/admin/financial-management";
 import ContractManagement from "@/components/admin/contract-management";
 import ActivityLog, { ClientActivity } from "@/components/admin/activity-log";
+import PlatformManagement from "@/components/admin/platform-management";
 import { format } from "date-fns";
 
 const initialActivities: ClientActivity[] = [
@@ -56,7 +57,7 @@ const initialTransactions: Transaction[] = [
 ];
 
 
-type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities";
+type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities" | "platforms";
 
 export type AdminHubProps = {
   content: Content[];
@@ -140,6 +141,7 @@ export default function AdminHub({ content, setContent, events, setEvents }: Adm
     financial: { component: FinancialManagement, title: "Gestion Financière", props: { transactions, setTransactions } },
     contracts: { component: ContractManagement, title: "Gestion des Contrats", props: {} },
     activities: { component: ActivityLog, title: "Journal d'Activité", props: { activities, setActivities } },
+    platforms: { component: PlatformManagement, title: "Gestion des Plateformes", props: {} },
   };
 
 
@@ -223,6 +225,16 @@ export default function AdminHub({ content, setContent, events, setEvents }: Adm
         hoverColor: "hover:bg-yellow-600/90",
     },
     {
+      title: "Gestion des Plateformes",
+      description: "Suivre les revenus des plateformes (YouTube, TikTok...).",
+      icon: Youtube,
+      action: "Consulter",
+      view: "platforms" as AdminView,
+      color: "bg-gray-700/80",
+      textColor: "text-white",
+      hoverColor: "hover:bg-gray-800/90",
+    },
+    {
         title: "Paramètres du Site",
         description: "Configurer les options générales de la plateforme.",
         icon: Settings,
@@ -284,5 +296,3 @@ export default function AdminHub({ content, setContent, events, setEvents }: Adm
     </div>
   );
 }
-
-    
