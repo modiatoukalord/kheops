@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 
 export type FixedCostCategory = "Loyer" | "Salaires" | "Électricité" | "Maintenance" | "Autre";
@@ -72,7 +72,7 @@ export default function FixedCostsManagement({ fixedCosts, setFixedCosts, onAddF
     const category = formData.get("category") as FixedCostCategory;
     const amount = Number(formData.get("amount"));
     const paymentDateStr = formData.get("paymentDate") as string;
-    const paymentDate = new Date(paymentDateStr);
+    const paymentDate = paymentDateStr ? parseISO(paymentDateStr) : new Date();
     const frequency = formData.get("frequency") as FixedCost['frequency'];
     
     if (editingCost) {
