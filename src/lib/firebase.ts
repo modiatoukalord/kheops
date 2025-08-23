@@ -8,7 +8,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyBszUJS1QdD3c2BVnH5HQZ9a-16NVHOBR4",
   authDomain: "kheops-hub.firebaseapp.com",
   projectId: "kheops-hub",
-  storageBucket: "kheops-hub.appspot.com",
+  storageBucket: "kheops-hub.firebasestorage.app",
   messagingSenderId: "444707922937",
   appId: "1:444707922937:web:9a1f03c413e0f8b1995328"
 };
