@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube } from "lucide-react";
+import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home } from "lucide-react";
 import UserManagement, { Subscriber, initialSubscribers as iSubscribers } from "@/components/admin/user-management";
 import ContentManagement, { initialContent as iContent, Content } from "@/components/admin/content-management";
 import BookingSchedule, { initialBookings, Booking } from "@/components/admin/booking-schedule";
@@ -14,6 +14,7 @@ import FinancialManagement, { Transaction, initialTransactions as iTransactions 
 import ContractManagement from "@/components/admin/contract-management";
 import ActivityLog, { ClientActivity } from "@/components/admin/activity-log";
 import PlatformManagement, { Payout, initialPayouts as iPayouts } from "@/components/admin/platform-management";
+import FixedCostsManagement, { FixedCost, initialFixedCosts as iFixedCosts } from "@/components/admin/fixed-costs-management";
 import { format } from "date-fns";
 
 const initialActivities: ClientActivity[] = [
@@ -48,50 +49,33 @@ const initialActivities: ClientActivity[] = [
 ];
 
 
-type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities" | "platforms";
+type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities" | "platforms" | "fixed-costs";
 
 export type AdminHubProps = {
   content: Content[];
   setContent: React.Dispatch<React.SetStateAction<Content[]>>;
   events: AppEvent[];
   setEvents: React.Dispatch<React.SetStateAction<AppEvent[]>>;
+  bookings: Booking[];
+  setBookings: React.Dispatch<React.SetStateAction<Booking[]>>;
 }
 
-export default function AdminHub({ content, setContent, events, setEvents }: AdminHubProps) {
+export default function AdminHub({ content, setContent, events, setEvents, bookings, setBookings }: AdminHubProps) {
   const [activeView, setActiveView] = useState<AdminView>("dashboard");
 
-  const [bookings, setBookings] = useState<Booking[]>(initialBookings);
+  // Removed local bookings state to use the one from props
   const [subscribers, setSubscribers] = useState<Subscriber[]>(iSubscribers);
   const [transactions, setTransactions] = useState<Transaction[]>(iTransactions);
   const [activities, setActivities] = useState<ClientActivity[]>(initialActivities);
   const [payouts, setPayouts] = useState<Payout[]>(iPayouts);
+  const [fixedCosts, setFixedCosts] = useState<FixedCost[]>(iFixedCosts);
+
 
   const handleAddBooking = (newBooking: Omit<Booking, 'id'>) => {
-    const fullBooking = { ...newBooking, id: `res-${Date.now()}`};
-    setBookings(prev => [fullBooking, ...prev]);
-    
-    // Add a corresponding transaction
-    const newTransaction: Transaction = {
-        id: `txn-${Date.now()}`,
-        date: format(fullBooking.date, "yyyy-MM-dd"),
-        description: `Réservation studio - ${fullBooking.artistName}`,
-        type: "Revenu",
-        category: "Prestation Studio",
-        amount: fullBooking.amount,
-        status: "En attente"
-    };
-    setTransactions(prev => [newTransaction, ...prev]);
-
-    // Add a corresponding activity
-    const newActivity: ClientActivity = {
-        id: `act-${fullBooking.id}`,
-        clientName: fullBooking.artistName,
-        description: `Réservation: ${fullBooking.projectName}`,
-        category: "Réservation Studio",
-        amount: fullBooking.amount,
-        date: fullBooking.date,
-    };
-    setActivities(prev => [newActivity, ...prev]);
+    // This function will be handled by page.tsx now, but we keep it for other potential uses
+    // or pass the actual handler from page.tsx through props.
+    // For now, let's assume page.tsx handles the state update and Firestore write.
+    console.log("Adding booking in AdminHub is deprecated. Should be handled in page.tsx");
   };
   
   const handleValidateSubscription = (subscriber: Subscriber) => {
@@ -140,6 +124,22 @@ export default function AdminHub({ content, setContent, events, setEvents }: Adm
     };
     setTransactions(prev => [newTransaction, ...prev]);
   };
+  
+  const handleAddFixedCost = (newCost: Omit<FixedCost, 'id'>) => {
+    const fullCost = { ...newCost, id: `fc-${Date.now()}` };
+    setFixedCosts(prev => [fullCost, ...prev]);
+
+    const newTransaction: Transaction = {
+        id: `txn-fc-${fullCost.id}`,
+        date: format(fullCost.paymentDate, "yyyy-MM-dd"),
+        description: `Charge Fixe: ${fullCost.name}`,
+        type: "Dépense",
+        category: fullCost.category,
+        amount: -fullCost.amount,
+        status: "Complété"
+    };
+    setTransactions(prev => [newTransaction, ...prev]);
+  };
 
 
   const adminViews = {
@@ -148,10 +148,11 @@ export default function AdminHub({ content, setContent, events, setEvents }: Adm
     bookings: { component: BookingSchedule, title: "Planning des Réservations", props: { bookings, setBookings, onAddBooking: handleAddBooking } },
     settings: { component: SiteSettings, title: "Paramètres du Site", props: {} },
     events: { component: EventManagement, title: "Gestion des Événements", props: { events, setEvents } },
-    financial: { component: FinancialManagement, title: "Gestion Financière", props: { transactions, setTransactions } },
+    financial: { component: FinancialManagement, title: "Rapport Financier", props: { transactions, setTransactions } },
     contracts: { component: ContractManagement, title: "Gestion des Contrats", props: {} },
     activities: { component: ActivityLog, title: "Journal d'Activité", props: { activities, setActivities } },
     platforms: { component: PlatformManagement, title: "Gestion des Plateformes", props: { payouts, setPayouts, onAddPayout: handleAddPayout } },
+    "fixed-costs": { component: FixedCostsManagement, title: "Gestion des Charges Fixes", props: { fixedCosts, setFixedCosts, onAddFixedCost: handleAddFixedCost } },
   };
 
 
@@ -225,7 +226,7 @@ export default function AdminHub({ content, setContent, events, setEvents }: Adm
         hoverColor: "hover:bg-teal-600/90",
     },
     {
-        title: "Gestion Financière",
+        title: "Rapport Financier",
         description: "Suivre les transactions et les revenus.",
         icon: Landmark,
         action: "Consulter",
@@ -233,6 +234,16 @@ export default function AdminHub({ content, setContent, events, setEvents }: Adm
         color: "bg-yellow-500/80",
         textColor: "text-white",
         hoverColor: "hover:bg-yellow-600/90",
+    },
+    {
+      title: "Charges Fixes",
+      description: "Gérer les dépenses récurrentes (loyer, salaires...).",
+      icon: Home,
+      action: "Gérer",
+      view: "fixed-costs" as AdminView,
+      color: "bg-orange-500/80",
+      textColor: "text-white",
+      hoverColor: "hover:bg-orange-600/90",
     },
     {
       title: "Gestion des Plateformes",
@@ -250,9 +261,9 @@ export default function AdminHub({ content, setContent, events, setEvents }: Adm
         icon: Settings,
         action: "Configurer",
         view: "settings" as AdminView,
-        color: "bg-orange-500/80",
+        color: "bg-slate-500/80",
         textColor: "text-white",
-        hoverColor: "hover:bg-orange-600/90",
+        hoverColor: "hover:bg-slate-600/90",
     }
   ];
 
@@ -306,3 +317,5 @@ export default function AdminHub({ content, setContent, events, setEvents }: Adm
     </div>
   );
 }
+
+    
