@@ -1,11 +1,12 @@
+
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Music, Headphones, DiscAlbum, MessageSquare, Send } from "lucide-react";
 import Image from 'next/image';
-import { useToast } from "@/hooks/use-toast";
+import BookingChat from '@/components/hubs/booking-chat';
 
 const recentProjects = [
   {
@@ -41,14 +42,7 @@ const services = [
 ];
 
 export default function StudioHub() {
-    const { toast } = useToast();
-
-    const handleBooking = () => {
-        toast({
-            title: "Connecté à votre workflow N8N",
-            description: "La réservation est maintenant gérée via votre système de chat automatisé.",
-        });
-    };
+  const [isChatOpen, setChatOpen] = useState(false);
     
   return (
     <div className="space-y-16">
@@ -114,7 +108,7 @@ export default function StudioHub() {
                         <h3 className="text-2xl font-bold">Prêt à créer ?</h3>
                         <p className="text-muted-foreground">Discutons de votre projet. Cliquez sur le bouton pour démarrer une conversation avec notre assistant de réservation et planifier votre session en quelques minutes.</p>
                     </div>
-                    <Button size="lg" className="flex-shrink-0 font-bold" onClick={handleBooking}>
+                    <Button size="lg" className="flex-shrink-0 font-bold" onClick={() => setChatOpen(true)}>
                         Démarrer la Réservation
                         <Send className="ml-2 w-4 h-4"/>
                     </Button>
@@ -122,6 +116,8 @@ export default function StudioHub() {
              </CardContent>
          </Card>
       </section>
+
+      <BookingChat isOpen={isChatOpen} onOpenChange={setChatOpen} />
     </div>
   );
 }
