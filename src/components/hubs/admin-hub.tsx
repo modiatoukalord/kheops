@@ -167,7 +167,7 @@ export default function AdminHub({ content, setContent, events, setEvents }: Adm
     bookings: { component: BookingSchedule, title: "Planning des Réservations", props: { bookings, setBookings, onAddBooking: handleAddBooking } },
     settings: { component: SiteSettings, title: "Paramètres du Site", props: {} },
     events: { component: EventManagement, title: "Gestion des Événements", props: { events, setEvents } },
-    financial: { component: FinancialManagement, title: "Gestion Financière", props: { transactions, setTransactions } },
+    financial: { component: FinancialManagement, title: "Rapport Financier", props: { transactions, setTransactions } },
     contracts: { component: ContractManagement, title: "Gestion des Contrats", props: {} },
     activities: { component: ActivityLog, title: "Journal d'Activité", props: { activities, setActivities } },
     platforms: { component: PlatformManagement, title: "Gestion des Plateformes", props: { payouts, setPayouts, onAddPayout: handleAddPayout } },
@@ -245,7 +245,7 @@ export default function AdminHub({ content, setContent, events, setEvents }: Adm
         hoverColor: "hover:bg-teal-600/90",
     },
     {
-        title: "Gestion Financière",
+        title: "Rapport Financier",
         description: "Suivre les transactions et les revenus.",
         icon: Landmark,
         action: "Consulter",
@@ -336,3 +336,5 @@ export default function AdminHub({ content, setContent, events, setEvents }: Adm
     </div>
   );
 }
+
+    
