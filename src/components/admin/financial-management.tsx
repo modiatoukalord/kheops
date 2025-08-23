@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Landmark, ArrowUpRight, ArrowDownLeft, PlusCircle, Search, Calendar, Filter, Building, Users, ShoppingCart, Megaphone, Settings } from "lucide-react";
 import {
   DropdownMenu,
@@ -29,7 +29,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
+import { fr } from "date-fns/locale";
 
 export type Transaction = {
   id: string;
@@ -136,20 +137,31 @@ export default function FinancialManagement({ transactions, setTransactions }: F
   ];
   
   const revenueByCategoryData = useMemo(() => {
-    const revenueData = transactions
-      .filter(t => t.type === 'Revenu' && t.status === 'Complété')
-      .reduce((acc, t) => {
-        if (!acc[t.category]) {
-          acc[t.category] = 0;
-        }
-        acc[t.category] += t.amount;
-        return acc;
-      }, {} as { [key in Transaction['category']]?: number });
+    const monthlyRevenue: { [month: string]: { [category: string]: number } } = {};
 
-    return Object.entries(revenueData).map(([name, total]) => ({
-      name,
-      total,
-    }));
+    transactions
+      .filter(t => t.type === 'Revenu' && t.status === 'Complété')
+      .forEach(t => {
+        const month = format(parseISO(t.date), 'MMM yyyy', { locale: fr });
+        if (!monthlyRevenue[month]) {
+          monthlyRevenue[month] = {
+            "Abonnement": 0,
+            "Prestation Studio": 0,
+            "Paiement Plateforme": 0,
+            "Vente": 0,
+          };
+        }
+        if (monthlyRevenue[month][t.category] !== undefined) {
+          monthlyRevenue[month][t.category] += t.amount;
+        }
+      });
+      
+    return Object.keys(monthlyRevenue)
+      .map(month => ({
+        name: month,
+        ...monthlyRevenue[month]
+      }))
+      .sort((a, b) => parseISO(`01 ${a.name}`).getTime() - parseISO(`01 ${b.name}`).getTime());
   }, [transactions]);
 
 
@@ -216,7 +228,10 @@ export default function FinancialManagement({ transactions, setTransactions }: F
                                 cursor={{ stroke: 'hsl(var(--accent))', strokeWidth: 2, strokeDasharray: '3 3' }}
                             />
                              <Legend />
-                            <Line type="monotone" dataKey="total" stroke="hsl(var(--primary))" strokeWidth={2} name="Total"/>
+                            <Line type="monotone" dataKey="Abonnement" stroke="hsl(var(--chart-1))" strokeWidth={2} name="Abonnements"/>
+                            <Line type="monotone" dataKey="Prestation Studio" stroke="hsl(var(--chart-2))" strokeWidth={2} name="Studio"/>
+                            <Line type="monotone" dataKey="Paiement Plateforme" stroke="hsl(var(--chart-3))" strokeWidth={2} name="Plateformes"/>
+                            <Line type="monotone" dataKey="Vente" stroke="hsl(var(--chart-4))" strokeWidth={2} name="Ventes"/>
                         </LineChart>
                     </ResponsiveContainer>
                 </CardContent>
