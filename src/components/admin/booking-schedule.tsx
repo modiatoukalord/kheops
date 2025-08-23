@@ -2,12 +2,12 @@
 "use client";
 
 import React, { useState } from "react";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, PlusCircle, CheckCircle2, XCircle, Clock, Calendar as CalendarIcon, GripVertical, DiscAlbum, Pencil, Minus, Plus } from "lucide-react";
+import { MoreHorizontal, PlusCircle, CheckCircle2, XCircle, Clock, Calendar as CalendarIcon, GripVertical, DiscAlbum, Pencil, Minus, Plus, User, FileText, Server } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -247,222 +247,263 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
     selectedDate && booking.date.toDateString() === selectedDate.toDateString()
   ).sort((a,b) => a.timeSlot.localeCompare(b.timeSlot));
 
+  const confirmedBookings = bookings.filter(b => b.status === "Confirmé").sort((a, b) => a.date.getTime() - b.date.getTime());
+
   return (
-    <Card>
-        <CardHeader className="flex flex-row justify-between items-start">
-            <div>
-                <CardTitle>Calendrier de l'Agenda</CardTitle>
-                <CardDescription>Sélectionnez une date pour voir les réservations.</CardDescription>
-            </div>
-            <Dialog open={isBookingDialogOpen} onOpenChange={setBookingDialogOpen}>
-                <DialogTrigger asChild>
-                    <Button>
-                        <PlusCircle className="mr-2 h-4 w-4"/>
-                        Ajouter une réservation
-                    </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-3xl">
-                    <Form {...form}>
-                      <form onSubmit={form.handleSubmit(handleAddBookingSubmit)} className="space-y-6">
-                        <DialogHeader>
-                            <DialogTitle>Ajouter une nouvelle réservation</DialogTitle>
-                            <DialogDescription>
-                                Remplissez les détails pour créer une nouvelle réservation de studio.
-                            </DialogDescription>
-                        </DialogHeader>
-                        
-                        <div className="grid md:grid-cols-2 gap-4">
-                            <FormField control={form.control} name="artistName" render={({ field }) => (<FormItem><Label>Artiste</Label><FormControl><Input placeholder="Nom de l'artiste" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={form.control} name="projectName" render={({ field }) => (<FormItem><Label>Projet</Label><FormControl><Input placeholder="Nom du projet" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={form.control} name="projectType" render={({ field }) => (
-                                <FormItem>
-                                <Label>Type de Projet</Label>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un type" /></SelectTrigger></FormControl>
-                                    <SelectContent>
-                                      {projectTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                                </FormItem>
-                            )} />
-                             <FormField control={form.control} name="service" render={({ field }) => (<FormItem><Label>Service</Label><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un service" /></SelectTrigger></FormControl><SelectContent>{availableServices.map(service => <SelectItem key={service} value={service}>{service}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-                        </div>
-                        
-                        <Separator/>
+    <div className="space-y-6">
+      <Card>
+          <CardHeader className="flex flex-row justify-between items-start">
+              <div>
+                  <CardTitle>Calendrier de l'Agenda</CardTitle>
+                  <CardDescription>Sélectionnez une date pour voir les réservations.</CardDescription>
+              </div>
+              <Dialog open={isBookingDialogOpen} onOpenChange={setBookingDialogOpen}>
+                  <DialogTrigger asChild>
+                      <Button>
+                          <PlusCircle className="mr-2 h-4 w-4"/>
+                          Ajouter une réservation
+                      </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-3xl">
+                      <Form {...form}>
+                        <form onSubmit={form.handleSubmit(handleAddBookingSubmit)} className="space-y-6">
+                          <DialogHeader>
+                              <DialogTitle>Ajouter une nouvelle réservation</DialogTitle>
+                              <DialogDescription>
+                                  Remplissez les détails pour créer une nouvelle réservation de studio.
+                              </DialogDescription>
+                          </DialogHeader>
+                          
+                          <div className="grid md:grid-cols-2 gap-4">
+                              <FormField control={form.control} name="artistName" render={({ field }) => (<FormItem><Label>Artiste</Label><FormControl><Input placeholder="Nom de l'artiste" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField control={form.control} name="projectName" render={({ field }) => (<FormItem><Label>Projet</Label><FormControl><Input placeholder="Nom du projet" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField control={form.control} name="projectType" render={({ field }) => (
+                                  <FormItem>
+                                  <Label>Type de Projet</Label>
+                                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                      <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un type" /></SelectTrigger></FormControl>
+                                      <SelectContent>
+                                        {projectTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                                      </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                  </FormItem>
+                              )} />
+                               <FormField control={form.control} name="service" render={({ field }) => (<FormItem><Label>Service</Label><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un service" /></SelectTrigger></FormControl><SelectContent>{availableServices.map(service => <SelectItem key={service} value={service}>{service}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                          </div>
+                          
+                          <Separator/>
 
-                        {projectType === 'Single' && (
-                            <div className="grid md:grid-cols-2 gap-4">
-                                <FormField control={form.control} name="date" render={({ field }) => (
-                                    <FormItem className="flex flex-col">
-                                        <Label>Date</Label>
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                <FormControl>
-                                                    <Button variant="outline" className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                        {field.value ? format(field.value, "PPP", { locale: fr }) : <span>Choisir une date</span>}
-                                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                    </Button>
-                                                </FormControl>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0" align="start">
-                                                <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} initialFocus locale={fr} />
-                                            </PopoverContent>
-                                        </Popover>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}/>
-                                 <FormField control={form.control} name="timeSlot" render={({ field }) => (
-                                    <FormItem>
-                                        <Label>Créneau</Label>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                            <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un créneau" /></SelectTrigger></FormControl>
-                                            <SelectContent>{availableTimeSlots.map(slot => <SelectItem key={slot} value={slot}>{slot}</SelectItem>)}</SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}/>
-                            </div>
-                        )}
-                        
-                        {(projectType === 'Mixtape' || projectType === 'Album') && (
-                            <div className="space-y-4">
-                               <div className="flex items-center justify-between">
-                                    <h4 className="text-lg font-medium">Planification des Titres</h4>
-                                    <Button type="button" size="sm" onClick={() => append({ name: '', date: new Date(), timeSlot: '' })}><PlusCircle className="mr-2 h-4 w-4" />Ajouter un titre</Button>
-                               </div>
-                               <div className="space-y-4 max-h-64 overflow-y-auto pr-4">
-                                {fields.map((item, index) => (
-                                    <div key={item.id} className="p-3 rounded-md border bg-card/50 flex items-start gap-4">
-                                        <div className="flex-grow grid md:grid-cols-3 gap-4">
-                                             <FormField control={form.control} name={`tracks.${index}.name`} render={({ field }) => (<FormItem><Label>Titre</Label><FormControl><Input placeholder={`Titre #${index + 1}`} {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                            <FormField control={form.control} name={`tracks.${index}.date`} render={({ field }) => (
-                                                <FormItem className="flex flex-col">
-                                                    <Label>Date</Label>
-                                                    <Popover>
-                                                        <PopoverTrigger asChild>
-                                                            <FormControl>
-                                                                <Button variant="outline" className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                                    {field.value ? format(field.value, "PPP", { locale: fr }) : <span>Choisir une date</span>}
-                                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                                </Button>
-                                                            </FormControl>
-                                                        </PopoverTrigger>
-                                                        <PopoverContent className="w-auto p-0" align="start">
-                                                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} initialFocus locale={fr} />
-                                                        </PopoverContent>
-                                                    </Popover>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}/>
-                                            <FormField control={form.control} name={`tracks.${index}.timeSlot`} render={({ field }) => (
-                                                <FormItem>
-                                                    <Label>Créneau</Label>
-                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                        <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger></FormControl>
-                                                        <SelectContent>{availableTimeSlots.map(slot => <SelectItem key={slot} value={slot}>{slot}</SelectItem>)}</SelectContent>
-                                                    </Select>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}/>
-                                        </div>
-                                        <Button type="button" variant="ghost" size="icon" className="mt-6 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={() => remove(index)}>
-                                            <Minus className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                ))}
-                               </div>
-                            </div>
-                        )}
+                          {projectType === 'Single' && (
+                              <div className="grid md:grid-cols-2 gap-4">
+                                  <FormField control={form.control} name="date" render={({ field }) => (
+                                      <FormItem className="flex flex-col">
+                                          <Label>Date</Label>
+                                          <Popover>
+                                              <PopoverTrigger asChild>
+                                                  <FormControl>
+                                                      <Button variant="outline" className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                          {field.value ? format(field.value, "PPP", { locale: fr }) : <span>Choisir une date</span>}
+                                                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                      </Button>
+                                                  </FormControl>
+                                              </PopoverTrigger>
+                                              <PopoverContent className="w-auto p-0" align="start">
+                                                  <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} initialFocus locale={fr} />
+                                              </PopoverContent>
+                                          </Popover>
+                                          <FormMessage />
+                                      </FormItem>
+                                  )}/>
+                                   <FormField control={form.control} name="timeSlot" render={({ field }) => (
+                                      <FormItem>
+                                          <Label>Créneau</Label>
+                                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                              <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un créneau" /></SelectTrigger></FormControl>
+                                              <SelectContent>{availableTimeSlots.map(slot => <SelectItem key={slot} value={slot}>{slot}</SelectItem>)}</SelectContent>
+                                          </Select>
+                                          <FormMessage />
+                                      </FormItem>
+                                  )}/>
+                              </div>
+                          )}
+                          
+                          {(projectType === 'Mixtape' || projectType === 'Album') && (
+                              <div className="space-y-4">
+                                 <div className="flex items-center justify-between">
+                                      <h4 className="text-lg font-medium">Planification des Titres</h4>
+                                      <Button type="button" size="sm" onClick={() => append({ name: '', date: new Date(), timeSlot: '' })}><PlusCircle className="mr-2 h-4 w-4" />Ajouter un titre</Button>
+                                 </div>
+                                 <div className="space-y-4 max-h-64 overflow-y-auto pr-4">
+                                  {fields.map((item, index) => (
+                                      <div key={item.id} className="p-3 rounded-md border bg-card/50 flex items-start gap-4">
+                                          <div className="flex-grow grid md:grid-cols-3 gap-4">
+                                               <FormField control={form.control} name={`tracks.${index}.name`} render={({ field }) => (<FormItem><Label>Titre</Label><FormControl><Input placeholder={`Titre #${index + 1}`} {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                              <FormField control={form.control} name={`tracks.${index}.date`} render={({ field }) => (
+                                                  <FormItem className="flex flex-col">
+                                                      <Label>Date</Label>
+                                                      <Popover>
+                                                          <PopoverTrigger asChild>
+                                                              <FormControl>
+                                                                  <Button variant="outline" className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                                      {field.value ? format(field.value, "PPP", { locale: fr }) : <span>Choisir une date</span>}
+                                                                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                                  </Button>
+                                                              </FormControl>
+                                                          </PopoverTrigger>
+                                                          <PopoverContent className="w-auto p-0" align="start">
+                                                              <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} initialFocus locale={fr} />
+                                                          </PopoverContent>
+                                                      </Popover>
+                                                      <FormMessage />
+                                                  </FormItem>
+                                              )}/>
+                                              <FormField control={form.control} name={`tracks.${index}.timeSlot`} render={({ field }) => (
+                                                  <FormItem>
+                                                      <Label>Créneau</Label>
+                                                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                          <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger></FormControl>
+                                                          <SelectContent>{availableTimeSlots.map(slot => <SelectItem key={slot} value={slot}>{slot}</SelectItem>)}</SelectContent>
+                                                      </Select>
+                                                      <FormMessage />
+                                                  </FormItem>
+                                              )}/>
+                                          </div>
+                                          <Button type="button" variant="ghost" size="icon" className="mt-6 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={() => remove(index)}>
+                                              <Minus className="h-4 w-4" />
+                                          </Button>
+                                      </div>
+                                  ))}
+                                 </div>
+                              </div>
+                          )}
 
 
-                        <DialogFooter>
-                            <Button type="submit">Ajouter la réservation</Button>
-                        </DialogFooter>
-                    </form>
-                    </Form>
-                </DialogContent>
-            </Dialog>
+                          <DialogFooter>
+                              <Button type="submit">Ajouter la réservation</Button>
+                          </DialogFooter>
+                      </form>
+                      </Form>
+                  </DialogContent>
+              </Dialog>
+          </CardHeader>
+          <CardContent className="grid md:grid-cols-2 gap-6">
+              <div>
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                  className="rounded-md border"
+                  locale={fr}
+                  modifiers={{
+                      booked: bookings.filter(b => b.status === 'Confirmé').map(b => b.date),
+                      pending: bookings.filter(b => b.status === 'En attente').map(b => b.date),
+                  }}
+                  modifiersStyles={{
+                      booked: {
+                          color: 'hsl(var(--primary-foreground))',
+                          backgroundColor: 'hsl(var(--primary))',
+                      },
+                      pending: {
+                          borderColor: 'hsl(var(--primary))',
+                      }
+                  }}
+                />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-4">
+                  Réservations pour le {selectedDate ? format(selectedDate, "d MMMM yyyy", { locale: fr }) : '...'}
+                </h3>
+                {bookingsForSelectedDate.length > 0 ? (
+                  <div className="space-y-4">
+                    {bookingsForSelectedDate.map((booking) => {
+                      const statusInfo = bookingStatusConfig[booking.status];
+                      return (
+                          <div key={booking.id} className="flex items-center gap-4 p-3 rounded-lg bg-card-foreground/5">
+                             <div className="font-mono text-sm text-center">
+                               <p className="font-semibold">{booking.timeSlot.split(' - ')[0]}</p>
+                               <GripVertical className="h-4 w-4 mx-auto text-muted-foreground/50"/>
+                               <p>{booking.timeSlot.split(' - ')[1]}</p>
+                             </div>
+                             <div className="flex-grow">
+                                  <p className="font-semibold">{booking.artistName}</p>
+                                  <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                     <DiscAlbum className="w-3 h-3"/> {booking.projectName}
+                                  </p>
+                                  <Badge variant={statusInfo.variant} className="mt-1">
+                                      <statusInfo.icon className={`mr-1.5 h-3 w-3 ${statusInfo.color}`} />
+                                      {booking.status}
+                                  </Badge>
+                             </div>
+                              <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => handleBookingStatusChange(booking.id, "Confirmé")}>
+                                      <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
+                                      Confirmer
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleBookingStatusChange(booking.id, "Annulé")}>
+                                      <XCircle className="mr-2 h-4 w-4 text-red-500" />
+                                      Annuler
+                                  </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                              </DropdownMenu>
+                          </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center text-muted-foreground py-10">
+                      <CalendarIcon className="h-12 w-12 mx-auto mb-2 text-muted-foreground/50"/>
+                      <p>Aucune réservation pour cette date.</p>
+                  </div>
+                )}
+              </div>
+          </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Toutes les réservations confirmées</CardTitle>
+          <CardDescription>Liste complète de toutes les sessions de studio confirmées.</CardDescription>
         </CardHeader>
-        <CardContent className="grid md:grid-cols-2 gap-6">
-            <div>
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={setSelectedDate}
-                className="rounded-md border"
-                locale={fr}
-                modifiers={{
-                    booked: bookings.filter(b => b.status === 'Confirmé').map(b => b.date),
-                    pending: bookings.filter(b => b.status === 'En attente').map(b => b.date),
-                }}
-                modifiersStyles={{
-                    booked: {
-                        color: 'hsl(var(--primary-foreground))',
-                        backgroundColor: 'hsl(var(--primary))',
-                    },
-                    pending: {
-                        borderColor: 'hsl(var(--primary))',
-                    }
-                }}
-              />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold mb-4">
-                Réservations pour le {selectedDate ? format(selectedDate, "d MMMM yyyy", { locale: fr }) : '...'}
-              </h3>
-              {bookingsForSelectedDate.length > 0 ? (
-                <div className="space-y-4">
-                  {bookingsForSelectedDate.map((booking) => {
-                    const statusInfo = bookingStatusConfig[booking.status];
-                    return (
-                        <div key={booking.id} className="flex items-center gap-4 p-3 rounded-lg bg-card-foreground/5">
-                           <div className="font-mono text-sm text-center">
-                             <p className="font-semibold">{booking.timeSlot.split(' - ')[0]}</p>
-                             <GripVertical className="h-4 w-4 mx-auto text-muted-foreground/50"/>
-                             <p>{booking.timeSlot.split(' - ')[1]}</p>
-                           </div>
-                           <div className="flex-grow">
-                                <p className="font-semibold">{booking.artistName}</p>
-                                <p className="text-sm text-muted-foreground flex items-center gap-2">
-                                   <DiscAlbum className="w-3 h-3"/> {booking.projectName}
-                                </p>
-                                <Badge variant={statusInfo.variant} className="mt-1">
-                                    <statusInfo.icon className={`mr-1.5 h-3 w-3 ${statusInfo.color}`} />
-                                    {booking.status}
-                                </Badge>
-                           </div>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleBookingStatusChange(booking.id, "Confirmé")}>
-                                    <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
-                                    Confirmer
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleBookingStatusChange(booking.id, "Annulé")}>
-                                    <XCircle className="mr-2 h-4 w-4 text-red-500" />
-                                    Annuler
-                                </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        </div>
-                    )
-                  })}
-                </div>
-              ) : (
-                <div className="text-center text-muted-foreground py-10">
-                    <CalendarIcon className="h-12 w-12 mx-auto mb-2 text-muted-foreground/50"/>
-                    <p>Aucune réservation pour cette date.</p>
-                </div>
-              )}
-            </div>
+        <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Artiste</TableHead>
+                  <TableHead>Projet</TableHead>
+                  <TableHead>Date & Heure</TableHead>
+                  <TableHead>Service</TableHead>
+                  <TableHead className="text-right">Montant</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {confirmedBookings.length > 0 ? (
+                  confirmedBookings.map((booking) => (
+                    <TableRow key={booking.id}>
+                      <TableCell className="font-medium">{booking.artistName}</TableCell>
+                      <TableCell>{booking.projectName}</TableCell>
+                      <TableCell>{format(booking.date, "d MMM yyyy", { locale: fr })} à {booking.timeSlot}</TableCell>
+                      <TableCell>{booking.service}</TableCell>
+                      <TableCell className="text-right font-semibold">{booking.amount.toLocaleString('fr-FR')} FCFA</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                      Aucune réservation confirmée pour le moment.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
         </CardContent>
-    </Card>
+      </Card>
+    </div>
   );
 }
-
-    
