@@ -7,7 +7,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, PlusCircle, CheckCircle2, XCircle, Clock, Calendar as CalendarIcon, GripVertical, DiscAlbum, Pencil, Minus, Plus, User, FileText, Server, Eye, Phone, Trash2 } from "lucide-react";
+import { MoreHorizontal, PlusCircle, CheckCircle2, XCircle, Clock, Calendar as CalendarIcon, GripVertical, DiscAlbum, Pencil, Minus, Plus, User, FileText, Server, Eye, Phone, Trash2, Edit } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -172,6 +172,7 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
   const [isBookingDialogOpen, setBookingDialogOpen] = useState(false);
   const [isDetailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
 
   const { toast } = useToast();
   
@@ -234,13 +235,13 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
     }
   };
   
-  const handleAddBookingSubmit = (data: BookingFormValues) => {
-    let newBooking: Omit<Booking, 'id' | 'status'>;
+  const handleBookingSubmit = async (data: BookingFormValues) => {
+    let bookingData: Omit<Booking, 'id' | 'status'>;
     let amount = 0;
     
     if (data.projectType === 'Single' && data.date && data.timeSlot) {
         amount = calculatePrice(data.service, 1);
-        newBooking = {
+        bookingData = {
             artistName: data.artistName,
             projectName: data.projectName,
             projectType: data.projectType,
@@ -253,7 +254,7 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
         };
     } else if ((data.projectType === 'Mixtape' || data.projectType === 'Album') && data.tracks && data.tracks.length > 0) {
         amount = calculatePrice(data.service, data.tracks.length);
-        newBooking = {
+        bookingData = {
             artistName: data.artistName,
             projectName: data.projectName,
             projectType: data.projectType,
@@ -267,7 +268,7 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
     } else {
         // Handle 'Autre' or invalid states
         amount = calculatePrice(data.service, 1);
-        newBooking = {
+        bookingData = {
              artistName: data.artistName,
             projectName: data.projectName,
             projectType: 'Autre',
@@ -279,13 +280,56 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
         }
     }
 
-    onAddBooking(newBooking);
-    toast({
-        title: "Réservation ajoutée",
-        description: `La réservation pour ${newBooking.artistName} a été ajoutée.`,
-    });
+    if (editingBooking) {
+      try {
+        const bookingRef = doc(db, "bookings", editingBooking.id);
+        await updateDoc(bookingRef, bookingData);
+        setBookings(bookings.map(b => b.id === editingBooking.id ? { ...b, ...bookingData } : b));
+        toast({
+          title: "Réservation modifiée",
+          description: `La réservation pour ${bookingData.artistName} a été mise à jour.`,
+        });
+      } catch (error) {
+        console.error("Error updating booking: ", error);
+        toast({
+          title: "Erreur",
+          description: "Impossible de mettre à jour la réservation.",
+          variant: "destructive"
+        });
+      }
+    } else {
+      onAddBooking(bookingData);
+      toast({
+          title: "Réservation ajoutée",
+          description: `La réservation pour ${bookingData.artistName} a été ajoutée.`,
+      });
+    }
+
     setBookingDialogOpen(false);
+    setEditingBooking(null);
     form.reset();
+  };
+
+  const openBookingDialog = (booking: Booking | null) => {
+    setEditingBooking(booking);
+    if (booking) {
+      form.reset({
+        ...booking,
+        tracks: booking.tracks || [{ name: '', date: new Date(), timeSlot: '' }],
+      });
+    } else {
+      form.reset({
+        artistName: '',
+        projectName: '',
+        phone: '',
+        projectType: 'Single',
+        service: '',
+        date: new Date(),
+        timeSlot: '',
+        tracks: [{ name: '', date: new Date(), timeSlot: '' }],
+      });
+    }
+    setBookingDialogOpen(true);
   };
   
   const bookingsForSelectedDate = bookings.filter(booking => 
@@ -302,20 +346,26 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
                   <CardTitle>Calendrier de l'Agenda</CardTitle>
                   <CardDescription>Sélectionnez une date pour voir les réservations.</CardDescription>
               </div>
-              <Dialog open={isBookingDialogOpen} onOpenChange={setBookingDialogOpen}>
+              <Dialog open={isBookingDialogOpen} onOpenChange={(isOpen) => {
+                  setBookingDialogOpen(isOpen);
+                  if (!isOpen) {
+                      setEditingBooking(null);
+                      form.reset();
+                  }
+              }}>
                   <DialogTrigger asChild>
-                      <Button>
+                      <Button onClick={() => openBookingDialog(null)}>
                           <PlusCircle className="mr-2 h-4 w-4"/>
                           Ajouter une réservation
                       </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-3xl">
                       <Form {...form}>
-                        <form onSubmit={form.handleSubmit(handleAddBookingSubmit)} className="space-y-6">
+                        <form onSubmit={form.handleSubmit(handleBookingSubmit)} className="space-y-6">
                           <DialogHeader>
-                              <DialogTitle>Ajouter une nouvelle réservation</DialogTitle>
+                              <DialogTitle>{editingBooking ? "Modifier la réservation" : "Ajouter une nouvelle réservation"}</DialogTitle>
                               <DialogDescription>
-                                  Remplissez les détails pour créer une nouvelle réservation de studio.
+                                  {editingBooking ? "Mettez à jour les détails de la réservation." : "Remplissez les détails pour créer une nouvelle réservation de studio."}
                               </DialogDescription>
                           </DialogHeader>
                           
@@ -426,7 +476,7 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
 
 
                           <DialogFooter>
-                              <Button type="submit">Ajouter la réservation</Button>
+                              <Button type="submit">{editingBooking ? "Enregistrer les modifications" : "Ajouter la réservation"}</Button>
                           </DialogFooter>
                         </form>
                       </Form>
@@ -491,6 +541,10 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
                                    <DropdownMenuItem onClick={() => { setSelectedBooking(booking); setDetailsDialogOpen(true); }}>
                                       <Eye className="mr-2 h-4 w-4" />
                                       Voir les détails
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => openBookingDialog(booking)}>
+                                      <Edit className="mr-2 h-4 w-4" />
+                                      Modifier
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => handleBookingStatusChange(booking.id, "Confirmé")}>
                                       <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
@@ -612,3 +666,5 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
     </div>
   );
 }
+
+    
