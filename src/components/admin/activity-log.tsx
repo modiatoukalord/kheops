@@ -143,7 +143,13 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
     }
   ).sort((a, b) => b.date.getTime() - a.date.getTime());
   
-  const totalRevenue = activities.reduce((acc, activity) => acc + (activity.paymentType === 'Direct' ? activity.totalAmount : activity.paidAmount || 0), 0);
+  const totalRevenue = activities.reduce((acc, activity) => {
+      if (activity.paymentType === 'Direct') {
+          return acc + activity.totalAmount;
+      } else {
+          return acc + (activity.paidAmount || 0);
+      }
+  }, 0);
 
   const processActivityData = (data: ActivityFormValues) => {
     const { clientName, phone, items, paymentType, paidAmount } = data;
