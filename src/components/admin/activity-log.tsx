@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy, Trash2, Minus, MoreHorizontal, Edit, Eye, Printer, Pyramid, X, CreditCard, User } from "lucide-react";
+import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy, Trash2, Minus, MoreHorizontal, Edit, Eye, Printer, Pyramid, X, CreditCard, User, HandCoins } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -36,6 +36,8 @@ import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Booking } from "@/components/admin/booking-schedule";
 
 
 export type ClientActivity = {
@@ -55,6 +57,7 @@ export type ClientActivity = {
 interface ActivityLogProps {
   activities: ClientActivity[];
   setActivities: React.Dispatch<React.SetStateAction<ClientActivity[]>>;
+  bookings: Booking[];
 }
 
 const categoryConfig = {
@@ -101,7 +104,7 @@ const activityFormSchema = z.object({
 type ActivityFormValues = z.infer<typeof activityFormSchema>;
 
 
-export default function ActivityLog({ activities, setActivities }: ActivityLogProps) {
+export default function ActivityLog({ activities, setActivities, bookings }: ActivityLogProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState<Date | undefined>();
   const [isActivityDialogOpen, setActivityDialogOpen] = useState(false);
@@ -235,8 +238,8 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
     });
   };
 
-  const handleOpenDialog = (activity: ClientActivity | null) => {
-    if (activity) {
+  const handleOpenDialog = (activity: ClientActivity | null, booking: Booking | null = null) => {
+    if (activity) { // Editing an existing activity
         setEditingActivity(activity);
         form.reset({
             clientName: activity.clientName,
@@ -251,7 +254,22 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                 endTime: ''
             }]
         });
-    } else {
+    } else if (booking) { // Creating a new activity from a booking
+         setEditingActivity(null);
+         form.reset({
+            clientName: booking.artistName,
+            phone: booking.phone || '',
+            paymentType: "Direct",
+            paidAmount: 0,
+            items: [{
+                description: `Réservation Studio: ${booking.projectName}`,
+                category: "Réservation Studio",
+                amount: booking.amount,
+                startTime: '',
+                endTime: ''
+            }]
+         });
+    } else { // Creating a brand new activity
         setEditingActivity(null);
         form.reset({
             clientName: "",
@@ -437,96 +455,146 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
           </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Paiement</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Durée</TableHead>
-                  <TableHead className="text-right">Montant</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredActivities.length > 0 ? (
-                  filteredActivities.map((activity) => {
-                    const catInfo = categoryConfig[activity.category];
-                    return (
-                    <TableRow key={activity.id}>
-                      <TableCell>
-                        <div className="font-medium">{activity.clientName}</div>
-                        {activity.phone && <div className="text-xs text-muted-foreground flex items-center gap-1.5"><Phone className="h-3 w-3"/>{activity.phone}</div>}
-                      </TableCell>
-                      <TableCell>
-                        <p>{activity.description}</p>
-                        <Badge variant="secondary" className={`mt-1 ${catInfo?.color || ''}`}>
-                            {catInfo?.icon && <catInfo.icon className="mr-1.5 h-3.5 w-3.5" />}
-                            {activity.category}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={activity.paymentType === 'Direct' ? 'default' : 'outline'} className={activity.paymentType === 'Direct' ? 'bg-green-500/80 text-white' : 'border-blue-500 text-blue-500'}>
-                            <CreditCard className="mr-1.5 h-3.5 w-3.5"/>
-                            {activity.paymentType}
-                        </Badge>
-                      </TableCell>
-                       <TableCell>
-                        <div className="flex items-center gap-2">
-                           <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                           {format(activity.date, "d MMM yyyy", { locale: fr })}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {activity.duration ? (
-                            <div className="flex items-center gap-2">
-                                <Clock className="h-4 w-4 text-muted-foreground"/>
-                                {activity.duration}
-                            </div>
-                        ) : (
-                            <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right font-semibold">
-                          <div className="text-green-600">{activity.totalAmount.toLocaleString('fr-FR')} FCFA</div>
-                          {activity.paymentType === 'Échéancier' && activity.remainingAmount && activity.remainingAmount > 0 && (
-                            <div className="text-xs text-red-500">Reste: {activity.remainingAmount.toLocaleString('fr-FR')} FCFA</div>
-                          )}
-                      </TableCell>
-                       <TableCell className="text-right">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => { setDetailsActivity(activity); setDetailsDialogOpen(true); }}>
-                                    <Eye className="mr-2 h-4 w-4" /> Voir les détails
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleOpenDialog(activity)}>
-                                    <Edit className="mr-2 h-4 w-4" /> Modifier
-                                </DropdownMenuItem>
-                                <DropdownMenuItem className="text-red-500" onClick={() => handleDeleteActivity(activity.id)}>
-                                    <Trash2 className="mr-2 h-4 w-4" /> Supprimer
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                       </TableCell>
-                    </TableRow>
-                  )})
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center">
-                      Aucune activité trouvée.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+            <Tabs defaultValue="all">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="all">Activités Diverses</TabsTrigger>
+                    <TabsTrigger value="studio">Encaissement Studio</TabsTrigger>
+                </TabsList>
+                <TabsContent value="all" className="pt-4">
+                    <div className="overflow-x-auto">
+                        <Table>
+                        <TableHeader>
+                            <TableRow>
+                            <TableHead>Client</TableHead>
+                            <TableHead>Description</TableHead>
+                            <TableHead>Paiement</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Durée</TableHead>
+                            <TableHead className="text-right">Montant</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredActivities.length > 0 ? (
+                            filteredActivities.map((activity) => {
+                                const catInfo = categoryConfig[activity.category];
+                                return (
+                                <TableRow key={activity.id}>
+                                <TableCell>
+                                    <div className="font-medium">{activity.clientName}</div>
+                                    {activity.phone && <div className="text-xs text-muted-foreground flex items-center gap-1.5"><Phone className="h-3 w-3"/>{activity.phone}</div>}
+                                </TableCell>
+                                <TableCell>
+                                    <p>{activity.description}</p>
+                                    <Badge variant="secondary" className={`mt-1 ${catInfo?.color || ''}`}>
+                                        {catInfo?.icon && <catInfo.icon className="mr-1.5 h-3.5 w-3.5" />}
+                                        {activity.category}
+                                    </Badge>
+                                </TableCell>
+                                <TableCell>
+                                    <Badge variant={activity.paymentType === 'Direct' ? 'default' : 'outline'} className={activity.paymentType === 'Direct' ? 'bg-green-500/80 text-white' : 'border-blue-500 text-blue-500'}>
+                                        <CreditCard className="mr-1.5 h-3.5 w-3.5"/>
+                                        {activity.paymentType}
+                                    </Badge>
+                                </TableCell>
+                                <TableCell>
+                                    <div className="flex items-center gap-2">
+                                    <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                                    {format(activity.date, "d MMM yyyy", { locale: fr })}
+                                    </div>
+                                </TableCell>
+                                <TableCell>
+                                    {activity.duration ? (
+                                        <div className="flex items-center gap-2">
+                                            <Clock className="h-4 w-4 text-muted-foreground"/>
+                                            {activity.duration}
+                                        </div>
+                                    ) : (
+                                        <span className="text-muted-foreground">-</span>
+                                    )}
+                                </TableCell>
+                                <TableCell className="text-right font-semibold">
+                                    <div className="text-green-600">{activity.totalAmount.toLocaleString('fr-FR')} FCFA</div>
+                                    {activity.paymentType === 'Échéancier' && activity.remainingAmount && activity.remainingAmount > 0 && (
+                                        <div className="text-xs text-red-500">Reste: {activity.remainingAmount.toLocaleString('fr-FR')} FCFA</div>
+                                    )}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon">
+                                                <MoreHorizontal className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={() => { setDetailsActivity(activity); setDetailsDialogOpen(true); }}>
+                                                <Eye className="mr-2 h-4 w-4" /> Voir les détails
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleOpenDialog(activity)}>
+                                                <Edit className="mr-2 h-4 w-4" /> Modifier
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem className="text-red-500" onClick={() => handleDeleteActivity(activity.id)}>
+                                                <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </TableCell>
+                                </TableRow>
+                            )})
+                            ) : (
+                            <TableRow>
+                                <TableCell colSpan={7} className="h-24 text-center">
+                                Aucune activité trouvée.
+                                </TableCell>
+                            </TableRow>
+                            )}
+                        </TableBody>
+                        </Table>
+                    </div>
+                </TabsContent>
+                <TabsContent value="studio" className="pt-4">
+                     <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Artiste</TableHead>
+                                    <TableHead>Projet</TableHead>
+                                    <TableHead>Date & Heure</TableHead>
+                                    <TableHead className="text-right">Montant à Payer</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {bookings.filter(b => b.status === "Confirmé").length > 0 ? (
+                                    bookings.filter(b => b.status === "Confirmé").map(booking => (
+                                        <TableRow key={booking.id}>
+                                            <TableCell>
+                                                <div className="font-medium">{booking.artistName}</div>
+                                                <div className="text-xs text-muted-foreground">{booking.phone}</div>
+                                            </TableCell>
+                                            <TableCell>{booking.projectName}</TableCell>
+                                            <TableCell>{format(booking.date, "d MMM yyyy", { locale: fr })} à {booking.timeSlot}</TableCell>
+                                            <TableCell className="text-right font-semibold">{booking.amount.toLocaleString('fr-FR')} FCFA</TableCell>
+                                            <TableCell className="text-right">
+                                                <Button size="sm" onClick={() => handleOpenDialog(null, booking)}>
+                                                    <HandCoins className="mr-2 h-4 w-4"/>
+                                                    Encaisser
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="h-24 text-center">
+                                            Aucune réservation confirmée à encaisser.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </TabsContent>
+            </Tabs>
         </CardContent>
       </Card>
       
@@ -622,5 +690,3 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
     </div>
   );
 }
-
-    
