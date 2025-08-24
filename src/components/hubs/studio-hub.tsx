@@ -44,7 +44,7 @@ const services = [
 
 interface StudioHubProps {
   bookings: Booking[];
-  onAddBooking: (booking: Omit<Booking, 'id' | 'status' | 'amount'>) => void;
+  onAddBooking: (booking: Omit<Booking, 'id' | 'status'>) => void;
 }
 
 export default function StudioHub({ bookings, onAddBooking }: StudioHubProps) {

@@ -18,9 +18,21 @@ import { format, isSameDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Booking } from '@/components/admin/booking-schedule';
 
-type BookingData = Omit<Booking, 'id' | 'status' | 'amount'>;
+type BookingData = Omit<Booking, 'id' | 'status'>;
 
 const availableTimeSlots = ["09:00 - 11:00", "11:00 - 13:00", "14:00 - 16:00", "16:00 - 18:00", "18:00 - 20:00"];
+
+const servicesWithPrices = {
+  "Prise de voix": 30000,
+  "Prise de voix + Mix": 50000,
+  "Full-package": 75000,
+};
+
+const calculatePrice = (service: string, timeSlotsCount: number) => {
+    const rate = servicesWithPrices[service as keyof typeof servicesWithPrices] || 0;
+    return rate * timeSlotsCount;
+};
+
 
 interface BookingChatProps {
   isOpen: boolean;
@@ -57,6 +69,7 @@ export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit, boo
     date: new Date(),
     timeSlot: '',
     phone: '',
+    amount: 0,
   });
   const [inputValue, setInputValue] = useState('');
   const { toast } = useToast();
@@ -74,6 +87,7 @@ export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit, boo
         date: new Date(),
         timeSlot: '',
         phone: '',
+        amount: 0,
       });
     }
   }, [isOpen]);
@@ -113,7 +127,11 @@ export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit, boo
         setStep(nextStep);
       }, 500);
     } else {
-        const finalBookingData: BookingData = { ...newFormData } as BookingData;
+        const finalBookingData: BookingData = { 
+            ...newFormData,
+            amount: calculatePrice(newFormData.service as string, 1)
+        } as BookingData;
+
         onBookingSubmit(finalBookingData);
 
         setTimeout(() => {

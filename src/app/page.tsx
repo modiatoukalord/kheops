@@ -65,12 +65,11 @@ export default function Home() {
   }, []);
 
 
-  const handleAddBooking = async (newBookingData: Omit<Booking, 'id' | 'status' | 'amount'>) => {
+  const handleAddBooking = async (newBookingData: Omit<Booking, 'id' | 'status'>) => {
     try {
         const bookingPayload: Omit<Booking, 'id'> = {
             ...newBookingData,
             status: "En attente" as const,
-            amount: 50000, // Dummy amount
         };
 
         const docRef = await addDoc(collection(db, "bookings"), bookingPayload);

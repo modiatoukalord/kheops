@@ -53,14 +53,9 @@ const servicesWithPrices = {
   "Prise de voix + Mix + Mastering": 75000,
 };
 
-const calculatePrice = (service: string, timeSlots: string[]) => {
-    const hourlyRate = servicesWithPrices[service as keyof typeof servicesWithPrices] || 0;
-    const totalDuration = timeSlots.reduce((acc, slot) => {
-        const [start, end] = slot.split(' - ').map(t => parseInt(t.split(':')[0], 10));
-        const duration = end - start;
-        return acc + duration;
-    }, 0);
-    return hourlyRate * totalDuration;
+const calculatePrice = (service: string, timeSlotsCount: number) => {
+    const rate = servicesWithPrices[service as keyof typeof servicesWithPrices] || 0;
+    return rate * timeSlotsCount;
 };
 
 
@@ -90,7 +85,7 @@ export const initialBookings: Booking[] = [
     timeSlot: "14:00 - 16:00",
     service: "Prise de voix",
     status: "En attente",
-    amount: 60000,
+    amount: 30000,
     phone: "+242 06 000 0002",
   },
   {
@@ -102,7 +97,7 @@ export const initialBookings: Booking[] = [
     timeSlot: "16:00 - 18:00",
     service: "Full-package",
     status: "Confirmé",
-    amount: 150000,
+    amount: 75000,
     phone: "+242 06 000 0003",
   },
     {
@@ -114,7 +109,7 @@ export const initialBookings: Booking[] = [
     timeSlot: "11:00 - 13:00",
     service: "Prise de voix",
     status: "Annulé",
-    amount: 60000,
+    amount: 30000,
   },
   {
     id: "res-005",
@@ -125,7 +120,7 @@ export const initialBookings: Booking[] = [
     timeSlot: "18:00 - 20:00",
     service: "Prise de voix + Mix",
     status: "En attente",
-    amount: 100000,
+    amount: 50000,
   },
 ];
 
@@ -147,7 +142,7 @@ const projectTypes = ["Single", "Mixtape", "Album", "Autre"] as const;
 interface BookingScheduleProps {
   bookings: Booking[];
   setBookings: React.Dispatch<React.SetStateAction<Booking[]>>;
-  onAddBooking: (booking: Omit<Booking, 'id' | 'status' | 'amount'>) => void;
+  onAddBooking: (booking: Omit<Booking, 'id' | 'status'>) => void;
 }
 
 const trackSchema = z.object({
@@ -246,9 +241,11 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
   };
   
   const handleAddBookingSubmit = (data: BookingFormValues) => {
-    let newBooking: Omit<Booking, 'id' | 'status' | 'amount'>;
+    let newBooking: Omit<Booking, 'id' | 'status'>;
+    let amount = 0;
     
     if (data.projectType === 'Single' && data.date && data.timeSlot) {
+        amount = calculatePrice(data.service, 1);
         newBooking = {
             artistName: data.artistName,
             projectName: data.projectName,
@@ -258,9 +255,11 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
             timeSlot: data.timeSlot,
             service: data.service,
             tracks: [{ name: data.projectName, date: data.date, timeSlot: data.timeSlot }],
+            amount,
         };
-    } else if ((data.projectType === 'Mixtape' || data.projectType === 'Album') && data.tracks) {
-         newBooking = {
+    } else if ((data.projectType === 'Mixtape' || data.projectType === 'Album') && data.tracks && data.tracks.length > 0) {
+        amount = calculatePrice(data.service, data.tracks.length);
+        newBooking = {
             artistName: data.artistName,
             projectName: data.projectName,
             projectType: data.projectType,
@@ -269,11 +268,21 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
             timeSlot: data.tracks[0].timeSlot,
             service: data.service,
             tracks: data.tracks,
+            amount,
         };
     } else {
         // Handle 'Autre' or invalid states
-        toast({ title: "Erreur de formulaire", description: "Veuillez vérifier les informations.", variant: "destructive" });
-        return;
+        amount = calculatePrice(data.service, 1);
+        newBooking = {
+             artistName: data.artistName,
+            projectName: data.projectName,
+            projectType: 'Autre',
+            phone: data.phone,
+            date: data.date || new Date(),
+            timeSlot: data.timeSlot || 'N/A',
+            service: data.service,
+            amount,
+        }
     }
 
     onAddBooking(newBooking);
@@ -612,5 +621,3 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
     </div>
   );
 }
-
-    
