@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy, Trash2, Minus, MoreHorizontal, Edit, Eye, Printer, Pyramid, X, CreditCard } from "lucide-react";
+import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy, Trash2, Minus, MoreHorizontal, Edit, Eye, Printer, Pyramid, X, CreditCard, User } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -43,7 +43,7 @@ export type ClientActivity = {
   clientName: string;
   phone?: string;
   description: string;
-  category: "Livre" | "Manga" | "Jeu de société" | "Session de jeu" | "Réservation Studio" | "Autre";
+  category: "Livre" | "Manga" | "Jeu de société" | "Session de jeu" | "Réservation Studio" | "Abonnement" | "Autre";
   totalAmount: number;
   date: Date;
   duration?: string;
@@ -63,6 +63,7 @@ const categoryConfig = {
     "Jeu de société": { icon: Puzzle, color: "bg-green-500/20 text-green-700 border-green-500/30" },
     "Session de jeu": { icon: Gamepad2, color: "bg-red-500/20 text-red-700 border-red-500/30" },
     "Réservation Studio": { icon: MicVocal, color: "bg-purple-500/20 text-purple-700 border-purple-500/30" },
+    "Abonnement": { icon: User, color: "bg-cyan-500/20 text-cyan-700 border-cyan-500/30" },
     "Autre": { icon: DollarSign, color: "bg-gray-500/20 text-gray-700 border-gray-500/30" },
 };
 
@@ -621,3 +622,5 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
     </div>
   );
 }
+
+    
