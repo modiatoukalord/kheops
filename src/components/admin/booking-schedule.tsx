@@ -7,7 +7,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, PlusCircle, CheckCircle2, XCircle, Clock, Calendar as CalendarIcon, GripVertical, DiscAlbum, Pencil, Minus, Plus, User, FileText, Server, Eye, Phone } from "lucide-react";
+import { MoreHorizontal, PlusCircle, CheckCircle2, XCircle, Clock, Calendar as CalendarIcon, GripVertical, DiscAlbum, Pencil, Minus, Plus, User, FileText, Server, Eye, Phone, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -207,6 +207,15 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
 
   const handleBookingStatusChange = (bookingId: string, newStatus: BookingStatus) => {
     setBookings(bookings.map(b => b.id === bookingId ? { ...b, status: newStatus } : b));
+  };
+
+  const handleDeleteBooking = (bookingId: string) => {
+    setBookings(bookings.filter(b => b.id !== bookingId));
+    toast({
+        title: "Réservation Supprimée",
+        description: "La réservation a été supprimée avec succès.",
+        variant: "destructive"
+    });
   };
   
   const handleAddBookingSubmit = (data: BookingFormValues) => {
@@ -460,6 +469,10 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
                                   <DropdownMenuItem onClick={() => handleBookingStatusChange(booking.id, "Annulé")}>
                                       <XCircle className="mr-2 h-4 w-4 text-red-500" />
                                       Annuler
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem className="text-red-500" onClick={() => handleDeleteBooking(booking.id)}>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Supprimer
                                   </DropdownMenuItem>
                                   </DropdownMenuContent>
                               </DropdownMenu>
