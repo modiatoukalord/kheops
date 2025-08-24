@@ -194,7 +194,7 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
 
     if(editingActivity) {
          const item = items[0];
-         let duration;
+         let duration = null;
         if (item.startTime && item.endTime) {
             try {
                 const start = parse(item.startTime, 'HH:mm', new Date());
@@ -205,7 +205,7 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
             } catch (e) { console.error("Invalid time format"); }
         }
         
-        const updatedPayload = {
+        const updatedPayload: any = {
             ...baseActivityPayload,
             description: item.description,
             category: item.category,
@@ -216,6 +216,10 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
             bookingId: editingActivity.bookingId,
             date: editingActivity.date, // Keep original date on edit
         };
+
+        if (duration === null) {
+          delete updatedPayload.duration;
+        }
 
         try {
             const activityRef = doc(db, "activities", editingActivity.id);
@@ -231,7 +235,7 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
         
     } else {
         const newActivitiesPromises = items.map(item => {
-            let duration;
+            let duration = null;
             if (item.startTime && item.endTime) {
                 try {
                     const start = parse(item.startTime, 'HH:mm', new Date());
@@ -241,7 +245,7 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
                     }
                 } catch (e) { console.error("Invalid time format for duration calculation"); }
             }
-            const activityPayload = {
+            const activityPayload: any = {
                 ...baseActivityPayload,
                 description: item.description,
                 category: item.category,
@@ -251,6 +255,11 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
                 remainingAmount: paymentType === 'Échéancier' ? item.amount - (paidAmount || 0) : 0,
                 bookingId: item.category === "Réservation Studio" ? bookingId : undefined,
             };
+
+            if (duration === null) {
+              delete activityPayload.duration;
+            }
+
             return addDoc(collection(db, "activities"), activityPayload);
         });
 
@@ -781,5 +790,7 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
     </div>
   );
 }
+
+    
 
     
