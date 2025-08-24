@@ -276,7 +276,7 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
             clientName: activity.clientName,
             phone: activity.phone || '',
             paymentType: activity.paymentType,
-            paidAmount: activity.remainingAmount, // Pre-fill with remaining amount
+            paidAmount: activity.remainingAmount || 0, // Pre-fill with remaining amount
             items: [{
                 description: activity.description,
                 category: activity.category,
@@ -789,3 +789,5 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
     </div>
   );
 }
+
+    
