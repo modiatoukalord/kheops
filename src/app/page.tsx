@@ -67,7 +67,7 @@ export default function Home() {
 
   const handleAddBooking = async (newBookingData: Omit<Booking, 'id' | 'status' | 'amount'>) => {
     try {
-        const bookingPayload = {
+        const bookingPayload: Omit<Booking, 'id'> = {
             ...newBookingData,
             status: "En attente" as const,
             amount: 50000, // Dummy amount

@@ -46,15 +46,15 @@ const initialQuestions = [
 export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit }: BookingChatProps) {
   const [step, setStep] = useState(0);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<Partial<BookingData>>({
     artistName: '',
     projectName: '',
-    projectType: 'Autre' as "Single" | "Mixtape" | "Album" | "Autre",
+    projectType: 'Autre',
     service: '',
     date: new Date(),
     timeSlot: '09:00 - 11:00',
+    phone: '',
   });
-  const [phone, setPhone] = useState('');
   const [inputValue, setInputValue] = useState('');
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -70,8 +70,8 @@ export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit }: B
         service: '',
         date: new Date(),
         timeSlot: '09:00 - 11:00',
+        phone: '',
       });
-      setPhone('');
     }
   }, [isOpen]);
 
@@ -99,7 +99,7 @@ export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit }: B
     else if (currentStep === 2) newFormData.projectType = answer;
     else if (currentStep === 3) newFormData.service = answer;
     else if (currentStep === 4) newFormData.date = new Date(answer);
-    else if (currentStep === 5) setPhone(answer);
+    else if (currentStep === 5) newFormData.phone = answer;
     setFormData(newFormData);
 
     const nextStep = currentStep + 1;
@@ -109,7 +109,7 @@ export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit }: B
         setStep(nextStep);
       }, 500);
     } else {
-        const finalBookingData: BookingData = { ...newFormData };
+        const finalBookingData: BookingData = { ...newFormData } as BookingData;
         onBookingSubmit(finalBookingData);
 
         setTimeout(() => {
@@ -249,7 +249,7 @@ export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit }: B
                            <CheckCircle className="h-5 w-5 text-green-500" />
                            Demande envoyée !
                         </div>
-                        <p className="mt-1 text-xs text-muted-foreground">Nous vous contacterons sur le numéro {phone} pour finaliser la réservation.</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Nous vous contacterons sur le numéro {formData.phone} pour finaliser la réservation.</p>
                      </div>
                  </div>
             )}

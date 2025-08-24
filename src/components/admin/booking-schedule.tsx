@@ -7,7 +7,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, PlusCircle, CheckCircle2, XCircle, Clock, Calendar as CalendarIcon, GripVertical, DiscAlbum, Pencil, Minus, Plus, User, FileText, Server, Eye } from "lucide-react";
+import { MoreHorizontal, PlusCircle, CheckCircle2, XCircle, Clock, Calendar as CalendarIcon, GripVertical, DiscAlbum, Pencil, Minus, Plus, User, FileText, Server, Eye, Phone } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,6 +40,7 @@ export type Booking = {
   service: string;
   status: "Confirmé" | "En attente" | "Annulé";
   amount: number;
+  phone?: string;
   tracks?: { name: string; date: Date; timeSlot: string }[];
 }
 
@@ -72,6 +73,7 @@ export const initialBookings: Booking[] = [
     service: "Prise de voix + Mix",
     status: "Confirmé",
     amount: 100000,
+    phone: "+242 06 000 0001",
     tracks: [
         { name: "Intro", date: new Date("2024-07-31T09:00:00"), timeSlot: "09:00 - 11:00" },
         { name: "Outro", date: new Date("2024-08-01T09:00:00"), timeSlot: "09:00 - 11:00" },
@@ -87,6 +89,7 @@ export const initialBookings: Booking[] = [
     service: "Prise de voix",
     status: "En attente",
     amount: 60000,
+    phone: "+242 06 000 0002",
   },
   {
     id: "res-003",
@@ -98,6 +101,7 @@ export const initialBookings: Booking[] = [
     service: "Full-package",
     status: "Confirmé",
     amount: 150000,
+    phone: "+242 06 000 0003",
   },
     {
     id: "res-004",
@@ -141,7 +145,7 @@ const projectTypes = ["Single", "Mixtape", "Album", "Autre"] as const;
 interface BookingScheduleProps {
   bookings: Booking[];
   setBookings: React.Dispatch<React.SetStateAction<Booking[]>>;
-  onAddBooking: (booking: Omit<Booking, 'id'>) => void;
+  onAddBooking: (booking: Omit<Booking, 'id' | 'status' | 'amount'>) => void;
 }
 
 const trackSchema = z.object({
@@ -155,6 +159,7 @@ const bookingFormSchema = z.object({
   projectName: z.string().min(1, "Nom du projet requis"),
   projectType: z.enum(projectTypes, { required_error: "Type de projet requis" }),
   service: z.string({ required_error: "Service requis" }),
+  phone: z.string().optional(),
   date: z.date().optional(),
   timeSlot: z.string().optional(),
   tracks: z.array(trackSchema).optional(),
@@ -205,18 +210,17 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
   };
   
   const handleAddBookingSubmit = (data: BookingFormValues) => {
-    let newBooking: Omit<Booking, 'id'>;
+    let newBooking: Omit<Booking, 'id' | 'status' | 'amount'>;
     
     if (data.projectType === 'Single' && data.date && data.timeSlot) {
         newBooking = {
             artistName: data.artistName,
             projectName: data.projectName,
             projectType: data.projectType,
+            phone: data.phone,
             date: data.date,
             timeSlot: data.timeSlot,
             service: data.service,
-            status: "En attente",
-            amount: calculatePrice(data.service, [data.timeSlot]),
             tracks: [{ name: data.projectName, date: data.date, timeSlot: data.timeSlot }],
         };
     } else if ((data.projectType === 'Mixtape' || data.projectType === 'Album') && data.tracks) {
@@ -224,11 +228,10 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
             artistName: data.artistName,
             projectName: data.projectName,
             projectType: data.projectType,
+            phone: data.phone,
             date: data.tracks[0].date, // Use first track's date as main date
             timeSlot: data.tracks[0].timeSlot,
             service: data.service,
-            status: "En attente",
-            amount: calculatePrice(data.service, data.tracks.map(t => t.timeSlot)),
             tracks: data.tracks,
         };
     } else {
@@ -247,7 +250,7 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
   };
   
   const bookingsForSelectedDate = bookings.filter(booking => 
-    selectedDate ? booking.date.toDateString() === selectedDate.toDateString() : false
+    selectedDate ? booking.date.toDateString() === selectedDate.toDateString() : true
   ).sort((a,b) => a.timeSlot.localeCompare(b.timeSlot));
 
   const confirmedBookings = bookings.filter(b => b.status === "Confirmé").sort((a, b) => a.date.getTime() - b.date.getTime());
@@ -280,6 +283,7 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
                           <div className="grid md:grid-cols-2 gap-4">
                               <FormField control={form.control} name="artistName" render={({ field }) => (<FormItem><Label>Artiste</Label><FormControl><Input placeholder="Nom de l'artiste" {...field} /></FormControl><FormMessage /></FormItem>)} />
                               <FormField control={form.control} name="projectName" render={({ field }) => (<FormItem><Label>Projet</Label><FormControl><Input placeholder="Nom du projet" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                               <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><Label>Téléphone</Label><FormControl><Input placeholder="Numéro de téléphone" {...field} /></FormControl><FormMessage /></FormItem>)} />
                               <FormField control={form.control} name="projectType" render={({ field }) => (
                                   <FormItem>
                                   <Label>Type de Projet</Label>
@@ -533,6 +537,7 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
                           <div><Label className="text-muted-foreground">Projet</Label><p>{selectedBooking.projectName}</p></div>
                           <div><Label className="text-muted-foreground">Type</Label><p>{selectedBooking.projectType}</p></div>
                           <div><Label className="text-muted-foreground">Service</Label><p>{selectedBooking.service}</p></div>
+                          {selectedBooking.phone && <div><Label className="text-muted-foreground">Téléphone</Label><p className="flex items-center gap-2"><Phone className="h-3 w-3" />{selectedBooking.phone}</p></div>}
                           <div><Label className="text-muted-foreground">Montant</Label><p className="font-semibold">{selectedBooking.amount.toLocaleString('fr-FR')} FCFA</p></div>
                           <div><Label className="text-muted-foreground">Statut</Label><Badge variant={bookingStatusConfig[selectedBooking.status].variant}>{selectedBooking.status}</Badge></div>
                       </div>
