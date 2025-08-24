@@ -185,55 +185,38 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
   const processActivityData = async (data: ActivityFormValues) => {
     const { clientName, phone, items, paymentType, paidAmount, bookingId } = data;
     
-    const baseActivityPayload = {
-      clientName,
-      phone,
-      paymentType,
-      date: new Date(),
-    };
-
     if(editingActivity) {
          const item = items[0];
-         let duration = null;
-        if (item.startTime && item.endTime) {
-            try {
-                const start = parse(item.startTime, 'HH:mm', new Date());
-                const end = parse(item.endTime, 'HH:mm', new Date());
-                if (end > start) {
-                     duration = formatDistanceStrict(end, start, { locale: fr, unit: 'minute' });
-                }
-            } catch (e) { console.error("Invalid time format"); }
-        }
         
-        const updatedPayload: any = {
-            ...baseActivityPayload,
-            description: item.description,
-            category: item.category,
-            totalAmount: item.amount,
-            duration,
-            paidAmount: paymentType === 'Échéancier' ? paidAmount : item.amount,
-            remainingAmount: paymentType === 'Échéancier' ? item.amount - (paidAmount || 0) : 0,
-            bookingId: editingActivity.bookingId,
-            date: editingActivity.date, // Keep original date on edit
-        };
+        const newPaidAmount = (editingActivity.paidAmount || 0) + (paidAmount || 0);
+        const newRemainingAmount = item.amount - newPaidAmount;
 
-        if (duration === null) {
-          delete updatedPayload.duration;
-        }
+        const updatedPayload = {
+            paidAmount: newPaidAmount,
+            remainingAmount: newRemainingAmount,
+            paymentType,
+        };
 
         try {
             const activityRef = doc(db, "activities", editingActivity.id);
             await updateDoc(activityRef, updatedPayload);
             toast({
-                title: "Activité Modifiée",
-                description: `L'activité pour "${clientName}" a été mise à jour.`,
+                title: "Paiement Enregistré",
+                description: `Un nouveau versement pour "${clientName}" a été enregistré.`,
             });
         } catch (error) {
             console.error("Error updating document: ", error);
-            toast({ title: "Erreur", description: "Impossible de modifier l'activité.", variant: "destructive" });
+            toast({ title: "Erreur", description: "Impossible d'enregistrer le paiement.", variant: "destructive" });
         }
         
     } else {
+         const baseActivityPayload = {
+          clientName,
+          phone,
+          paymentType,
+          date: new Date(),
+        };
+
         const newActivitiesPromises = items.map(item => {
             let duration = null;
             if (item.startTime && item.endTime) {
@@ -251,7 +234,7 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
                 category: item.category,
                 totalAmount: item.amount,
                 duration,
-                paidAmount: paymentType === 'Échéancier' ? (paidAmount) : item.amount,
+                paidAmount: paymentType === 'Échéancier' ? (paidAmount || 0) : item.amount,
                 remainingAmount: paymentType === 'Échéancier' ? item.amount - (paidAmount || 0) : 0,
                 bookingId: item.category === "Réservation Studio" ? bookingId : undefined,
             };
@@ -287,13 +270,13 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
   };
 
   const handleOpenDialog = (activity: ClientActivity | null, booking: Booking | null = null, remainingToPay: number = 0) => {
-    if (activity) { // Editing an existing activity
+    if (activity) { // Editing an existing activity for installment payment
         setEditingActivity(activity);
         form.reset({
             clientName: activity.clientName,
             phone: activity.phone || '',
             paymentType: activity.paymentType,
-            paidAmount: activity.paidAmount || 0,
+            paidAmount: activity.remainingAmount, // Pre-fill with remaining amount
             items: [{
                 description: activity.description,
                 category: activity.category,
@@ -363,6 +346,10 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
   const handlePrintReceipt = () => {
     window.print();
   };
+  
+  const isEditingInstallment = editingActivity && editingActivity.paymentType === 'Échéancier';
+  const editingTotalAmount = editingActivity ? editingActivity.totalAmount : 0;
+  const editingPaidAmount = editingActivity ? editingActivity.paidAmount || 0 : 0;
 
   return (
     <div className="space-y-6">
@@ -443,17 +430,17 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
                        <Form {...form}>
                         <form onSubmit={form.handleSubmit(processActivityData)}>
                             <DialogHeader>
-                                <DialogTitle>{editingActivity ? "Modifier l'activité" : "Ajouter une nouvelle vente/activité"}</DialogTitle>
+                                <DialogTitle>{editingActivity ? (isEditingInstallment ? "Encaisser une échéance" : "Modifier l'activité") : "Ajouter une nouvelle vente/activité"}</DialogTitle>
                                 <DialogDescription>
-                                    {editingActivity ? "Mettez à jour les informations de l'activité." : "Remplissez les informations du client et ajoutez un ou plusieurs articles/services."}
+                                    {editingActivity ? (isEditingInstallment ? `Ajoutez un nouveau versement pour ${editingActivity.clientName}.` : "Mettez à jour les informations de l'activité.") : "Remplissez les informations du client et ajoutez un ou plusieurs articles/services."}
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="grid gap-6 py-4 max-h-[80vh] overflow-y-auto pr-4">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <FormField control={form.control} name="clientName" render={({ field }) => (<FormItem><Label>Nom du client</Label><FormControl><Input placeholder="Ex: Jean Dupont" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><Label>Téléphone</Label><FormControl><Input placeholder="Ex: +242 06 123 4567" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="clientName" render={({ field }) => (<FormItem><Label>Nom du client</Label><FormControl><Input placeholder="Ex: Jean Dupont" {...field} disabled={!!editingActivity} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><Label>Téléphone</Label><FormControl><Input placeholder="Ex: +242 06 123 4567" {...field} disabled={!!editingActivity} /></FormControl><FormMessage /></FormItem>)} />
                                     <FormField control={form.control} name="paymentType" render={({ field }) => (<FormItem><Label>Type de paiement</Label>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!!editingActivity}>
                                             <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
                                             <SelectContent><SelectItem value="Direct">Direct</SelectItem><SelectItem value="Échéancier">Échéancier</SelectItem></SelectContent>
                                         </Select><FormMessage /></FormItem>)} />
@@ -469,15 +456,14 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
                                                 )}
                                             </div>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <FormField control={form.control} name={`items.${index}.description`} render={({ field }) => (<FormItem><Label>Description</Label><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField control={form.control} name={`items.${index}.category`} render={({ field }) => (<FormItem><Label>Catégorie</Label><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent>{Object.keys(categoryConfig).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name={`items.${index}.description`} render={({ field }) => (<FormItem><Label>Description</Label><FormControl><Input {...field} disabled={!!editingActivity} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name={`items.${index}.category`} render={({ field }) => (<FormItem><Label>Catégorie</Label><Select onValueChange={field.onChange} defaultValue={field.value} disabled={!!editingActivity}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent>{Object.keys(categoryConfig).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
                                             </div>
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <FormField control={form.control} name={`items.${index}.amount`} render={({ field }) => (<FormItem><Label>Montant Total</Label><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField control={form.control} name={`items.${index}.startTime`} render={({ field }) => (<FormItem><Label>Heure de début</Label><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField control={form.control} name={`items.${index}.endTime`} render={({ field }) => (<FormItem><Label>Heure de fin</Label><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name={`items.${index}.amount`} render={({ field }) => (<FormItem><Label>Montant Total</Label><FormControl><Input type="number" {...field} disabled={!!editingActivity} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name={`items.${index}.startTime`} render={({ field }) => (<FormItem><Label>Heure de début</Label><FormControl><Input type="time" {...field} disabled={isEditingInstallment} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name={`items.${index}.endTime`} render={({ field }) => (<FormItem><Label>Heure de fin</Label><FormControl><Input type="time" {...field} disabled={isEditingInstallment} /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
-                                            {editingActivity && <p className="text-xs text-muted-foreground">La date et l'heure de modification n'affectent pas la date d'enregistrement originale.</p>}
                                         </div>
                                     ))}
                                     {!editingActivity && (
@@ -486,10 +472,10 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
                                     </Button>
                                     )}
                                 </div>
-                                {(paymentType === 'Échéancier' || form.getValues('items.0.category') === 'Réservation Studio') && (
+                                {(paymentType === 'Échéancier') && (
                                     <FormField control={form.control} name="paidAmount" render={({ field }) => (
                                         <FormItem>
-                                            <Label>Montant Versé</Label>
+                                            <Label>{isEditingInstallment ? "Montant à verser" : "Montant Versé initialement"}</Label>
                                             <FormControl><Input type="number" {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -501,20 +487,24 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
                                     {paymentType === 'Échéancier' && (
                                         <>
                                             <div className="text-right">
+                                                <span>{isEditingInstallment ? "Déjà Versé:" : ""}</span>
+                                                {isEditingInstallment && <p className="text-muted-foreground font-normal text-base">{editingPaidAmount.toLocaleString('fr-FR')} FCFA</p>}
+                                            </div>
+                                             <div className="text-right">
                                                 <span>Restant:</span>
-                                                <p className="text-red-500">{remainingAmount.toLocaleString('fr-FR')} FCFA</p>
+                                                <p className="text-red-500">{isEditingInstallment ? (editingTotalAmount - editingPaidAmount).toLocaleString('fr-FR') : remainingAmount.toLocaleString('fr-FR')} FCFA</p>
                                             </div>
                                             <Separator orientation="vertical" className="h-10" />
                                         </>
                                     )}
                                     <div className="text-right">
                                         <span>Total:</span>
-                                        <p>{totalAmount.toLocaleString('fr-FR')} FCFA</p>
+                                        <p>{isEditingInstallment ? editingTotalAmount.toLocaleString('fr-FR') : totalAmount.toLocaleString('fr-FR')} FCFA</p>
                                     </div>
                                 </div>
                             </div>
                             <DialogFooter className="pt-4 border-t">
-                                <Button type="submit">{editingActivity ? "Enregistrer les modifications" : "Enregistrer la vente"}</Button>
+                                <Button type="submit">{editingActivity ? (isEditingInstallment ? "Enregistrer le versement" : "Enregistrer les modifications") : "Enregistrer la vente"}</Button>
                             </DialogFooter>
                         </form>
                         </Form>
@@ -553,6 +543,7 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
                             {filteredActivities.length > 0 ? (
                             filteredActivities.map((activity) => {
                                 const catInfo = categoryConfig[activity.category];
+                                const isInstallmentAndUnpaid = activity.paymentType === 'Échéancier' && (activity.remainingAmount || 0) > 0;
                                 return (
                                 <TableRow key={activity.id}>
                                 <TableCell>
@@ -605,9 +596,15 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
                                             <DropdownMenuItem onClick={() => { setDetailsActivity(activity); setDetailsDialogOpen(true); }}>
                                                 <Eye className="mr-2 h-4 w-4" /> Voir les détails
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleOpenDialog(activity, null)}>
-                                                <Edit className="mr-2 h-4 w-4" /> Modifier
-                                            </DropdownMenuItem>
+                                            {isInstallmentAndUnpaid ? (
+                                                <DropdownMenuItem onClick={() => handleOpenDialog(activity, null)}>
+                                                    <HandCoins className="mr-2 h-4 w-4" /> Encaisser une échéance
+                                                </DropdownMenuItem>
+                                            ) : (
+                                                 <DropdownMenuItem disabled>
+                                                    <Edit className="mr-2 h-4 w-4" /> Modifier
+                                                </DropdownMenuItem>
+                                            )}
                                             <DropdownMenuItem className="text-red-500" onClick={() => handleDeleteActivity(activity.id)}>
                                                 <Trash2 className="mr-2 h-4 w-4" /> Supprimer
                                             </DropdownMenuItem>
