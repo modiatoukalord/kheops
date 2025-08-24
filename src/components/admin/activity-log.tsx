@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy, Trash2, Minus, MoreHorizontal, Edit, Eye, Printer, Pyramid, X, CreditCard, User, HandCoins, Loader2, CheckCircle2, Ban } from "lucide-react";
+import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy, Trash2, Minus, MoreHorizontal, Edit, Eye, Printer, Pyramid, X, CreditCard, User, HandCoins, Loader2, CheckCircle2, Ban, AlertCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -203,7 +203,7 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
     };
 
     const newActivitiesPromises = items.map(item => {
-        let duration = null;
+        let duration: string | null = null;
         if (item.startTime && item.endTime) {
             try {
                 const start = parse(item.startTime, 'HH:mm', new Date());
@@ -213,19 +213,20 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
                 }
             } catch (e) { console.error("Invalid time format for duration calculation"); }
         }
-        const activityPayload: any = {
+        
+        const activityPayload: Omit<ClientActivity, 'id'> & { date: Date } = {
             ...baseActivityPayload,
             description: item.description,
             category: item.category,
             totalAmount: item.amount,
-            duration,
+            duration: duration,
             paidAmount: paymentType === 'Échéancier' ? (paidAmount || 0) : item.amount,
             remainingAmount: paymentType === 'Échéancier' ? item.amount - (paidAmount || 0) : 0,
             bookingId: item.category === "Réservation Studio" ? bookingId : undefined,
         };
-
+        
         if (duration === null) {
-          delete activityPayload.duration;
+            delete (activityPayload as Partial<typeof activityPayload>).duration;
         }
 
         return addDoc(collection(db, "activities"), activityPayload);
@@ -260,7 +261,7 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
          form.reset({
             clientName: booking.artistName,
             phone: booking.phone || '',
-            paymentType: isInstallment ? "Échéancier" : "Direct",
+            paymentType: "Direct", // Default to direct, user can change
             paidAmount: amountToPay,
             items: [{
                 description: `Réservation Studio: ${booking.projectName}`,
@@ -284,6 +285,9 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
   }
   
   const handleDeleteActivity = async (activityId: string) => {
+    if (!window.confirm("Êtes-vous sûr de vouloir supprimer cette activité ? Cette action est irréversible.")) {
+        return;
+    }
     try {
         await deleteDoc(doc(db, "activities", activityId));
         toast({
@@ -338,6 +342,10 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
         const relatedActivitiesToDelete = activities.filter(act => act.bookingId === bookingId);
         if (relatedActivitiesToDelete.length === 0) {
             toast({ title: "Aucun paiement trouvé", description: "Aucun paiement à annuler pour cette réservation.", variant: "destructive" });
+            return;
+        }
+
+        if (!window.confirm("Êtes-vous sûr de vouloir annuler le(s) paiement(s) pour cette réservation ?")) {
             return;
         }
 
@@ -640,7 +648,8 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
                                     bookings.filter(b => b.status === "Confirmé").map(booking => {
                                         const relatedActivities = activities.filter(act => act.bookingId === booking.id);
                                         const totalPaid = relatedActivities.reduce((sum, act) => sum + (act.paidAmount || 0), 0);
-                                        const hasPayment = relatedActivities.length > 0;
+                                        const isFullyPaid = totalPaid >= booking.amount;
+                                        const isPartiallyPaid = totalPaid > 0 && totalPaid < booking.amount;
 
                                         return (
                                         <TableRow key={booking.id}>
@@ -655,22 +664,24 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
                                                 <div className="text-xs text-green-500 font-normal">Payé: {totalPaid.toLocaleString('fr-FR')} FCFA</div>
                                             </TableCell>
                                             <TableCell className="text-center">
-                                                {hasPayment ? (
+                                                {isFullyPaid ? (
                                                      <Badge className="bg-green-500/80 text-white"><CheckCircle2 className="mr-1.5 h-3.5 w-3.5"/> Payé</Badge>
+                                                ) : isPartiallyPaid ? (
+                                                     <Badge variant="outline" className="border-blue-500 text-blue-500"><AlertCircle className="mr-1.5 h-3.5 w-3.5"/> Échéancier</Badge>
                                                 ) : (
                                                     <Badge variant="destructive">Non Payé</Badge>
                                                 )}
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                {!hasPayment ? (
-                                                    <Button size="sm" onClick={() => handleOpenNewActivityDialog(booking, booking.amount - totalPaid)}>
-                                                        <HandCoins className="mr-2 h-4 w-4"/>
-                                                        Encaisser
-                                                    </Button>
-                                                ) : (
+                                                {totalPaid > 0 ? (
                                                     <Button size="sm" variant="destructive" onClick={() => handleCancelPayment(booking.id)}>
                                                         <Ban className="mr-2 h-4 w-4"/>
                                                         Annuler
+                                                    </Button>
+                                                ) : (
+                                                     <Button size="sm" onClick={() => handleOpenNewActivityDialog(booking, booking.amount - totalPaid)}>
+                                                        <HandCoins className="mr-2 h-4 w-4"/>
+                                                        Encaisser
                                                     </Button>
                                                 )}
                                             </TableCell>
@@ -833,3 +844,5 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
     </div>
   );
 }
+
+    
