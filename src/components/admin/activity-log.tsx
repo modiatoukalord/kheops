@@ -35,6 +35,7 @@ import { Form, FormControl, FormField, FormItem, FormMessage } from "@/component
 import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { Calendar } from "@/components/ui/calendar";
 
 
 export type ClientActivity = {
