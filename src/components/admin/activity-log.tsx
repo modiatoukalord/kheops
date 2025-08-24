@@ -52,6 +52,7 @@ export type ClientActivity = {
   paymentType: "Direct" | "Échéancier";
   paidAmount?: number;
   remainingAmount?: number;
+  bookingId?: string;
 };
 
 interface ActivityLogProps {
@@ -99,6 +100,7 @@ const activityFormSchema = z.object({
   paymentType: z.enum(["Direct", "Échéancier"], { required_error: "Type de paiement requis" }),
   paidAmount: z.coerce.number().optional(),
   items: z.array(activityItemSchema).min(1, "Veuillez ajouter au moins une activité."),
+  bookingId: z.string().optional(),
 });
 
 type ActivityFormValues = z.infer<typeof activityFormSchema>;
@@ -156,7 +158,7 @@ export default function ActivityLog({ activities, setActivities, bookings }: Act
   }, 0);
 
   const processActivityData = (data: ActivityFormValues) => {
-    const { clientName, phone, items, paymentType, paidAmount } = data;
+    const { clientName, phone, items, paymentType, paidAmount, bookingId } = data;
     const totalAmount = items.reduce((acc, item) => acc + item.amount, 0);
 
     if(editingActivity) {
@@ -183,6 +185,7 @@ export default function ActivityLog({ activities, setActivities, bookings }: Act
             paymentType,
             paidAmount: paymentType === 'Échéancier' ? paidAmount : item.amount,
             remainingAmount: paymentType === 'Échéancier' ? item.amount - (paidAmount || 0) : 0,
+            bookingId: editingActivity.bookingId,
         };
         setActivities(prev => prev.map(act => act.id === editingActivity.id ? updatedActivity : act));
         toast({
@@ -217,6 +220,7 @@ export default function ActivityLog({ activities, setActivities, bookings }: Act
                 paymentType,
                 paidAmount: paymentType === 'Échéancier' ? paidAmount : item.amount,
                 remainingAmount: paymentType === 'Échéancier' ? item.amount - (paidAmount || 0) : 0,
+                bookingId
             }
         });
 
@@ -252,7 +256,8 @@ export default function ActivityLog({ activities, setActivities, bookings }: Act
                 amount: activity.totalAmount,
                 startTime: '', 
                 endTime: ''
-            }]
+            }],
+            bookingId: activity.bookingId
         });
     } else if (booking) { // Creating a new activity from a booking
          setEditingActivity(null);
@@ -267,7 +272,8 @@ export default function ActivityLog({ activities, setActivities, bookings }: Act
                 amount: booking.amount,
                 startTime: '',
                 endTime: ''
-            }]
+            }],
+            bookingId: booking.id
          });
     } else { // Creating a brand new activity
         setEditingActivity(null);
@@ -289,6 +295,17 @@ export default function ActivityLog({ activities, setActivities, bookings }: Act
         description: "L'activité a été supprimée avec succès.",
         variant: "destructive"
     });
+  };
+  
+  const handleCancelPayment = (bookingId: string) => {
+    const activityToDelete = activities.find(act => act.bookingId === bookingId);
+    if (activityToDelete) {
+        handleDeleteActivity(activityToDelete.id);
+        toast({
+            title: "Encaissement Annulé",
+            description: "L'encaissement pour cette réservation a été annulé.",
+        });
+    }
   };
 
   const handlePrintReceipt = () => {
@@ -530,7 +547,7 @@ export default function ActivityLog({ activities, setActivities, bookings }: Act
                                             <DropdownMenuItem onClick={() => { setDetailsActivity(activity); setDetailsDialogOpen(true); }}>
                                                 <Eye className="mr-2 h-4 w-4" /> Voir les détails
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleOpenDialog(activity)}>
+                                            <DropdownMenuItem onClick={() => handleOpenDialog(activity, null)}>
                                                 <Edit className="mr-2 h-4 w-4" /> Modifier
                                             </DropdownMenuItem>
                                             <DropdownMenuItem className="text-red-500" onClick={() => handleDeleteActivity(activity.id)}>
@@ -566,7 +583,9 @@ export default function ActivityLog({ activities, setActivities, bookings }: Act
                             </TableHeader>
                             <TableBody>
                                 {bookings.filter(b => b.status === "Confirmé").length > 0 ? (
-                                    bookings.filter(b => b.status === "Confirmé").map(booking => (
+                                    bookings.filter(b => b.status === "Confirmé").map(booking => {
+                                        const isPaid = activities.some(act => act.bookingId === booking.id);
+                                        return (
                                         <TableRow key={booking.id}>
                                             <TableCell>
                                                 <div className="font-medium">{booking.artistName}</div>
@@ -576,13 +595,20 @@ export default function ActivityLog({ activities, setActivities, bookings }: Act
                                             <TableCell>{format(booking.date, "d MMM yyyy", { locale: fr })} à {booking.timeSlot}</TableCell>
                                             <TableCell className="text-right font-semibold">{booking.amount.toLocaleString('fr-FR')} FCFA</TableCell>
                                             <TableCell className="text-right">
-                                                <Button size="sm" onClick={() => handleOpenDialog(null, booking)}>
-                                                    <HandCoins className="mr-2 h-4 w-4"/>
-                                                    Encaisser
-                                                </Button>
+                                                {isPaid ? (
+                                                    <Button size="sm" variant="destructive" onClick={() => handleCancelPayment(booking.id)}>
+                                                         <X className="mr-2 h-4 w-4"/>
+                                                         Annuler
+                                                    </Button>
+                                                ) : (
+                                                    <Button size="sm" onClick={() => handleOpenDialog(null, booking)}>
+                                                        <HandCoins className="mr-2 h-4 w-4"/>
+                                                        Encaisser
+                                                    </Button>
+                                                )}
                                             </TableCell>
                                         </TableRow>
-                                    ))
+                                    )})
                                 ) : (
                                     <TableRow>
                                         <TableCell colSpan={5} className="h-24 text-center">
