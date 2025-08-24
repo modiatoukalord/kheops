@@ -175,92 +175,69 @@ export default function AdminHub({ content, setContent, events, setEvents, booki
 
   const adminCategories = [
     {
-        title: "Gestion des Entrées",
-        icon: Wallet,
-        description: "Suivi des revenus, paiements et activités financières.",
+        title: "Gestion",
+        color: "bg-blue-600/80 text-blue-50",
         sections: [
             {
-              title: "Rapport Financier",
-              description: "Suivre les transactions et les revenus.",
-              icon: Landmark,
-              action: "Consulter",
-              view: "financial" as AdminView,
-            },
-            {
-              title: "Journal d'Activité",
-              description: "Suivre les achats et services ponctuels.",
-              icon: Activity,
-              action: "Consulter",
-              view: "activities" as AdminView,
-            },
-            {
-              title: "Gestion des Plateformes",
-              description: "Suivre les revenus des plateformes (YouTube, TikTok...).",
-              icon: Youtube,
-              action: "Consulter",
-              view: "platforms" as AdminView,
-            },
-            {
-              title: "Charges Fixes",
-              description: "Gérer les dépenses récurrentes (loyer, salaires...).",
-              icon: Home,
-              action: "Gérer",
-              view: "fixed-costs" as AdminView,
-            },
-        ]
-    },
-    {
-        title: "Gestion des Opérations",
-        icon: Briefcase,
-        description: "Management des clients, réservations et contrats.",
-        sections: [
-            {
-              title: "Gestion des Abonnements",
-              description: "Gérer les abonnements des utilisateurs.",
+              title: "Abonnements",
               icon: Users,
-              action: "Gérer",
               view: "users" as AdminView,
             },
             {
-              title: "Réservations du Studio",
-              description: "Voir et gérer le planning des réservations du studio.",
+              title: "Réservations",
               icon: CalendarCheck,
-              action: "Consulter",
               view: "bookings" as AdminView,
             },
             {
-                title: "Gestion des Contrats",
-                description: "Suivre et mettre à jour les contrats de réservation.",
+                title: "Contrats",
                 icon: FileSignature,
-                action: "Gérer",
                 view: "contracts" as AdminView,
             },
         ]
     },
     {
-        title: "Plateforme & Contenu",
-        icon: FileText,
-        description: "Administration du contenu public et des paramètres.",
+        title: "Finances",
+        color: "bg-green-600/80 text-green-50",
         sections: [
             {
-              title: "Gestion des Contenus",
-              description: "Ajouter ou modifier des livres et articles.",
+              title: "Rapport Financier",
+              icon: Landmark,
+              view: "financial" as AdminView,
+            },
+            {
+              title: "Journal d'Activité",
+              icon: Activity,
+              view: "activities" as AdminView,
+            },
+            {
+              title: "Paiements Plateformes",
+              icon: Youtube,
+              view: "platforms" as AdminView,
+            },
+            {
+              title: "Charges Fixes",
+              icon: Home,
+              view: "fixed-costs" as AdminView,
+            },
+        ]
+    },
+    {
+        title: "Contenu & Plateforme",
+        color: "bg-purple-600/80 text-purple-50",
+        sections: [
+            {
+              title: "Contenus",
               icon: FileText,
-              action: "Gérer",
               view: "content" as AdminView,
             },
             {
-              title: "Gestion des Événements",
-              description: "Créer et gérer les événements et compétitions.",
+              title: "Événements",
               icon: CalendarPlus,
-              action: "Gérer",
               view: "events" as AdminView,
             },
             {
-                title: "Paramètres du Site",
-                description: "Configurer les options générales de la plateforme.",
+                title: "Paramètres",
                 icon: Settings,
-                action: "Configurer",
                 view: "settings" as AdminView,
             }
         ]
@@ -291,34 +268,24 @@ export default function AdminHub({ content, setContent, events, setEvents, booki
       </header>
 
       {activeView === 'dashboard' ? (
-        <div className="space-y-8">
-            {adminCategories.map((category) => (
-                <section key={category.title}>
-                    <div className="flex items-center gap-3 mb-4">
-                        <category.icon className="h-6 w-6 text-primary"/>
-                        <h2 className="text-2xl font-semibold font-headline">{category.title}</h2>
-                    </div>
-                     <p className="text-muted-foreground mb-6 ml-9">{category.description}</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {category.sections.map((section) => (
-                          <Card key={section.title} className="bg-card/50 flex flex-col justify-between transition-all duration-300 hover:border-primary/50 hover:-translate-y-1 hover:shadow-lg">
-                            <CardHeader>
-                              <CardTitle className="flex items-center gap-3 text-xl">
-                                <section.icon className="w-6 h-6 text-accent" />
-                                {section.title}
-                              </CardTitle>
-                              <CardDescription>{section.description}</CardDescription>
-                            </CardHeader>
-                            <CardContent className="flex justify-end pt-4">
-                              <Button variant="outline" onClick={() => handleAction(section.view)}>
-                                {section.action}
-                              </Button>
-                            </CardContent>
-                          </Card>
-                        ))}
-                    </div>
-                </section>
-            ))}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {adminCategories.map((category) => (
+            <div key={category.title} className={`p-6 rounded-xl shadow-lg ${category.color}`}>
+              <h2 className="text-2xl font-bold font-headline mb-4 text-white">{category.title}</h2>
+              <div className="grid grid-cols-2 gap-4">
+                {category.sections.map((section) => (
+                    <button
+                        key={section.view}
+                        onClick={() => handleAction(section.view)}
+                        className="flex flex-col items-center justify-center p-4 bg-black/20 rounded-lg text-center text-white/90 hover:bg-black/40 transition-colors duration-200"
+                    >
+                        <section.icon className="h-8 w-8 mb-2" />
+                        <span className="text-sm font-medium">{section.title}</span>
+                    </button>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
          ViewComponent && <ViewComponent {...viewProps as any} />
@@ -326,3 +293,5 @@ export default function AdminHub({ content, setContent, events, setEvents, booki
     </div>
   );
 }
+
+    
