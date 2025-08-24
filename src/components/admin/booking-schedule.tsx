@@ -7,7 +7,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, PlusCircle, CheckCircle2, XCircle, Clock, Calendar as CalendarIcon, GripVertical, DiscAlbum, Pencil, Minus, Plus, User, FileText, Server } from "lucide-react";
+import { MoreHorizontal, PlusCircle, CheckCircle2, XCircle, Clock, Calendar as CalendarIcon, GripVertical, DiscAlbum, Pencil, Minus, Plus, User, FileText, Server, Eye } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -179,6 +179,9 @@ type BookingFormValues = z.infer<typeof bookingFormSchema>;
 export default function BookingSchedule({ bookings, setBookings, onAddBooking }: BookingScheduleProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [isBookingDialogOpen, setBookingDialogOpen] = useState(false);
+  const [isDetailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+
   const { toast } = useToast();
   
   const form = useForm<BookingFormValues>({
@@ -244,7 +247,7 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
   };
   
   const bookingsForSelectedDate = bookings.filter(booking => 
-    selectedDate && booking.date.toDateString() === selectedDate.toDateString()
+    selectedDate ? booking.date.toDateString() === selectedDate.toDateString() : false
   ).sort((a,b) => a.timeSlot.localeCompare(b.timeSlot));
 
   const confirmedBookings = bookings.filter(b => b.status === "Confirmé").sort((a, b) => a.date.getTime() - b.date.getTime());
@@ -382,7 +385,7 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
                           <DialogFooter>
                               <Button type="submit">Ajouter la réservation</Button>
                           </DialogFooter>
-                      </form>
+                        </form>
                       </Form>
                   </DialogContent>
               </Dialog>
@@ -442,6 +445,10 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
                                   </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
+                                   <DropdownMenuItem onClick={() => { setSelectedBooking(booking); setDetailsDialogOpen(true); }}>
+                                      <Eye className="mr-2 h-4 w-4" />
+                                      Voir les détails
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => handleBookingStatusChange(booking.id, "Confirmé")}>
                                       <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
                                       Confirmer
@@ -480,6 +487,7 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
                   <TableHead>Date & Heure</TableHead>
                   <TableHead>Service</TableHead>
                   <TableHead className="text-right">Montant</TableHead>
+                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -491,11 +499,16 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
                       <TableCell>{format(booking.date, "d MMM yyyy", { locale: fr })} à {booking.timeSlot}</TableCell>
                       <TableCell>{booking.service}</TableCell>
                       <TableCell className="text-right font-semibold">{booking.amount.toLocaleString('fr-FR')} FCFA</TableCell>
+                       <TableCell className="text-right">
+                          <Button variant="ghost" size="icon" onClick={() => { setSelectedBooking(booking); setDetailsDialogOpen(true); }}>
+                              <Eye className="h-4 w-4" />
+                          </Button>
+                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
+                    <TableCell colSpan={6} className="h-24 text-center">
                       Aucune réservation confirmée pour le moment.
                     </TableCell>
                   </TableRow>
@@ -504,6 +517,53 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
             </Table>
         </CardContent>
       </Card>
+
+       <Dialog open={isDetailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
+          <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                  <DialogTitle>Détails de la Réservation</DialogTitle>
+                  <DialogDescription>
+                      ID: {selectedBooking?.id}
+                  </DialogDescription>
+              </DialogHeader>
+              {selectedBooking && (
+                  <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-2 gap-4">
+                          <div><Label className="text-muted-foreground">Artiste</Label><p>{selectedBooking.artistName}</p></div>
+                          <div><Label className="text-muted-foreground">Projet</Label><p>{selectedBooking.projectName}</p></div>
+                          <div><Label className="text-muted-foreground">Type</Label><p>{selectedBooking.projectType}</p></div>
+                          <div><Label className="text-muted-foreground">Service</Label><p>{selectedBooking.service}</p></div>
+                          <div><Label className="text-muted-foreground">Montant</Label><p className="font-semibold">{selectedBooking.amount.toLocaleString('fr-FR')} FCFA</p></div>
+                          <div><Label className="text-muted-foreground">Statut</Label><Badge variant={bookingStatusConfig[selectedBooking.status].variant}>{selectedBooking.status}</Badge></div>
+                      </div>
+
+                      <Separator className="my-2" />
+
+                      {selectedBooking.tracks && selectedBooking.tracks.length > 0 && (
+                          <div>
+                              <h4 className="font-semibold mb-2">Sessions d'enregistrement</h4>
+                              <div className="space-y-2 max-h-48 overflow-y-auto">
+                                  {selectedBooking.tracks.map((track, index) => (
+                                      <div key={index} className="flex justify-between items-center p-2 bg-muted/50 rounded-md">
+                                          <div>
+                                              <p className="font-medium">{track.name}</p>
+                                              <p className="text-sm text-muted-foreground">
+                                                  {format(track.date, "d MMM yyyy", { locale: fr })} - {track.timeSlot}
+                                              </p>
+                                          </div>
+                                      </div>
+                                  ))}
+                              </div>
+                          </div>
+                      )}
+                  </div>
+              )}
+              <DialogFooter>
+                  <Button variant="outline" onClick={() => setDetailsDialogOpen(false)}>Fermer</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
