@@ -23,8 +23,11 @@ const initialActivities: ClientActivity[] = [
         clientName: booking.artistName,
         description: `Réservation: ${booking.projectName}`,
         category: "Réservation Studio" as const,
-        amount: booking.amount,
+        totalAmount: booking.amount,
         date: booking.date,
+        paymentType: "Direct" as const,
+        paidAmount: booking.amount,
+        remainingAmount: 0,
     })),
      {
         id: "act-livre-001",
@@ -32,9 +35,12 @@ const initialActivities: ClientActivity[] = [
         phone: "+242 06 123 4567",
         description: "Achat: Le Labyrinthe d'Osiris",
         category: "Livre" as const,
-        amount: 12000,
+        totalAmount: 12000,
         date: new Date("2024-07-28"),
         duration: undefined,
+        paymentType: "Direct" as const,
+        paidAmount: 12000,
+        remainingAmount: 0,
     },
     {
         id: "act-jeu-001",
@@ -42,9 +48,12 @@ const initialActivities: ClientActivity[] = [
         phone: "+242 05 987 6543",
         description: "Session de jeu: 2h sur console",
         category: "Session de jeu" as const,
-        amount: 2000,
+        totalAmount: 2000,
         date: new Date("2024-07-29"),
         duration: "2 heures",
+        paymentType: "Direct" as const,
+        paidAmount: 2000,
+        remainingAmount: 0,
     }
 ];
 
@@ -92,8 +101,11 @@ export default function AdminHub({ content, setContent, events, setEvents, booki
         clientName: fullBooking.artistName,
         description: `Réservation: ${fullBooking.projectName}`,
         category: "Réservation Studio",
-        amount: fullBooking.amount,
+        totalAmount: fullBooking.amount,
         date: fullBooking.date,
+        paymentType: "Direct",
+        paidAmount: fullBooking.amount,
+        remainingAmount: 0,
     };
     setActivities(prev => [newActivity, ...prev]);
   };
@@ -337,5 +349,3 @@ export default function AdminHub({ content, setContent, events, setEvents, booki
     </div>
   );
 }
-
-    

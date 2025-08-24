@@ -34,7 +34,6 @@ import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 
 
@@ -44,10 +43,12 @@ export type ClientActivity = {
   phone?: string;
   description: string;
   category: "Livre" | "Manga" | "Jeu de société" | "Session de jeu" | "Réservation Studio" | "Autre";
-  amount: number;
+  totalAmount: number;
   date: Date;
   duration?: string;
   paymentType: "Direct" | "Échéancier";
+  paidAmount?: number;
+  remainingAmount?: number;
 };
 
 interface ActivityLogProps {
@@ -91,6 +92,7 @@ const activityFormSchema = z.object({
   clientName: z.string().min(1, "Nom du client requis"),
   phone: z.string().optional(),
   paymentType: z.enum(["Direct", "Échéancier"], { required_error: "Type de paiement requis" }),
+  paidAmount: z.coerce.number().optional(),
   items: z.array(activityItemSchema).min(1, "Veuillez ajouter au moins une activité."),
 });
 
@@ -114,6 +116,7 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
       clientName: "",
       phone: "",
       paymentType: "Direct",
+      paidAmount: 0,
       items: [{ description: "", category: "Autre", amount: 0, startTime: "", endTime: "" }],
     },
   });
@@ -124,8 +127,10 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
   });
   
   const watchedItems = form.watch("items");
+  const paymentType = form.watch("paymentType");
+  const paidAmount = form.watch("paidAmount");
   const totalAmount = watchedItems.reduce((acc, current) => acc + (current.amount || 0), 0);
-
+  const remainingAmount = paymentType === 'Échéancier' ? totalAmount - (paidAmount || 0) : 0;
 
   const filteredActivities = activities.filter(
     (activity) => {
@@ -137,10 +142,11 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
     }
   ).sort((a, b) => b.date.getTime() - a.date.getTime());
   
-  const totalRevenue = activities.reduce((acc, activity) => acc + activity.amount, 0);
+  const totalRevenue = activities.reduce((acc, activity) => acc + (activity.paymentType === 'Direct' ? activity.totalAmount : activity.paidAmount || 0), 0);
 
   const processActivityData = (data: ActivityFormValues) => {
-    const { clientName, phone, items, paymentType } = data;
+    const { clientName, phone, items, paymentType, paidAmount } = data;
+    const totalAmount = items.reduce((acc, item) => acc + item.amount, 0);
 
     if(editingActivity) {
          const item = items[0];
@@ -160,10 +166,12 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
             phone,
             description: item.description,
             category: item.category,
-            amount: item.amount,
-            date: editingActivity.date, // Keep original date on edit
+            totalAmount: item.amount,
+            date: editingActivity.date,
             duration,
             paymentType,
+            paidAmount: paymentType === 'Échéancier' ? paidAmount : item.amount,
+            remainingAmount: paymentType === 'Échéancier' ? item.amount - (paidAmount || 0) : 0,
         };
         setActivities(prev => prev.map(act => act.id === editingActivity.id ? updatedActivity : act));
         toast({
@@ -177,8 +185,7 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                 try {
                     const start = parse(item.startTime, 'HH:mm', new Date());
                     const end = parse(item.endTime, 'HH:mm', new Date());
-                    const diff = differenceInMinutes(end, start);
-                    if (diff > 0) {
+                    if (end > start) {
                          duration = formatDistanceStrict(end, start, { locale: fr, unit: 'minute' });
                     }
                 } catch (e) {
@@ -193,10 +200,12 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                 phone,
                 description: item.description,
                 category: item.category,
-                amount: item.amount,
+                totalAmount: item.amount,
                 date: new Date(),
                 duration,
                 paymentType,
+                paidAmount: paymentType === 'Échéancier' ? paidAmount : item.amount,
+                remainingAmount: paymentType === 'Échéancier' ? item.amount - (paidAmount || 0) : 0,
             }
         });
 
@@ -213,6 +222,7 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
         clientName: "",
         phone: "",
         paymentType: "Direct",
+        paidAmount: 0,
         items: [{ description: "", category: "Autre", amount: 0, startTime: "", endTime: "" }],
     });
   };
@@ -224,11 +234,11 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
             clientName: activity.clientName,
             phone: activity.phone || '',
             paymentType: activity.paymentType,
+            paidAmount: activity.paidAmount || 0,
             items: [{
                 description: activity.description,
                 category: activity.category,
-                amount: activity.amount,
-                // Time inputs are not pre-filled for simplicity when editing duration.
+                amount: activity.totalAmount,
                 startTime: '', 
                 endTime: ''
             }]
@@ -239,6 +249,7 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
             clientName: "",
             phone: "",
             paymentType: "Direct",
+            paidAmount: 0,
             items: [{ description: "", category: "Autre", amount: 0, startTime: "", endTime: "" }],
         });
     }
@@ -273,7 +284,7 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
         </Card>
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Revenu Total (Activités)</CardTitle>
+                <CardTitle className="text-sm font-medium">Revenu Total Encaissé</CardTitle>
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -367,7 +378,7 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                                                 <FormField control={form.control} name={`items.${index}.category`} render={({ field }) => (<FormItem><Label>Catégorie</Label><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent>{Object.keys(categoryConfig).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
                                             </div>
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <FormField control={form.control} name={`items.${index}.amount`} render={({ field }) => (<FormItem><Label>Montant</Label><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name={`items.${index}.amount`} render={({ field }) => (<FormItem><Label>Montant Total</Label><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                                 <FormField control={form.control} name={`items.${index}.startTime`} render={({ field }) => (<FormItem><Label>Heure de début</Label><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                                 <FormField control={form.control} name={`items.${index}.endTime`} render={({ field }) => (<FormItem><Label>Heure de fin</Label><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
@@ -380,11 +391,31 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                                     </Button>
                                     )}
                                 </div>
+                                {paymentType === 'Échéancier' && (
+                                    <FormField control={form.control} name="paidAmount" render={({ field }) => (
+                                        <FormItem>
+                                            <Label>Montant Versé</Label>
+                                            <FormControl><Input type="number" {...field} /></FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                )}
 
                                 <Separator />
-                                <div className="flex justify-end items-center gap-4 text-lg font-bold">
-                                    <span>Total:</span>
-                                    <span>{totalAmount.toLocaleString('fr-FR')} FCFA</span>
+                                <div className="flex justify-end items-center gap-6 text-lg font-bold">
+                                    {paymentType === 'Échéancier' && (
+                                        <>
+                                            <div className="text-right">
+                                                <span>Restant:</span>
+                                                <p className="text-red-500">{remainingAmount.toLocaleString('fr-FR')} FCFA</p>
+                                            </div>
+                                            <Separator orientation="vertical" className="h-10" />
+                                        </>
+                                    )}
+                                    <div className="text-right">
+                                        <span>Total:</span>
+                                        <p>{totalAmount.toLocaleString('fr-FR')} FCFA</p>
+                                    </div>
                                 </div>
                             </div>
                             <DialogFooter className="pt-4 border-t">
@@ -450,8 +481,11 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                             <span className="text-muted-foreground">-</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-right font-semibold text-green-600">
-                          {activity.amount.toLocaleString('fr-FR')} FCFA
+                      <TableCell className="text-right font-semibold">
+                          <div className="text-green-600">{activity.totalAmount.toLocaleString('fr-FR')} FCFA</div>
+                          {activity.paymentType === 'Échéancier' && activity.remainingAmount && activity.remainingAmount > 0 && (
+                            <div className="text-xs text-red-500">Reste: {activity.remainingAmount.toLocaleString('fr-FR')} FCFA</div>
+                          )}
                       </TableCell>
                        <TableCell className="text-right">
                         <DropdownMenu>
@@ -513,16 +547,22 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                                     <p className="font-medium text-gray-900">{detailsActivity?.description}</p>
                                     <p className="text-xs text-gray-500">{detailsActivity?.category} {detailsActivity?.duration && `(${detailsActivity.duration})`}</p>
                                 </div>
-                                <p className="font-semibold text-gray-900">{detailsActivity?.amount.toLocaleString('fr-FR')} FCFA</p>
+                                <p className="font-semibold text-gray-900">{detailsActivity?.totalAmount.toLocaleString('fr-FR')} FCFA</p>
                              </div>
                            </div>
                         </div>
                          <div className="text-sm text-gray-700">
                             <p><strong>Type de paiement:</strong> {detailsActivity?.paymentType}</p>
                         </div>
+                        {detailsActivity?.paymentType === 'Échéancier' && (
+                             <div className="p-3 rounded-md border border-gray-200 text-sm">
+                                <div className="flex justify-between"><span>Montant Versé:</span> <span className="font-medium">{detailsActivity.paidAmount?.toLocaleString('fr-FR')} FCFA</span></div>
+                                <div className="flex justify-between font-bold text-red-600"><span>Montant Restant:</span> <span>{detailsActivity.remainingAmount?.toLocaleString('fr-FR')} FCFA</span></div>
+                             </div>
+                        )}
                         <Separator className="bg-gray-300"/>
                         <div className="flex justify-end font-bold text-lg text-black">
-                            <p>TOTAL: {detailsActivity?.amount.toLocaleString('fr-FR')} FCFA</p>
+                            <p>TOTAL: {detailsActivity?.totalAmount.toLocaleString('fr-FR')} FCFA</p>
                         </div>
                     </div>
                     <DialogDescription className="text-center text-xs text-gray-500">
@@ -574,5 +614,3 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
     </div>
   );
 }
-
-    
