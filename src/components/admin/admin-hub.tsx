@@ -12,7 +12,7 @@ import SiteSettings from "@/components/admin/site-settings";
 import EventManagement, { AppEvent } from "@/components/admin/event-management";
 import FinancialManagement, { Transaction, initialTransactions as iTransactions } from "@/components/admin/financial-management";
 import ContractManagement from "@/components/admin/contract-management";
-import ActivityLog, { ClientActivity } from "@/components/admin/activity-log";
+import ActivityLog from "@/components/admin/activity-log";
 import PlatformManagement, { Payout, initialPayouts as iPayouts } from "@/components/admin/platform-management";
 import FixedCostsManagement, { FixedCost, initialFixedCosts as iFixedCosts } from "@/components/admin/fixed-costs-management";
 import PricingSettings from "@/components/admin/pricing-settings";
@@ -268,5 +268,4 @@ const AdminHub = forwardRef<any, AdminHubProps>(({ content, setContent, events, 
 
 AdminHub.displayName = "AdminHub";
 export default AdminHub;
-
     

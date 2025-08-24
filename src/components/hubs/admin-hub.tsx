@@ -9,7 +9,7 @@ import UserManagement, { Subscriber, initialSubscribers as iSubscribers } from "
 import ContentManagement, { initialContent as iContent, Content } from "@/components/admin/content-management";
 import BookingSchedule, { initialBookings, Booking } from "@/components/admin/booking-schedule";
 import SiteSettings from "@/components/admin/site-settings";
-import EventManagement, { initialEvents as iEvents, AppEvent } from "@/components/admin/event-management";
+import EventManagement, { AppEvent } from "@/components/admin/event-management";
 import FinancialManagement, { Transaction, initialTransactions as iTransactions } from "@/components/admin/financial-management";
 import ContractManagement from "@/components/admin/contract-management";
 import ActivityLog, { ClientActivity } from "@/components/admin/activity-log";
@@ -19,35 +19,6 @@ import PricingSettings from "@/components/admin/pricing-settings";
 import { format } from "date-fns";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-const initialActivities: ClientActivity[] = [
-     {
-        id: "act-livre-001",
-        clientName: "Amina Dubois",
-        phone: "+242 06 123 4567",
-        description: "Achat: Le Labyrinthe d'Osiris",
-        category: "Livre" as const,
-        totalAmount: 12000,
-        date: new Date("2024-07-28"),
-        duration: undefined,
-        paymentType: "Direct" as const,
-        paidAmount: 12000,
-        remainingAmount: 0
-    },
-    {
-        id: "act-jeu-001",
-        clientName: "Binta Traoré",
-        phone: "+242 05 987 6543",
-        description: "Session de jeu: 2h sur console",
-        category: "Session de jeu" as const,
-        totalAmount: 2000,
-        date: new Date("2024-07-29"),
-        duration: "2 heures",
-        paymentType: "Direct" as const,
-        paidAmount: 2000,
-        remainingAmount: 0
-    }
-];
-
 
 type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities" | "platforms" | "fixed-costs" | "pricing";
 
@@ -55,7 +26,9 @@ export type AdminHubProps = {
   content: Content[];
   setContent: React.Dispatch<React.SetStateAction<Content[]>>;
   events: AppEvent[];
-  setEvents: React.Dispatch<React.SetStateAction<AppEvent[]>>;
+  onAddEvent: (event: Omit<AppEvent, 'id'>) => void;
+  onUpdateEvent: (id: string, event: Partial<Omit<AppEvent, 'id'>>) => void;
+  onDeleteEvent: (id: string) => void;
   bookings: Booking[];
   setBookings: React.Dispatch<React.SetStateAction<Booking[]>>;
   setShowMainHeader: (show: boolean) => void;
@@ -106,7 +79,7 @@ const adminCategories: AdminCategory[] = [
 ];
 
 
-const AdminHub = forwardRef<any, AdminHubProps>(({ content, setContent, events, setEvents, bookings, setBookings, setShowMainHeader }, ref) => {
+const AdminHub = forwardRef<any, AdminHubProps>(({ content, setContent, events, onAddEvent, onUpdateEvent, onDeleteEvent, bookings, setBookings, setShowMainHeader }, ref) => {
   const [activeView, setActiveView] = useState<AdminView>("dashboard");
 
   useImperativeHandle(ref, () => ({
@@ -116,7 +89,6 @@ const AdminHub = forwardRef<any, AdminHubProps>(({ content, setContent, events, 
   // Removed local bookings state to use the one from props
   const [subscribers, setSubscribers] = useState<Subscriber[]>(iSubscribers);
   const [transactions, setTransactions] = useState<Transaction[]>(iTransactions);
-  const [activities, setActivities] = useState<ClientActivity[]>(initialActivities);
   const [payouts, setPayouts] = useState<Payout[]>(iPayouts);
   const [fixedCosts, setFixedCosts] = useState<FixedCost[]>(iFixedCosts);
 
@@ -197,10 +169,10 @@ const AdminHub = forwardRef<any, AdminHubProps>(({ content, setContent, events, 
     content: { component: ContentManagement, title: "Gestion des Contenus", props: { content, setContent } },
     bookings: { component: BookingSchedule, title: "Planning des Réservations", props: { bookings, setBookings, onAddBooking: handleAddBooking } },
     settings: { component: SiteSettings, title: "Paramètres du Site", props: {} },
-    events: { component: EventManagement, title: "Gestion des Événements", props: { events, setEvents } },
+    events: { component: EventManagement, title: "Gestion des Événements", props: { events, onAddEvent, onUpdateEvent, onDeleteEvent } },
     financial: { component: FinancialManagement, title: "Rapport Financier", props: { transactions, setTransactions } },
     contracts: { component: ContractManagement, title: "Gestion des Contrats", props: {} },
-    activities: { component: ActivityLog, title: "Journal d'Activité", props: { activities, setActivities, bookings } },
+    activities: { component: ActivityLog, title: "Journal d'Activité", props: { bookings } },
     platforms: { component: PlatformManagement, title: "Gestion des Plateformes", props: { payouts, setPayouts, onAddPayout: handleAddPayout } },
     "fixed-costs": { component: FixedCostsManagement, title: "Gestion des Charges Fixes", props: { fixedCosts, setFixedCosts, onAddFixedCost: handleAddFixedCost } },
     pricing: { component: PricingSettings, title: "Tarifs des Services", props: {} },
