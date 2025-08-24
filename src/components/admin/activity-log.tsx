@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy, Trash2, Minus, MoreHorizontal, Edit, Eye, Printer, Pyramid, X, CreditCard, User, HandCoins, Loader2 } from "lucide-react";
+import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy, Trash2, Minus, MoreHorizontal, Edit, Eye, Printer, Pyramid, X, CreditCard, User, HandCoins, Loader2, CheckCircle2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -247,7 +247,7 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
                 category: item.category,
                 totalAmount: item.amount,
                 duration,
-                paidAmount: paymentType === 'Échéancier' ? paidAmount : item.amount,
+                paidAmount: paymentType === 'Échéancier' ? (item.category === "Réservation Studio" ? paidAmount : item.amount) : item.amount,
                 remainingAmount: paymentType === 'Échéancier' ? item.amount - (paidAmount || 0) : 0,
                 bookingId: item.category === "Réservation Studio" ? bookingId : undefined,
             };
@@ -277,7 +277,7 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
     });
   };
 
-  const handleOpenDialog = (activity: ClientActivity | null, booking: Booking | null = null) => {
+  const handleOpenDialog = (activity: ClientActivity | null, booking: Booking | null = null, remainingAmount: number = 0) => {
     if (activity) { // Editing an existing activity
         setEditingActivity(activity);
         form.reset({
@@ -296,11 +296,12 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
         });
     } else if (booking) { // Creating a new activity from a booking
          setEditingActivity(null);
+         const amountToPay = remainingAmount > 0 ? remainingAmount : booking.amount;
          form.reset({
             clientName: booking.artistName,
             phone: booking.phone || '',
             paymentType: "Direct",
-            paidAmount: booking.amount,
+            paidAmount: amountToPay,
             items: [{
                 description: `Réservation Studio: ${booking.projectName}`,
                 category: "Réservation Studio",
@@ -343,7 +344,7 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
         await handleDeleteActivity(activityToDelete.id);
         toast({
             title: "Encaissement Annulé",
-            description: "L'encaissement pour cette réservation a été annulé.",
+            description: "Le dernier encaissement pour cette réservation a été annulé.",
         });
     }
   };
@@ -422,7 +423,7 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
                     }
                 }}>
                     <DialogTrigger asChild>
-                        <Button onClick={() => handleOpenDialog(null)}>
+                        <Button onClick={() => handleOpenDialog(null, null)}>
                             <PlusCircle className="mr-2 h-4 w-4"/>
                             Ajouter
                         </Button>
@@ -474,7 +475,7 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
                                     </Button>
                                     )}
                                 </div>
-                                {paymentType === 'Échéancier' && (
+                                {(paymentType === 'Échéancier' || form.getValues('items.0.category') === 'Réservation Studio') && (
                                     <FormField control={form.control} name="paidAmount" render={({ field }) => (
                                         <FormItem>
                                             <Label>Montant Versé</Label>
@@ -624,14 +625,19 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
                                     <TableHead>Artiste</TableHead>
                                     <TableHead>Projet</TableHead>
                                     <TableHead>Date & Heure</TableHead>
-                                    <TableHead className="text-right">Montant à Payer</TableHead>
+                                    <TableHead className="text-right">Montant / Payé</TableHead>
+                                    <TableHead className="text-center">Statut Paiement</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {bookings.filter(b => b.status === "Confirmé").length > 0 ? (
                                     bookings.filter(b => b.status === "Confirmé").map(booking => {
-                                        const isPaid = activities.some(act => act.bookingId === booking.id);
+                                        const relatedActivities = activities.filter(act => act.bookingId === booking.id);
+                                        const totalPaid = relatedActivities.reduce((sum, act) => sum + (act.paidAmount || 0), 0);
+                                        const remainingToPay = booking.amount - totalPaid;
+                                        const isFullyPaid = remainingToPay <= 0;
+
                                         return (
                                         <TableRow key={booking.id}>
                                             <TableCell>
@@ -640,17 +646,29 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
                                             </TableCell>
                                             <TableCell>{booking.projectName}</TableCell>
                                             <TableCell>{format(booking.date, "d MMM yyyy", { locale: fr })} à {booking.timeSlot}</TableCell>
-                                            <TableCell className="text-right font-semibold">{booking.amount.toLocaleString('fr-FR')} FCFA</TableCell>
-                                            <TableCell className="text-right">
-                                                {isPaid ? (
-                                                    <Button size="sm" variant="destructive" onClick={() => handleCancelPayment(booking.id)}>
-                                                         <X className="mr-2 h-4 w-4"/>
-                                                         Annuler
-                                                    </Button>
+                                            <TableCell className="text-right font-semibold">
+                                                <div>{booking.amount.toLocaleString('fr-FR')} FCFA</div>
+                                                <div className="text-xs text-green-500 font-normal">Payé: {totalPaid.toLocaleString('fr-FR')} FCFA</div>
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                {isFullyPaid ? (
+                                                     <Badge className="bg-green-500/80 text-white"><CheckCircle2 className="mr-1.5 h-3.5 w-3.5"/> Payé</Badge>
+                                                ) : totalPaid > 0 ? (
+                                                    <Badge variant="outline" className="border-blue-500 text-blue-500">Échéancier</Badge>
                                                 ) : (
-                                                    <Button size="sm" onClick={() => handleOpenDialog(null, booking)}>
+                                                    <Badge variant="destructive">Non Payé</Badge>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                {!isFullyPaid ? (
+                                                    <Button size="sm" onClick={() => handleOpenDialog(null, booking, remainingToPay)}>
                                                         <HandCoins className="mr-2 h-4 w-4"/>
                                                         Encaisser
+                                                    </Button>
+                                                ) : (
+                                                    <Button size="sm" variant="secondary" disabled>
+                                                        <CheckCircle2 className="mr-2 h-4 w-4"/>
+                                                        Payé
                                                     </Button>
                                                 )}
                                             </TableCell>
@@ -658,7 +676,7 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
                                     )})
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="h-24 text-center">
+                                        <TableCell colSpan={6} className="h-24 text-center">
                                             Aucune réservation confirmée à encaisser.
                                         </TableCell>
                                     </TableRow>
