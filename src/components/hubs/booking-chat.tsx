@@ -37,14 +37,14 @@ type Message = {
 };
 
 const initialQuestions = [
-  "Bonjour ! Je suis l'assistant de réservation KHEOPS. Pour commencer, quel est votre nom d'artiste ?",
-  "Enchanté ! Quel est le nom de votre projet ?",
-  "Super. Quel type de projet est-ce ?", // select: Single, Mixtape, Album
-  "Quelle prestation vous intéresse ?", // select: Prise de voix, Prise de voix + Mix, Full-package
-  "Quelle date vous arrangerait ?", // calendar
-  "À quel créneau horaire ?", // select with disabled slots
-  "Parfait. Un dernier détail : votre numéro de téléphone pour la confirmation ?",
-  "Merci ! Votre demande de réservation a été enregistrée. Nous vous contacterons bientôt pour confirmer."
+  "Bonjour ! Je suis l'assistant de réservation KHEOPS. Pour commencer, quel est votre nom d'artiste ?", // 0
+  "Enchanté ! Quel est le nom de votre projet ?", // 1
+  "Super. Quel type de projet est-ce ?", // 2: select: Single, Mixtape, Album
+  "Quelle prestation vous intéresse ?", // 3: select: Prise de voix, Prise de voix + Mix, Full-package
+  "Quelle date vous arrangerait pour commencer ?", // 4: calendar
+  "À quel créneau horaire ?", // 5: select with disabled slots (Single only)
+  "Parfait. Un dernier détail : votre numéro de téléphone pour la confirmation ?", // 6
+  "Merci ! Votre demande de réservation a été enregistrée. Nous vous contacterons bientôt pour confirmer." // 7
 ];
 
 export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit, bookings }: BookingChatProps) {
@@ -98,18 +98,28 @@ export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit, boo
     const userMessageContent = displayAnswer || answer;
     setMessages(prev => [...prev, { sender: 'user', content: userMessageContent, id: Date.now() }]);
     
-    const currentStep = step;
+    let currentStep = step;
     const newFormData = { ...formData };
-    if (currentStep === 0) newFormData.artistName = answer;
-    else if (currentStep === 1) newFormData.projectName = answer;
-    else if (currentStep === 2) newFormData.projectType = answer;
-    else if (currentStep === 3) newFormData.service = answer;
-    else if (currentStep === 4) newFormData.date = new Date(answer);
-    else if (currentStep === 5) newFormData.timeSlot = answer;
-    else if (currentStep === 6) newFormData.phone = answer;
+    
+    // Update form data based on current step
+    switch (currentStep) {
+        case 0: newFormData.artistName = answer; break;
+        case 1: newFormData.projectName = answer; break;
+        case 2: newFormData.projectType = answer; break;
+        case 3: newFormData.service = answer; break;
+        case 4: newFormData.date = new Date(answer); break;
+        case 5: newFormData.timeSlot = answer; break;
+        case 6: newFormData.phone = answer; break;
+    }
     setFormData(newFormData);
 
-    const nextStep = currentStep + 1;
+    let nextStep = currentStep + 1;
+    
+    // Skip timeslot question for non-singles
+    if (currentStep === 4 && newFormData.projectType !== 'Single') {
+      nextStep = 6; // Skip to phone number
+    }
+    
     if (nextStep < initialQuestions.length -1) {
       setTimeout(() => {
         setMessages(prev => [...prev, { sender: 'bot', content: initialQuestions[nextStep], id: Date.now() + 1 }]);
@@ -125,7 +135,7 @@ export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit, boo
         onBookingSubmit(finalBookingData);
 
         setTimeout(() => {
-            setMessages(prev => [...prev, { sender: 'bot', content: initialQuestions[nextStep], id: Date.now() + 1 }]);
+            setMessages(prev => [...prev, { sender: 'bot', content: initialQuestions[initialQuestions.length -1], id: Date.now() + 1 }]);
             setStep(nextStep);
              toast({
                 title: "Réservation Envoyée !",
@@ -280,7 +290,7 @@ export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit, boo
                 )}
               </div>
             ))}
-             {step === initialQuestions.length -1 && (
+             {step >= initialQuestions.length - 1 && (
                  <div className="flex items-end gap-2 justify-start">
                      <Avatar className="h-8 w-8">
                         <AvatarFallback className="bg-primary text-primary-foreground">K</AvatarFallback>
