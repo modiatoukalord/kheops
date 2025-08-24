@@ -559,7 +559,7 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
+                    <TableCell colSpan={4} className="h-24 text-center">
                       Aucune réservation confirmée pour le moment.
                     </TableCell>
                   </TableRow>
@@ -585,7 +585,6 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
                           <div><Label className="text-muted-foreground">Type</Label><p>{selectedBooking.projectType}</p></div>
                           <div><Label className="text-muted-foreground">Service</Label><p>{selectedBooking.service}</p></div>
                           {selectedBooking.phone && <div><Label className="text-muted-foreground">Téléphone</Label><p className="flex items-center gap-2"><Phone className="h-3 w-3" />{selectedBooking.phone}</p></div>}
-                          <div><Label className="text-muted-foreground">Montant</Label><p className="font-semibold">{selectedBooking.amount.toLocaleString('fr-FR')} FCFA</p></div>
                           <div><Label className="text-muted-foreground">Statut</Label><Badge variant={bookingStatusConfig[selectedBooking.status].variant}>{selectedBooking.status}</Badge></div>
                       </div>
 
