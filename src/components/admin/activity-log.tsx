@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy, Trash2, Minus, MoreHorizontal, Edit, Eye, Printer, Pyramid, X } from "lucide-react";
+import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy, Trash2, Minus, MoreHorizontal, Edit, Eye, Printer, Pyramid, X, CreditCard } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -47,6 +47,7 @@ export type ClientActivity = {
   amount: number;
   date: Date;
   duration?: string;
+  paymentType: "Direct" | "Échéancier";
 };
 
 interface ActivityLogProps {
@@ -89,6 +90,7 @@ const activityItemSchema = z.object({
 const activityFormSchema = z.object({
   clientName: z.string().min(1, "Nom du client requis"),
   phone: z.string().optional(),
+  paymentType: z.enum(["Direct", "Échéancier"], { required_error: "Type de paiement requis" }),
   items: z.array(activityItemSchema).min(1, "Veuillez ajouter au moins une activité."),
 });
 
@@ -111,6 +113,7 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
     defaultValues: {
       clientName: "",
       phone: "",
+      paymentType: "Direct",
       items: [{ description: "", category: "Autre", amount: 0, startTime: "", endTime: "" }],
     },
   });
@@ -137,7 +140,7 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
   const totalRevenue = activities.reduce((acc, activity) => acc + activity.amount, 0);
 
   const processActivityData = (data: ActivityFormValues) => {
-    const { clientName, phone, items } = data;
+    const { clientName, phone, items, paymentType } = data;
 
     if(editingActivity) {
          const item = items[0];
@@ -160,6 +163,7 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
             amount: item.amount,
             date: editingActivity.date, // Keep original date on edit
             duration,
+            paymentType,
         };
         setActivities(prev => prev.map(act => act.id === editingActivity.id ? updatedActivity : act));
         toast({
@@ -192,6 +196,7 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                 amount: item.amount,
                 date: new Date(),
                 duration,
+                paymentType,
             }
         });
 
@@ -207,6 +212,7 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
     form.reset({
         clientName: "",
         phone: "",
+        paymentType: "Direct",
         items: [{ description: "", category: "Autre", amount: 0, startTime: "", endTime: "" }],
     });
   };
@@ -217,6 +223,7 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
         form.reset({
             clientName: activity.clientName,
             phone: activity.phone || '',
+            paymentType: activity.paymentType,
             items: [{
                 description: activity.description,
                 category: activity.category,
@@ -231,6 +238,7 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
         form.reset({
             clientName: "",
             phone: "",
+            paymentType: "Direct",
             items: [{ description: "", category: "Autre", amount: 0, startTime: "", endTime: "" }],
         });
     }
@@ -335,9 +343,14 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="grid gap-6 py-4 max-h-[80vh] overflow-y-auto pr-4">
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <FormField control={form.control} name="clientName" render={({ field }) => (<FormItem><Label>Nom du client</Label><FormControl><Input placeholder="Ex: Jean Dupont" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><Label>Téléphone</Label><FormControl><Input placeholder="Ex: +242 06 123 4567" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="paymentType" render={({ field }) => (<FormItem><Label>Type de paiement</Label>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
+                                            <SelectContent><SelectItem value="Direct">Direct</SelectItem><SelectItem value="Échéancier">Échéancier</SelectItem></SelectContent>
+                                        </Select><FormMessage /></FormItem>)} />
                                 </div>
                                 <Separator />
                                 <div className="space-y-4">
@@ -391,7 +404,7 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                 <TableRow>
                   <TableHead>Client</TableHead>
                   <TableHead>Description</TableHead>
-                  <TableHead>Catégorie</TableHead>
+                  <TableHead>Paiement</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Durée</TableHead>
                   <TableHead className="text-right">Montant</TableHead>
@@ -408,11 +421,17 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                         <div className="font-medium">{activity.clientName}</div>
                         {activity.phone && <div className="text-xs text-muted-foreground flex items-center gap-1.5"><Phone className="h-3 w-3"/>{activity.phone}</div>}
                       </TableCell>
-                      <TableCell>{activity.description}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className={catInfo?.color || ''}>
-                          {catInfo?.icon && <catInfo.icon className="mr-1.5 h-3.5 w-3.5" />}
-                          {activity.category}
+                        <p>{activity.description}</p>
+                        <Badge variant="secondary" className={`mt-1 ${catInfo?.color || ''}`}>
+                            {catInfo?.icon && <catInfo.icon className="mr-1.5 h-3.5 w-3.5" />}
+                            {activity.category}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={activity.paymentType === 'Direct' ? 'default' : 'outline'} className={activity.paymentType === 'Direct' ? 'bg-green-500/80 text-white' : 'border-blue-500 text-blue-500'}>
+                            <CreditCard className="mr-1.5 h-3.5 w-3.5"/>
+                            {activity.paymentType}
                         </Badge>
                       </TableCell>
                        <TableCell>
@@ -497,6 +516,9 @@ export default function ActivityLog({ activities, setActivities }: ActivityLogPr
                                 <p className="font-semibold text-gray-900">{detailsActivity?.amount.toLocaleString('fr-FR')} FCFA</p>
                              </div>
                            </div>
+                        </div>
+                         <div className="text-sm text-gray-700">
+                            <p><strong>Type de paiement:</strong> {detailsActivity?.paymentType}</p>
                         </div>
                         <Separator className="bg-gray-300"/>
                         <div className="flex justify-end font-bold text-lg text-black">

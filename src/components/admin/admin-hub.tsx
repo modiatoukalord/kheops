@@ -25,6 +25,7 @@ const initialActivities: ClientActivity[] = [
         category: "Réservation Studio" as const,
         amount: booking.amount,
         date: booking.date,
+        paymentType: "Direct" as const,
     })),
      {
         id: "act-livre-001",
@@ -35,6 +36,7 @@ const initialActivities: ClientActivity[] = [
         amount: 12000,
         date: new Date("2024-07-28"),
         duration: undefined,
+        paymentType: "Direct" as const,
     },
     {
         id: "act-jeu-001",
@@ -45,6 +47,7 @@ const initialActivities: ClientActivity[] = [
         amount: 2000,
         date: new Date("2024-07-29"),
         duration: "2 heures",
+        paymentType: "Direct" as const,
     }
 ];
 
