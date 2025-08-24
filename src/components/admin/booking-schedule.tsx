@@ -180,6 +180,11 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
     defaultValues: {
       artistName: '',
       projectName: '',
+      phone: '',
+      projectType: 'Single',
+      service: '',
+      date: new Date(),
+      timeSlot: '',
       tracks: [{ name: '', date: new Date(), timeSlot: '' }],
     },
   });
