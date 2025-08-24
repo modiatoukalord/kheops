@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home } from "lucide-react";
+import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home, Wallet, Cog } from "lucide-react";
 import UserManagement, { Subscriber, initialSubscribers as iSubscribers } from "@/components/admin/user-management";
 import ContentManagement, { initialContent as iContent, Content } from "@/components/admin/content-management";
 import BookingSchedule, { initialBookings, Booking } from "@/components/admin/booking-schedule";
@@ -40,7 +40,7 @@ const initialActivities: ClientActivity[] = [
         duration: undefined,
         paymentType: "Direct" as const,
         paidAmount: 12000,
-        remainingAmount: 0,
+        remainingAmount: 0
     },
     {
         id: "act-jeu-001",
@@ -53,7 +53,7 @@ const initialActivities: ClientActivity[] = [
         duration: "2 heures",
         paymentType: "Direct" as const,
         paidAmount: 2000,
-        remainingAmount: 0,
+        remainingAmount: 0
     }
 ];
 
@@ -72,6 +72,7 @@ export type AdminHubProps = {
 export default function AdminHub({ content, setContent, events, setEvents, bookings, setBookings }: AdminHubProps) {
   const [activeView, setActiveView] = useState<AdminView>("dashboard");
 
+  // Removed local bookings state to use the one from props
   const [subscribers, setSubscribers] = useState<Subscriber[]>(iSubscribers);
   const [transactions, setTransactions] = useState<Transaction[]>(iTransactions);
   const [activities, setActivities] = useState<ClientActivity[]>(initialActivities);
@@ -79,35 +80,11 @@ export default function AdminHub({ content, setContent, events, setEvents, booki
   const [fixedCosts, setFixedCosts] = useState<FixedCost[]>(iFixedCosts);
 
 
-  const handleAddBooking = (newBooking: Omit<Booking, 'id'>) => {
-    const fullBooking = { ...newBooking, id: `res-${Date.now()}`};
-    setBookings(prev => [fullBooking, ...prev]);
-    
-    // Add a corresponding transaction
-    const newTransaction: Transaction = {
-        id: `txn-${Date.now()}`,
-        date: format(fullBooking.date, "yyyy-MM-dd"),
-        description: `Réservation studio - ${fullBooking.artistName}`,
-        type: "Revenu",
-        category: "Prestation Studio",
-        amount: fullBooking.amount,
-        status: "En attente"
-    };
-    setTransactions(prev => [newTransaction, ...prev]);
-
-    // Add a corresponding activity
-    const newActivity: ClientActivity = {
-        id: `act-${fullBooking.id}`,
-        clientName: fullBooking.artistName,
-        description: `Réservation: ${fullBooking.projectName}`,
-        category: "Réservation Studio",
-        totalAmount: fullBooking.amount,
-        date: fullBooking.date,
-        paymentType: "Direct",
-        paidAmount: fullBooking.amount,
-        remainingAmount: 0,
-    };
-    setActivities(prev => [newActivity, ...prev]);
+  const handleAddBooking = (newBooking: Omit<Booking, 'id' | 'status'>) => {
+    // This function will be handled by page.tsx now, but we keep it for other potential uses
+    // or pass the actual handler from page.tsx through props.
+    // For now, let's assume page.tsx handles the state update and Firestore write.
+    console.log("Adding booking in AdminHub is deprecated. Should be handled in page.tsx");
   };
   
   const handleValidateSubscription = (subscriber: Subscriber) => {
@@ -196,108 +173,99 @@ export default function AdminHub({ content, setContent, events, setEvents, booki
     setActiveView("dashboard");
   };
 
-  const adminSections = [
+  const adminCategories = [
     {
-      title: "Gestion des Abonnements",
-      description: "Gérer les abonnements des utilisateurs.",
-      icon: Users,
-      action: "Gérer",
-      view: "users" as AdminView,
-      color: "bg-blue-500/80",
-      textColor: "text-white",
-      hoverColor: "hover:bg-blue-600/90",
-    },
-     {
-      title: "Journal d'Activité",
-      description: "Suivre les achats et services ponctuels.",
-      icon: Activity,
-      action: "Consulter",
-      view: "activities" as AdminView,
-      color: "bg-indigo-500/80",
-      textColor: "text-white",
-      hoverColor: "hover:bg-indigo-600/90",
-    },
-    {
-      title: "Gestion des Contenus",
-      description: "Ajouter ou modifier des livres et articles.",
-      icon: FileText,
-      action: "Gérer",
-      view: "content" as AdminView,
-      color: "bg-green-500/80",
-      textColor: "text-white",
-      hoverColor: "hover:bg-green-600/90",
-    },
-    {
-      title: "Gestion des Événements",
-      description: "Créer et gérer les événements et compétitions.",
-      icon: CalendarPlus,
-      action: "Gérer",
-      view: "events" as AdminView,
-      color: "bg-red-500/80",
-      textColor: "text-white",
-      hoverColor: "hover:bg-red-600/90",
+        title: "Gestion des Entrées",
+        icon: Wallet,
+        description: "Suivi des revenus, paiements et activités financières.",
+        sections: [
+            {
+              title: "Rapport Financier",
+              description: "Suivre les transactions et les revenus.",
+              icon: Landmark,
+              action: "Consulter",
+              view: "financial" as AdminView,
+            },
+            {
+              title: "Journal d'Activité",
+              description: "Suivre les achats et services ponctuels.",
+              icon: Activity,
+              action: "Consulter",
+              view: "activities" as AdminView,
+            },
+            {
+              title: "Gestion des Plateformes",
+              description: "Suivre les revenus des plateformes (YouTube, TikTok...).",
+              icon: Youtube,
+              action: "Consulter",
+              view: "platforms" as AdminView,
+            },
+            {
+              title: "Charges Fixes",
+              description: "Gérer les dépenses récurrentes (loyer, salaires...).",
+              icon: Home,
+              action: "Gérer",
+              view: "fixed-costs" as AdminView,
+            },
+        ]
     },
     {
-      title: "Réservations du Studio",
-      description: "Voir et gérer le planning des réservations du studio.",
-      icon: CalendarCheck,
-      action: "Consulter",
-      view: "bookings" as AdminView,
-      color: "bg-purple-500/80",
-      textColor: "text-white",
-      hoverColor: "hover:bg-purple-600/90",
+        title: "Gestion des Opérations",
+        icon: Briefcase,
+        description: "Management des clients, réservations et contrats.",
+        sections: [
+            {
+              title: "Gestion des Abonnements",
+              description: "Gérer les abonnements des utilisateurs.",
+              icon: Users,
+              action: "Gérer",
+              view: "users" as AdminView,
+            },
+            {
+              title: "Réservations du Studio",
+              description: "Voir et gérer le planning des réservations du studio.",
+              icon: CalendarCheck,
+              action: "Consulter",
+              view: "bookings" as AdminView,
+            },
+            {
+                title: "Gestion des Contrats",
+                description: "Suivre et mettre à jour les contrats de réservation.",
+                icon: FileSignature,
+                action: "Gérer",
+                view: "contracts" as AdminView,
+            },
+        ]
     },
     {
-        title: "Gestion des Contrats",
-        description: "Suivre et mettre à jour les contrats de réservation.",
-        icon: FileSignature,
-        action: "Gérer",
-        view: "contracts" as AdminView,
-        color: "bg-teal-500/80",
-        textColor: "text-white",
-        hoverColor: "hover:bg-teal-600/90",
-    },
-    {
-        title: "Rapport Financier",
-        description: "Suivre les transactions et les revenus.",
-        icon: Landmark,
-        action: "Consulter",
-        view: "financial" as AdminView,
-        color: "bg-yellow-500/80",
-        textColor: "text-white",
-        hoverColor: "hover:bg-yellow-600/90",
-    },
-    {
-      title: "Charges Fixes",
-      description: "Gérer les dépenses récurrentes (loyer, salaires...).",
-      icon: Home,
-      action: "Gérer",
-      view: "fixed-costs" as AdminView,
-      color: "bg-orange-500/80",
-      textColor: "text-white",
-      hoverColor: "hover:bg-orange-600/90",
-    },
-    {
-      title: "Gestion des Plateformes",
-      description: "Suivre les revenus des plateformes (YouTube, TikTok...).",
-      icon: Youtube,
-      action: "Consulter",
-      view: "platforms" as AdminView,
-      color: "bg-gray-700/80",
-      textColor: "text-white",
-      hoverColor: "hover:bg-gray-800/90",
-    },
-    {
-        title: "Paramètres du Site",
-        description: "Configurer les options générales de la plateforme.",
-        icon: Settings,
-        action: "Configurer",
-        view: "settings" as AdminView,
-        color: "bg-slate-500/80",
-        textColor: "text-white",
-        hoverColor: "hover:bg-slate-600/90",
+        title: "Plateforme & Contenu",
+        icon: FileText,
+        description: "Administration du contenu public et des paramètres.",
+        sections: [
+            {
+              title: "Gestion des Contenus",
+              description: "Ajouter ou modifier des livres et articles.",
+              icon: FileText,
+              action: "Gérer",
+              view: "content" as AdminView,
+            },
+            {
+              title: "Gestion des Événements",
+              description: "Créer et gérer les événements et compétitions.",
+              icon: CalendarPlus,
+              action: "Gérer",
+              view: "events" as AdminView,
+            },
+            {
+                title: "Paramètres du Site",
+                description: "Configurer les options générales de la plateforme.",
+                icon: Settings,
+                action: "Configurer",
+                view: "settings" as AdminView,
+            }
+        ]
     }
-  ];
+  ]
 
   const ViewComponent = activeView !== 'dashboard' ? adminViews[activeView].component : null;
   const currentTitle = activeView !== 'dashboard' ? adminViews[activeView].title : "PANNEAU D'ADMINISTRATION";
@@ -323,26 +291,35 @@ export default function AdminHub({ content, setContent, events, setEvents, booki
       </header>
 
       {activeView === 'dashboard' ? (
-        <section>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {adminSections.map((section) => (
-              <Card key={section.title} className={`${section.color} ${section.textColor} border-0 flex flex-col justify-between transition-all duration-300 ${section.hoverColor} hover:-translate-y-1 shadow-lg`}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-4 text-2xl">
-                    <section.icon className="w-10 h-10" />
-                    {section.title}
-                  </CardTitle>
-                  <CardDescription className={`${section.textColor} opacity-80`}>{section.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex justify-end pt-6">
-                  <Button className="bg-white/20 hover:bg-white/30 text-white" onClick={() => handleAction(section.view)}>
-                    {section.action}
-                  </Button>
-                </CardContent>
-              </Card>
+        <div className="space-y-8">
+            {adminCategories.map((category) => (
+                <section key={category.title}>
+                    <div className="flex items-center gap-3 mb-4">
+                        <category.icon className="h-6 w-6 text-primary"/>
+                        <h2 className="text-2xl font-semibold font-headline">{category.title}</h2>
+                    </div>
+                     <p className="text-muted-foreground mb-6 ml-9">{category.description}</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {category.sections.map((section) => (
+                          <Card key={section.title} className="bg-card/50 flex flex-col justify-between transition-all duration-300 hover:border-primary/50 hover:-translate-y-1 hover:shadow-lg">
+                            <CardHeader>
+                              <CardTitle className="flex items-center gap-3 text-xl">
+                                <section.icon className="w-6 h-6 text-accent" />
+                                {section.title}
+                              </CardTitle>
+                              <CardDescription>{section.description}</CardDescription>
+                            </CardHeader>
+                            <CardContent className="flex justify-end pt-4">
+                              <Button variant="outline" onClick={() => handleAction(section.view)}>
+                                {section.action}
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        ))}
+                    </div>
+                </section>
             ))}
-          </div>
-        </section>
+        </div>
       ) : (
          ViewComponent && <ViewComponent {...viewProps as any} />
       )}
