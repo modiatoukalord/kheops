@@ -28,6 +28,8 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Separator } from "@/components/ui/separator";
+import { db } from "@/lib/firebase";
+import { doc, updateDoc, deleteDoc } from "firebase/firestore";
 
 
 export type Booking = {
@@ -205,17 +207,42 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
 
   const projectType = form.watch("projectType");
 
-  const handleBookingStatusChange = (bookingId: string, newStatus: BookingStatus) => {
-    setBookings(bookings.map(b => b.id === bookingId ? { ...b, status: newStatus } : b));
+  const handleBookingStatusChange = async (bookingId: string, newStatus: BookingStatus) => {
+    try {
+      const bookingRef = doc(db, "bookings", bookingId);
+      await updateDoc(bookingRef, { status: newStatus });
+      setBookings(bookings.map(b => b.id === bookingId ? { ...b, status: newStatus } : b));
+      toast({
+          title: "Statut de la réservation mis à jour",
+          description: `La réservation a été marquée comme "${newStatus}".`,
+      });
+    } catch (error) {
+      console.error("Error updating booking status: ", error);
+      toast({
+          title: "Erreur",
+          description: "Impossible de mettre à jour le statut de la réservation.",
+          variant: "destructive"
+      });
+    }
   };
 
-  const handleDeleteBooking = (bookingId: string) => {
-    setBookings(bookings.filter(b => b.id !== bookingId));
-    toast({
-        title: "Réservation Supprimée",
-        description: "La réservation a été supprimée avec succès.",
-        variant: "destructive"
-    });
+  const handleDeleteBooking = async (bookingId: string) => {
+    try {
+        await deleteDoc(doc(db, "bookings", bookingId));
+        setBookings(bookings.filter(b => b.id !== bookingId));
+        toast({
+            title: "Réservation Supprimée",
+            description: "La réservation a été supprimée avec succès.",
+            variant: "destructive"
+        });
+    } catch (error) {
+        console.error("Error deleting booking: ", error);
+        toast({
+            title: "Erreur",
+            description: "Impossible de supprimer la réservation.",
+            variant: "destructive"
+        });
+    }
   };
   
   const handleAddBookingSubmit = (data: BookingFormValues) => {
@@ -585,3 +612,5 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
     </div>
   );
 }
+
+    
