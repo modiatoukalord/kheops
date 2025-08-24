@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, forwardRef, useImperativeHandle } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home, Wallet, Cog } from "lucide-react";
@@ -16,6 +16,7 @@ import ActivityLog, { ClientActivity } from "@/components/admin/activity-log";
 import PlatformManagement, { Payout, initialPayouts as iPayouts } from "@/components/admin/platform-management";
 import FixedCostsManagement, { FixedCost, initialFixedCosts as iFixedCosts } from "@/components/admin/fixed-costs-management";
 import { format } from "date-fns";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const initialActivities: ClientActivity[] = [
     ...initialBookings.map((booking, index) => ({
@@ -67,10 +68,59 @@ export type AdminHubProps = {
   setEvents: React.Dispatch<React.SetStateAction<AppEvent[]>>;
   bookings: Booking[];
   setBookings: React.Dispatch<React.SetStateAction<Booking[]>>;
+  setShowMainHeader: (show: boolean) => void;
 }
 
-export default function AdminHub({ content, setContent, events, setEvents, bookings, setBookings }: AdminHubProps) {
+type AdminSection = {
+    title: string;
+    icon: React.ElementType;
+    view: AdminView;
+};
+
+type AdminCategory = {
+    title: string;
+    color: string;
+    sections: AdminSection[];
+};
+
+const adminCategories: AdminCategory[] = [
+    {
+        title: "Gestion",
+        color: "bg-blue-600/80 text-blue-50",
+        sections: [
+            { title: "Abonnements", icon: Users, view: "users" },
+            { title: "Réservations", icon: CalendarCheck, view: "bookings" },
+            { title: "Contrats", icon: FileSignature, view: "contracts" },
+        ]
+    },
+    {
+        title: "Finances",
+        color: "bg-green-600/80 text-green-50",
+        sections: [
+            { title: "Rapport Financier", icon: Landmark, view: "financial" },
+            { title: "Journal d'Activité", icon: Activity, view: "activities" },
+            { title: "Paiements Plateformes", icon: Youtube, view: "platforms" },
+            { title: "Charges Fixes", icon: Home, view: "fixed-costs" },
+        ]
+    },
+    {
+        title: "Contenu & Plateforme",
+        color: "bg-purple-600/80 text-purple-50",
+        sections: [
+            { title: "Contenus", icon: FileText, view: "content" },
+            { title: "Événements", icon: CalendarPlus, view: "events" },
+            { title: "Paramètres", icon: Settings, view: "settings" }
+        ]
+    }
+];
+
+
+const AdminHub = forwardRef<any, AdminHubProps>(({ content, setContent, events, setEvents, bookings, setBookings, setShowMainHeader }, ref) => {
   const [activeView, setActiveView] = useState<AdminView>("dashboard");
+
+  useImperativeHandle(ref, () => ({
+    setActiveView
+  }));
 
   // Removed local bookings state to use the one from props
   const [subscribers, setSubscribers] = useState<Subscriber[]>(iSubscribers);
@@ -167,105 +217,63 @@ export default function AdminHub({ content, setContent, events, setEvents, booki
 
   const handleAction = (view: AdminView) => {
     setActiveView(view);
+    setShowMainHeader(false);
   };
   
   const handleBack = () => {
     setActiveView("dashboard");
+    setShowMainHeader(true);
   };
-
-  const adminCategories = [
-    {
-        title: "Gestion",
-        color: "bg-blue-600/80 text-blue-50",
-        sections: [
-            {
-              title: "Abonnements",
-              icon: Users,
-              view: "users" as AdminView,
-            },
-            {
-              title: "Réservations",
-              icon: CalendarCheck,
-              view: "bookings" as AdminView,
-            },
-            {
-                title: "Contrats",
-                icon: FileSignature,
-                view: "contracts" as AdminView,
-            },
-        ]
-    },
-    {
-        title: "Finances",
-        color: "bg-green-600/80 text-green-50",
-        sections: [
-            {
-              title: "Rapport Financier",
-              icon: Landmark,
-              view: "financial" as AdminView,
-            },
-            {
-              title: "Journal d'Activité",
-              icon: Activity,
-              view: "activities" as AdminView,
-            },
-            {
-              title: "Paiements Plateformes",
-              icon: Youtube,
-              view: "platforms" as AdminView,
-            },
-            {
-              title: "Charges Fixes",
-              icon: Home,
-              view: "fixed-costs" as AdminView,
-            },
-        ]
-    },
-    {
-        title: "Contenu & Plateforme",
-        color: "bg-purple-600/80 text-purple-50",
-        sections: [
-            {
-              title: "Contenus",
-              icon: FileText,
-              view: "content" as AdminView,
-            },
-            {
-              title: "Événements",
-              icon: CalendarPlus,
-              view: "events" as AdminView,
-            },
-            {
-                title: "Paramètres",
-                icon: Settings,
-                view: "settings" as AdminView,
-            }
-        ]
-    }
-  ]
+  
+  const currentCategory = adminCategories.find(cat => cat.sections.some(sec => sec.view === activeView));
 
   const ViewComponent = activeView !== 'dashboard' ? adminViews[activeView].component : null;
   const currentTitle = activeView !== 'dashboard' ? adminViews[activeView].title : "PANNEAU D'ADMINISTRATION";
   const viewProps = activeView !== 'dashboard' ? adminViews[activeView].props : {};
 
-
   return (
     <div className="space-y-8">
-      <header className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-            {activeView !== 'dashboard' && (
-                <Button variant="outline" size="icon" onClick={handleBack}>
-                    <ArrowLeft className="h-5 w-5" />
-                </Button>
-            )}
-            <div>
-                <h1 className="text-3xl font-bold text-primary font-headline tracking-wider">{currentTitle}</h1>
-                <p className="text-muted-foreground">
-                    {activeView === 'dashboard' ? "Gestion et administration de la plateforme KHEOPS." : `Section dédiée à: ${currentTitle}`}
-                </p>
-            </div>
-        </div>
-      </header>
+      {activeView === 'dashboard' ? (
+         <header>
+            <h1 className="text-3xl font-bold text-primary font-headline tracking-wider">{currentTitle}</h1>
+            <p className="text-muted-foreground">Gestion et administration de la plateforme KHEOPS.</p>
+         </header>
+      ) : (
+        <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 -mx-4 -mt-8 mb-8 px-4">
+             <div className="container flex h-16 items-center justify-between mx-auto">
+                 <div className="flex items-center gap-4">
+                     <Button variant="outline" size="icon" onClick={handleBack}>
+                         <ArrowLeft className="h-5 w-5" />
+                     </Button>
+                      <div>
+                        <h1 className="text-xl font-bold text-primary font-headline tracking-wider">{currentTitle}</h1>
+                      </div>
+                 </div>
+                  {currentCategory && (
+                    <nav className="flex items-center gap-2">
+                        <TooltipProvider>
+                         {currentCategory.sections.map(section => (
+                            <Tooltip key={section.view}>
+                                <TooltipTrigger asChild>
+                                    <Button 
+                                        variant={activeView === section.view ? "secondary" : "ghost"} 
+                                        size="icon" 
+                                        onClick={() => setActiveView(section.view)}
+                                    >
+                                        <section.icon className="h-5 w-5" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{section.title}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                         ))}
+                        </TooltipProvider>
+                    </nav>
+                  )}
+             </div>
+        </header>
+      )}
 
       {activeView === 'dashboard' ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -292,6 +300,7 @@ export default function AdminHub({ content, setContent, events, setEvents, booki
       )}
     </div>
   );
-}
+});
 
-    
+AdminHub.displayName = "AdminHub";
+export default AdminHub;

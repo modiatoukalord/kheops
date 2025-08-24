@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { ComponentType } from "react";
 import Header from "@/components/layout/header";
 import CultureHub from "@/components/hubs/culture-hub";
@@ -28,10 +28,12 @@ const hubComponents: Hubs = {
 
 export default function Home() {
   const [activeHub, setActiveHub] = useState("culture");
+  const [showMainHeader, setShowMainHeader] = useState(true);
   const [content, setContent] = useState<Content[]>(initialContent);
   const [events, setEvents] = useState<AppEvent[]>(initialEvents);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const adminHubRef = useRef<{ setActiveView: (view: any) => void }>(null);
 
   useEffect(() => {
     const fetchBookings = async () => {
@@ -64,6 +66,14 @@ export default function Home() {
     fetchBookings();
   }, []);
 
+  const handleSetActiveHub = (hub: "culture" | "studio" | "wear" | "admin") => {
+    setActiveHub(hub);
+    if (hub !== 'admin' && adminHubRef.current) {
+      // Reset admin view when leaving admin hub
+      adminHubRef.current.setActiveView('dashboard');
+    }
+  }
+
 
   const handleAddBooking = async (newBookingData: Omit<Booking, 'id' | 'status'>) => {
     try {
@@ -92,12 +102,12 @@ export default function Home() {
   const componentProps: { [key: string]: any } = {
     culture: { content, events },
     studio: { bookings, onAddBooking: handleAddBooking },
-    admin: { content, setContent, events, setEvents, bookings, setBookings },
+    admin: { content, setContent, events, setEvents, bookings, setBookings, setShowMainHeader, ref: adminHubRef },
   };
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
-      <Header activeHub={activeHub} setActiveHub={setActiveHub} />
+      {showMainHeader && <Header activeHub={activeHub} setActiveHub={handleSetActiveHub} />}
       <main className="flex-grow container mx-auto px-4 py-8">
         <div className="animate-fade-in">
           {ActiveComponent && <ActiveComponent {...componentProps[activeHub]} />}
