@@ -17,22 +17,11 @@ import { cn } from '@/lib/utils';
 import { format, isSameDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Booking } from '@/components/admin/booking-schedule';
+import { servicesWithPrices, calculatePrice } from '@/lib/pricing';
 
 type BookingData = Omit<Booking, 'id' | 'status'>;
 
 const availableTimeSlots = ["09:00 - 11:00", "11:00 - 13:00", "14:00 - 16:00", "16:00 - 18:00", "18:00 - 20:00"];
-
-const servicesWithPrices = {
-  "Prise de voix": 30000,
-  "Prise de voix + Mix": 50000,
-  "Full-package": 75000,
-};
-
-const calculatePrice = (service: string, timeSlotsCount: number) => {
-    const rate = servicesWithPrices[service as keyof typeof servicesWithPrices] || 0;
-    return rate * timeSlotsCount;
-};
-
 
 interface BookingChatProps {
   isOpen: boolean;
@@ -177,9 +166,9 @@ export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit, boo
           <Select onValueChange={(value) => handleNextStep(value)}>
             <SelectTrigger className="w-full"><SelectValue placeholder="Choisir une prestation..." /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="Prise de voix">Prise de voix</SelectItem>
-              <SelectItem value="Prise de voix + Mix">Prise de voix + Mix</SelectItem>
-              <SelectItem value="Full-package">Full-package (Mix + Mastering)</SelectItem>
+              {Object.keys(servicesWithPrices).map(service => (
+                <SelectItem key={service} value={service}>{service}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         );

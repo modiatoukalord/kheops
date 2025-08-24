@@ -30,6 +30,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Separator } from "@/components/ui/separator";
 import { db } from "@/lib/firebase";
 import { doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { servicesWithPrices, calculatePrice } from "@/lib/pricing";
 
 
 export type Booking = {
@@ -45,18 +46,6 @@ export type Booking = {
   phone?: string;
   tracks?: { name: string; date: Date; timeSlot: string }[];
 }
-
-const servicesWithPrices = {
-  "Prise de voix": 30000,
-  "Prise de voix + Mix": 50000,
-  "Full-package": 75000,
-  "Prise de voix + Mix + Mastering": 75000,
-};
-
-const calculatePrice = (service: string, timeSlotsCount: number) => {
-    const rate = servicesWithPrices[service as keyof typeof servicesWithPrices] || 0;
-    return rate * timeSlotsCount;
-};
 
 
 export const initialBookings: Booking[] = [
@@ -135,7 +124,7 @@ const bookingStatusConfig = {
 type BookingStatus = keyof typeof bookingStatusConfig;
 
 
-const availableServices = ["Prise de voix", "Prise de voix + Mix", "Full-package"];
+const availableServices = Object.keys(servicesWithPrices);
 const availableTimeSlots = ["09:00 - 11:00", "11:00 - 13:00", "14:00 - 16:00", "16:00 - 18:00", "18:00 - 20:00"];
 const projectTypes = ["Single", "Mixtape", "Album", "Autre"] as const;
 

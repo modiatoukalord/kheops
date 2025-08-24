@@ -4,7 +4,7 @@
 import { useState, forwardRef, useImperativeHandle } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home, Wallet, Cog } from "lucide-react";
+import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home, Wallet, Cog, DollarSign } from "lucide-react";
 import UserManagement, { Subscriber, initialSubscribers as iSubscribers } from "@/components/admin/user-management";
 import ContentManagement, { initialContent as iContent, Content } from "@/components/admin/content-management";
 import BookingSchedule, { initialBookings, Booking } from "@/components/admin/booking-schedule";
@@ -15,6 +15,7 @@ import ContractManagement from "@/components/admin/contract-management";
 import ActivityLog, { ClientActivity } from "@/components/admin/activity-log";
 import PlatformManagement, { Payout, initialPayouts as iPayouts } from "@/components/admin/platform-management";
 import FixedCostsManagement, { FixedCost, initialFixedCosts as iFixedCosts } from "@/components/admin/fixed-costs-management";
+import PricingSettings from "@/components/admin/pricing-settings";
 import { format } from "date-fns";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -59,7 +60,7 @@ const initialActivities: ClientActivity[] = [
 ];
 
 
-type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities" | "platforms" | "fixed-costs";
+type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities" | "platforms" | "fixed-costs" | "pricing";
 
 export type AdminHubProps = {
   content: Content[];
@@ -109,7 +110,8 @@ const adminCategories: AdminCategory[] = [
         sections: [
             { title: "Contenus", icon: FileText, view: "content" },
             { title: "Événements", icon: CalendarPlus, view: "events" },
-            { title: "Paramètres", icon: Settings, view: "settings" }
+            { title: "Paramètres", icon: Settings, view: "settings" },
+            { title: "Tarifs", icon: DollarSign, view: "pricing" },
         ]
     }
 ];
@@ -212,6 +214,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({ content, setContent, events, 
     activities: { component: ActivityLog, title: "Journal d'Activité", props: { activities, setActivities } },
     platforms: { component: PlatformManagement, title: "Gestion des Plateformes", props: { payouts, setPayouts, onAddPayout: handleAddPayout } },
     "fixed-costs": { component: FixedCostsManagement, title: "Gestion des Charges Fixes", props: { fixedCosts, setFixedCosts, onAddFixedCost: handleAddFixedCost } },
+    pricing: { component: PricingSettings, title: "Tarifs des Services", props: {} },
   };
 
 
