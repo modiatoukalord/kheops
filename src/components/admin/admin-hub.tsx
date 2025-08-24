@@ -1,10 +1,10 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, forwardRef, useImperativeHandle } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home } from "lucide-react";
+import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home, Wallet, Cog, DollarSign } from "lucide-react";
 import UserManagement, { Subscriber, initialSubscribers as iSubscribers } from "@/components/admin/user-management";
 import ContentManagement, { initialContent as iContent, Content } from "@/components/admin/content-management";
 import BookingSchedule, { initialBookings, Booking } from "@/components/admin/booking-schedule";
@@ -15,50 +15,12 @@ import ContractManagement from "@/components/admin/contract-management";
 import ActivityLog, { ClientActivity } from "@/components/admin/activity-log";
 import PlatformManagement, { Payout, initialPayouts as iPayouts } from "@/components/admin/platform-management";
 import FixedCostsManagement, { FixedCost, initialFixedCosts as iFixedCosts } from "@/components/admin/fixed-costs-management";
+import PricingSettings from "@/components/admin/pricing-settings";
 import { format } from "date-fns";
-
-const initialActivities: ClientActivity[] = [
-    ...initialBookings.map((booking, index) => ({
-        id: `act-${booking.id}`,
-        clientName: booking.artistName,
-        description: `Réservation: ${booking.projectName}`,
-        category: "Réservation Studio" as const,
-        totalAmount: booking.amount,
-        date: booking.date,
-        paymentType: "Direct" as const,
-        paidAmount: booking.amount,
-        remainingAmount: 0,
-    })),
-     {
-        id: "act-livre-001",
-        clientName: "Amina Dubois",
-        phone: "+242 06 123 4567",
-        description: "Achat: Le Labyrinthe d'Osiris",
-        category: "Livre" as const,
-        totalAmount: 12000,
-        date: new Date("2024-07-28"),
-        duration: undefined,
-        paymentType: "Direct" as const,
-        paidAmount: 12000,
-        remainingAmount: 0
-    },
-    {
-        id: "act-jeu-001",
-        clientName: "Binta Traoré",
-        phone: "+242 05 987 6543",
-        description: "Session de jeu: 2h sur console",
-        category: "Session de jeu" as const,
-        totalAmount: 2000,
-        date: new Date("2024-07-29"),
-        duration: "2 heures",
-        paymentType: "Direct" as const,
-        paidAmount: 2000,
-        remainingAmount: 0
-    }
-];
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
-type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities" | "platforms" | "fixed-costs";
+type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities" | "platforms" | "fixed-costs" | "pricing";
 
 export type AdminHubProps = {
   content: Content[];
@@ -67,20 +29,69 @@ export type AdminHubProps = {
   setEvents: React.Dispatch<React.SetStateAction<AppEvent[]>>;
   bookings: Booking[];
   setBookings: React.Dispatch<React.SetStateAction<Booking[]>>;
+  setShowMainHeader: (show: boolean) => void;
 }
 
-export default function AdminHub({ content, setContent, events, setEvents, bookings, setBookings }: AdminHubProps) {
+type AdminSection = {
+    title: string;
+    icon: React.ElementType;
+    view: AdminView;
+};
+
+type AdminCategory = {
+    title: string;
+    color: string;
+    sections: AdminSection[];
+};
+
+const adminCategories: AdminCategory[] = [
+    {
+        title: "Gestion",
+        color: "bg-blue-600/80 text-blue-50",
+        sections: [
+            { title: "Abonnements", icon: Users, view: "users" },
+            { title: "Réservations", icon: CalendarCheck, view: "bookings" },
+            { title: "Contrats", icon: FileSignature, view: "contracts" },
+        ]
+    },
+    {
+        title: "Finances",
+        color: "bg-green-600/80 text-green-50",
+        sections: [
+            { title: "Rapport Financier", icon: Landmark, view: "financial" },
+            { title: "Journal d'Activité", icon: Activity, view: "activities" },
+            { title: "Paiements Plateformes", icon: Youtube, view: "platforms" },
+            { title: "Charges Fixes", icon: Home, view: "fixed-costs" },
+        ]
+    },
+    {
+        title: "Contenu & Plateforme",
+        color: "bg-purple-600/80 text-purple-50",
+        sections: [
+            { title: "Contenus", icon: FileText, view: "content" },
+            { title: "Événements", icon: CalendarPlus, view: "events" },
+            { title: "Paramètres", icon: Settings, view: "settings" },
+            { title: "Tarifs", icon: DollarSign, view: "pricing" },
+        ]
+    }
+];
+
+
+const AdminHub = forwardRef<any, AdminHubProps>(({ content, setContent, events, setEvents, bookings, setBookings, setShowMainHeader }, ref) => {
   const [activeView, setActiveView] = useState<AdminView>("dashboard");
+
+  useImperativeHandle(ref, () => ({
+    setActiveView
+  }));
 
   // Removed local bookings state to use the one from props
   const [subscribers, setSubscribers] = useState<Subscriber[]>(iSubscribers);
   const [transactions, setTransactions] = useState<Transaction[]>(iTransactions);
-  const [activities, setActivities] = useState<ClientActivity[]>(initialActivities);
   const [payouts, setPayouts] = useState<Payout[]>(iPayouts);
   const [fixedCosts, setFixedCosts] = useState<FixedCost[]>(iFixedCosts);
 
 
-  const handleAddBooking = (newBooking: Omit<Booking, 'id'>) => {
+  const handleAddBooking = (newBooking: Omit<Booking, 'id' | 'status'>) => {
     // This function will be handled by page.tsx now, but we keep it for other potential uses
     // or pass the actual handler from page.tsx through props.
     // For now, let's assume page.tsx handles the state update and Firestore write.
@@ -159,170 +170,101 @@ export default function AdminHub({ content, setContent, events, setEvents, booki
     events: { component: EventManagement, title: "Gestion des Événements", props: { events, setEvents } },
     financial: { component: FinancialManagement, title: "Rapport Financier", props: { transactions, setTransactions } },
     contracts: { component: ContractManagement, title: "Gestion des Contrats", props: {} },
-    activities: { component: ActivityLog, title: "Journal d'Activité", props: { activities, setActivities } },
+    activities: { component: ActivityLog, title: "Journal d'Activité", props: { bookings } },
     platforms: { component: PlatformManagement, title: "Gestion des Plateformes", props: { payouts, setPayouts, onAddPayout: handleAddPayout } },
     "fixed-costs": { component: FixedCostsManagement, title: "Gestion des Charges Fixes", props: { fixedCosts, setFixedCosts, onAddFixedCost: handleAddFixedCost } },
+    pricing: { component: PricingSettings, title: "Tarifs des Services", props: {} },
   };
 
 
   const handleAction = (view: AdminView) => {
     setActiveView(view);
+    setShowMainHeader(false);
   };
   
   const handleBack = () => {
     setActiveView("dashboard");
+    setShowMainHeader(true);
   };
-
-  const adminSections = [
-    {
-      title: "Gestion des Abonnements",
-      description: "Gérer les abonnements des utilisateurs.",
-      icon: Users,
-      action: "Gérer",
-      view: "users" as AdminView,
-      color: "bg-blue-500/80",
-      textColor: "text-white",
-      hoverColor: "hover:bg-blue-600/90",
-    },
-     {
-      title: "Journal d'Activité",
-      description: "Suivre les achats et services ponctuels.",
-      icon: Activity,
-      action: "Consulter",
-      view: "activities" as AdminView,
-      color: "bg-indigo-500/80",
-      textColor: "text-white",
-      hoverColor: "hover:bg-indigo-600/90",
-    },
-    {
-      title: "Gestion des Contenus",
-      description: "Ajouter ou modifier des livres et articles.",
-      icon: FileText,
-      action: "Gérer",
-      view: "content" as AdminView,
-      color: "bg-green-500/80",
-      textColor: "text-white",
-      hoverColor: "hover:bg-green-600/90",
-    },
-    {
-      title: "Gestion des Événements",
-      description: "Créer et gérer les événements et compétitions.",
-      icon: CalendarPlus,
-      action: "Gérer",
-      view: "events" as AdminView,
-      color: "bg-red-500/80",
-      textColor: "text-white",
-      hoverColor: "hover:bg-red-600/90",
-    },
-    {
-      title: "Réservations du Studio",
-      description: "Voir et gérer le planning des réservations du studio.",
-      icon: CalendarCheck,
-      action: "Consulter",
-      view: "bookings" as AdminView,
-      color: "bg-purple-500/80",
-      textColor: "text-white",
-      hoverColor: "hover:bg-purple-600/90",
-    },
-    {
-        title: "Gestion des Contrats",
-        description: "Suivre et mettre à jour les contrats de réservation.",
-        icon: FileSignature,
-        action: "Gérer",
-        view: "contracts" as AdminView,
-        color: "bg-teal-500/80",
-        textColor: "text-white",
-        hoverColor: "hover:bg-teal-600/90",
-    },
-    {
-        title: "Rapport Financier",
-        description: "Suivre les transactions et les revenus.",
-        icon: Landmark,
-        action: "Consulter",
-        view: "financial" as AdminView,
-        color: "bg-yellow-500/80",
-        textColor: "text-white",
-        hoverColor: "hover:bg-yellow-600/90",
-    },
-    {
-      title: "Charges Fixes",
-      description: "Gérer les dépenses récurrentes (loyer, salaires...).",
-      icon: Home,
-      action: "Gérer",
-      view: "fixed-costs" as AdminView,
-      color: "bg-orange-500/80",
-      textColor: "text-white",
-      hoverColor: "hover:bg-orange-600/90",
-    },
-    {
-      title: "Gestion des Plateformes",
-      description: "Suivre les revenus des plateformes (YouTube, TikTok...).",
-      icon: Youtube,
-      action: "Consulter",
-      view: "platforms" as AdminView,
-      color: "bg-gray-700/80",
-      textColor: "text-white",
-      hoverColor: "hover:bg-gray-800/90",
-    },
-    {
-        title: "Paramètres du Site",
-        description: "Configurer les options générales de la plateforme.",
-        icon: Settings,
-        action: "Configurer",
-        view: "settings" as AdminView,
-        color: "bg-slate-500/80",
-        textColor: "text-white",
-        hoverColor: "hover:bg-slate-600/90",
-    }
-  ];
+  
+  const currentCategory = adminCategories.find(cat => cat.sections.some(sec => sec.view === activeView));
 
   const ViewComponent = activeView !== 'dashboard' ? adminViews[activeView].component : null;
   const currentTitle = activeView !== 'dashboard' ? adminViews[activeView].title : "PANNEAU D'ADMINISTRATION";
   const viewProps = activeView !== 'dashboard' ? adminViews[activeView].props : {};
 
-
   return (
     <div className="space-y-8">
-      <header className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-            {activeView !== 'dashboard' && (
-                <Button variant="outline" size="icon" onClick={handleBack}>
-                    <ArrowLeft className="h-5 w-5" />
-                </Button>
-            )}
-            <div>
-                <h1 className="text-3xl font-bold text-primary font-headline tracking-wider">{currentTitle}</h1>
-                <p className="text-muted-foreground">
-                    {activeView === 'dashboard' ? "Gestion et administration de la plateforme KHEOPS." : `Section dédiée à: ${currentTitle}`}
-                </p>
-            </div>
-        </div>
-      </header>
+      {activeView === 'dashboard' ? (
+         <header>
+            <h1 className="text-3xl font-bold text-primary font-headline tracking-wider">{currentTitle}</h1>
+            <p className="text-muted-foreground">Gestion et administration de la plateforme KHEOPS.</p>
+         </header>
+      ) : (
+        <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 -mx-4 -mt-8 mb-8 px-4">
+             <div className="container flex h-16 items-center justify-between mx-auto">
+                 <div className="flex items-center gap-4">
+                     <Button variant="outline" size="icon" onClick={handleBack}>
+                         <ArrowLeft className="h-5 w-5" />
+                     </Button>
+                      <div>
+                        <h1 className="text-xl font-bold text-primary font-headline tracking-wider">{currentTitle}</h1>
+                      </div>
+                 </div>
+                  {currentCategory && (
+                    <nav className="flex items-center gap-2">
+                        <TooltipProvider>
+                         {currentCategory.sections.map(section => (
+                            <Tooltip key={section.view}>
+                                <TooltipTrigger asChild>
+                                    <Button 
+                                        variant={activeView === section.view ? "secondary" : "ghost"} 
+                                        size="icon" 
+                                        onClick={() => setActiveView(section.view)}
+                                    >
+                                        <section.icon className="h-5 w-5" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{section.title}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                         ))}
+                        </TooltipProvider>
+                    </nav>
+                  )}
+             </div>
+        </header>
+      )}
 
       {activeView === 'dashboard' ? (
-        <section>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {adminSections.map((section) => (
-              <Card key={section.title} className={`${section.color} ${section.textColor} border-0 flex flex-col justify-between transition-all duration-300 ${section.hoverColor} hover:-translate-y-1 shadow-lg`}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-4 text-2xl">
-                    <section.icon className="w-10 h-10" />
-                    {section.title}
-                  </CardTitle>
-                  <CardDescription className={`${section.textColor} opacity-80`}>{section.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex justify-end pt-6">
-                  <Button className="bg-white/20 hover:bg-white/30 text-white" onClick={() => handleAction(section.view)}>
-                    {section.action}
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </section>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {adminCategories.map((category) => (
+            <div key={category.title} className={`p-6 rounded-xl shadow-lg ${category.color}`}>
+              <h2 className="text-2xl font-bold font-headline mb-4 text-white">{category.title}</h2>
+              <div className="grid grid-cols-2 gap-4">
+                {category.sections.map((section) => (
+                    <button
+                        key={section.view}
+                        onClick={() => handleAction(section.view)}
+                        className="flex flex-col items-center justify-center p-4 bg-black/20 rounded-lg text-center text-white/90 hover:bg-black/40 transition-colors duration-200"
+                    >
+                        <section.icon className="h-8 w-8 mb-2" />
+                        <span className="text-sm font-medium">{section.title}</span>
+                    </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
          ViewComponent && <ViewComponent {...viewProps as any} />
       )}
     </div>
   );
-}
+});
+
+AdminHub.displayName = "AdminHub";
+export default AdminHub;
+
+    

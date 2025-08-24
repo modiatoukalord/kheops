@@ -1,12 +1,12 @@
 
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy, Trash2, Minus, MoreHorizontal, Edit, Eye, Printer, Pyramid, X, CreditCard, User, HandCoins } from "lucide-react";
+import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy, Trash2, Minus, MoreHorizontal, Edit, Eye, Printer, Pyramid, X, CreditCard, User, HandCoins, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +38,8 @@ import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Booking } from "@/components/admin/booking-schedule";
+import { db } from "@/lib/firebase";
+import { collection, addDoc, getDocs, query, orderBy, Timestamp, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
 
 
 export type ClientActivity = {
@@ -56,8 +58,6 @@ export type ClientActivity = {
 };
 
 interface ActivityLogProps {
-  activities: ClientActivity[];
-  setActivities: React.Dispatch<React.SetStateAction<ClientActivity[]>>;
   bookings: Booking[];
 }
 
@@ -106,7 +106,9 @@ const activityFormSchema = z.object({
 type ActivityFormValues = z.infer<typeof activityFormSchema>;
 
 
-export default function ActivityLog({ activities, setActivities, bookings }: ActivityLogProps) {
+export default function ActivityLog({ bookings }: ActivityLogProps) {
+  const [activities, setActivities] = useState<ClientActivity[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState<Date | undefined>();
   const [isActivityDialogOpen, setActivityDialogOpen] = useState(false);
@@ -116,6 +118,29 @@ export default function ActivityLog({ activities, setActivities, bookings }: Act
 
   const { toast } = useToast();
   const receiptRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const q = query(collection(db, "activities"), orderBy("date", "desc"));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const activitiesData = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                date: (data.date as Timestamp).toDate(),
+            } as ClientActivity;
+        });
+        setActivities(activitiesData);
+        setIsLoading(false);
+    }, (error) => {
+        console.error("Error fetching activities: ", error);
+        toast({ title: "Erreur de chargement", description: "Impossible de charger les activités.", variant: "destructive" });
+        setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [toast]);
+
 
   const form = useForm<ActivityFormValues>({
     resolver: zodResolver(activityFormSchema),
@@ -147,7 +172,7 @@ export default function ActivityLog({ activities, setActivities, bookings }: Act
       const matchesDate = !dateFilter || isSameDay(activity.date, dateFilter);
       return matchesSearch && matchesDate;
     }
-  ).sort((a, b) => b.date.getTime() - a.date.getTime());
+  );
   
   const totalRevenue = activities.reduce((acc, activity) => {
       if (activity.paymentType === 'Direct') {
@@ -157,9 +182,15 @@ export default function ActivityLog({ activities, setActivities, bookings }: Act
       }
   }, 0);
 
-  const processActivityData = (data: ActivityFormValues) => {
+  const processActivityData = async (data: ActivityFormValues) => {
     const { clientName, phone, items, paymentType, paidAmount, bookingId } = data;
-    const totalAmount = items.reduce((acc, item) => acc + item.amount, 0);
+    
+    const baseActivityPayload = {
+      clientName,
+      phone,
+      paymentType,
+      date: new Date(),
+    };
 
     if(editingActivity) {
          const item = items[0];
@@ -173,27 +204,33 @@ export default function ActivityLog({ activities, setActivities, bookings }: Act
                 }
             } catch (e) { console.error("Invalid time format"); }
         }
-        const updatedActivity: ClientActivity = {
-            id: editingActivity.id,
-            clientName,
-            phone,
+        
+        const updatedPayload = {
+            ...baseActivityPayload,
             description: item.description,
             category: item.category,
             totalAmount: item.amount,
-            date: editingActivity.date,
             duration,
-            paymentType,
             paidAmount: paymentType === 'Échéancier' ? paidAmount : item.amount,
             remainingAmount: paymentType === 'Échéancier' ? item.amount - (paidAmount || 0) : 0,
             bookingId: editingActivity.bookingId,
+            date: editingActivity.date, // Keep original date on edit
         };
-        setActivities(prev => prev.map(act => act.id === editingActivity.id ? updatedActivity : act));
-        toast({
-            title: "Activité Modifiée",
-            description: `L'activité pour "${clientName}" a été mise à jour.`,
-        });
+
+        try {
+            const activityRef = doc(db, "activities", editingActivity.id);
+            await updateDoc(activityRef, updatedPayload);
+            toast({
+                title: "Activité Modifiée",
+                description: `L'activité pour "${clientName}" a été mise à jour.`,
+            });
+        } catch (error) {
+            console.error("Error updating document: ", error);
+            toast({ title: "Erreur", description: "Impossible de modifier l'activité.", variant: "destructive" });
+        }
+        
     } else {
-        const newActivities: ClientActivity[] = items.map(item => {
+        const newActivitiesPromises = items.map(item => {
             let duration;
             if (item.startTime && item.endTime) {
                 try {
@@ -202,33 +239,31 @@ export default function ActivityLog({ activities, setActivities, bookings }: Act
                     if (end > start) {
                          duration = formatDistanceStrict(end, start, { locale: fr, unit: 'minute' });
                     }
-                } catch (e) {
-                    console.error("Invalid time format for duration calculation");
-                    duration = undefined;
-                }
+                } catch (e) { console.error("Invalid time format for duration calculation"); }
             }
-
-            return {
-                id: `act-${Date.now()}-${Math.random()}`,
-                clientName,
-                phone,
+            const activityPayload = {
+                ...baseActivityPayload,
                 description: item.description,
                 category: item.category,
                 totalAmount: item.amount,
-                date: new Date(),
                 duration,
-                paymentType,
                 paidAmount: paymentType === 'Échéancier' ? paidAmount : item.amount,
                 remainingAmount: paymentType === 'Échéancier' ? item.amount - (paidAmount || 0) : 0,
-                bookingId
-            }
+                bookingId: item.category === "Réservation Studio" ? bookingId : undefined,
+            };
+            return addDoc(collection(db, "activities"), activityPayload);
         });
 
-        setActivities(prev => [...newActivities, ...prev]);
-        toast({
-          title: "Activités Ajoutées",
-          description: `${items.length} activité(s) pour "${clientName}" ont été ajoutées.`,
-        });
+        try {
+            await Promise.all(newActivitiesPromises);
+            toast({
+              title: "Activités Ajoutées",
+              description: `${items.length} activité(s) pour "${clientName}" ont été ajoutées.`,
+            });
+        } catch (error) {
+            console.error("Error adding documents: ", error);
+            toast({ title: "Erreur", description: "Impossible d'ajouter les activités.", variant: "destructive" });
+        }
     }
 
     setActivityDialogOpen(false);
@@ -265,7 +300,7 @@ export default function ActivityLog({ activities, setActivities, bookings }: Act
             clientName: booking.artistName,
             phone: booking.phone || '',
             paymentType: "Direct",
-            paidAmount: 0,
+            paidAmount: booking.amount,
             items: [{
                 description: `Réservation Studio: ${booking.projectName}`,
                 category: "Réservation Studio",
@@ -288,19 +323,24 @@ export default function ActivityLog({ activities, setActivities, bookings }: Act
     setActivityDialogOpen(true);
   }
   
-  const handleDeleteActivity = (activityId: string) => {
-    setActivities(prev => prev.filter(act => act.id !== activityId));
-    toast({
-        title: "Activité Supprimée",
-        description: "L'activité a été supprimée avec succès.",
-        variant: "destructive"
-    });
+  const handleDeleteActivity = async (activityId: string) => {
+    try {
+        await deleteDoc(doc(db, "activities", activityId));
+        toast({
+            title: "Activité Supprimée",
+            description: "L'activité a été supprimée avec succès.",
+            variant: "destructive"
+        });
+    } catch (error) {
+        console.error("Error deleting document: ", error);
+        toast({ title: "Erreur", description: "Impossible de supprimer l'activité.", variant: "destructive" });
+    }
   };
   
-  const handleCancelPayment = (bookingId: string) => {
+  const handleCancelPayment = async (bookingId: string) => {
     const activityToDelete = activities.find(act => act.bookingId === bookingId);
     if (activityToDelete) {
-        handleDeleteActivity(activityToDelete.id);
+        await handleDeleteActivity(activityToDelete.id);
         toast({
             title: "Encaissement Annulé",
             description: "L'encaissement pour cette réservation a été annulé.",
@@ -479,6 +519,12 @@ export default function ActivityLog({ activities, setActivities, bookings }: Act
                 </TabsList>
                 <TabsContent value="all" className="pt-4">
                     <div className="overflow-x-auto">
+                        {isLoading ? (
+                             <div className="flex items-center justify-center h-48 gap-2">
+                                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                                <p className="text-muted-foreground">Chargement des activités...</p>
+                            </div>
+                        ) : (
                         <Table>
                         <TableHeader>
                             <TableRow>
@@ -567,6 +613,7 @@ export default function ActivityLog({ activities, setActivities, bookings }: Act
                             )}
                         </TableBody>
                         </Table>
+                        )}
                     </div>
                 </TabsContent>
                 <TabsContent value="studio" className="pt-4">
@@ -716,3 +763,5 @@ export default function ActivityLog({ activities, setActivities, bookings }: Act
     </div>
   );
 }
+
+    
