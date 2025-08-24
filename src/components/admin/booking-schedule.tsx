@@ -539,7 +539,6 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
                   <TableHead>Projet</TableHead>
                   <TableHead>Date & Heure</TableHead>
                   <TableHead>Service</TableHead>
-                  <TableHead className="text-right">Montant</TableHead>
                    <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -551,7 +550,6 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
                       <TableCell>{booking.projectName}</TableCell>
                       <TableCell>{format(booking.date, "d MMM yyyy", { locale: fr })} à {booking.timeSlot}</TableCell>
                       <TableCell>{booking.service}</TableCell>
-                      <TableCell className="text-right font-semibold">{booking.amount.toLocaleString('fr-FR')} FCFA</TableCell>
                        <TableCell className="text-right">
                           <Button variant="ghost" size="icon" onClick={() => { setSelectedBooking(booking); setDetailsDialogOpen(true); }}>
                               <Eye className="h-4 w-4" />
@@ -561,7 +559,7 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
+                    <TableCell colSpan={5} className="h-24 text-center">
                       Aucune réservation confirmée pour le moment.
                     </TableCell>
                   </TableRow>
@@ -621,3 +619,5 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
     </div>
   );
 }
+
+    
