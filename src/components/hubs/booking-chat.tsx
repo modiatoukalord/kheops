@@ -118,7 +118,8 @@ export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit, boo
     } else {
         const finalBookingData: BookingData = { 
             ...newFormData,
-            amount: calculatePrice(newFormData.service as string, 1)
+            amount: calculatePrice(newFormData.service as string, 1),
+            tracks: [{ name: newFormData.projectName as string, date: newFormData.date as Date, timeSlot: newFormData.timeSlot as string }]
         } as BookingData;
 
         onBookingSubmit(finalBookingData);

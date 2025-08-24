@@ -607,5 +607,3 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
     </div>
   );
 }
-
-    
