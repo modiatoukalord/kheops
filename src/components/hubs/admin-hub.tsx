@@ -20,17 +20,6 @@ import { format } from "date-fns";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const initialActivities: ClientActivity[] = [
-    ...initialBookings.map((booking, index) => ({
-        id: `act-${booking.id}`,
-        clientName: booking.artistName,
-        description: `Réservation: ${booking.projectName}`,
-        category: "Réservation Studio" as const,
-        totalAmount: booking.amount,
-        date: booking.date,
-        paymentType: "Direct" as const,
-        paidAmount: booking.amount,
-        remainingAmount: 0,
-    })),
      {
         id: "act-livre-001",
         clientName: "Amina Dubois",
