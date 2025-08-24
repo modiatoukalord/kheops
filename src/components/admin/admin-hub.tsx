@@ -9,7 +9,7 @@ import UserManagement, { Subscriber, initialSubscribers as iSubscribers } from "
 import ContentManagement, { initialContent as iContent, Content } from "@/components/admin/content-management";
 import BookingSchedule, { initialBookings, Booking } from "@/components/admin/booking-schedule";
 import SiteSettings from "@/components/admin/site-settings";
-import EventManagement, { initialEvents as iEvents, AppEvent } from "@/components/admin/event-management";
+import EventManagement, { AppEvent } from "@/components/admin/event-management";
 import FinancialManagement, { Transaction, initialTransactions as iTransactions } from "@/components/admin/financial-management";
 import ContractManagement from "@/components/admin/contract-management";
 import ActivityLog, { ClientActivity } from "@/components/admin/activity-log";
@@ -26,7 +26,9 @@ export type AdminHubProps = {
   content: Content[];
   setContent: React.Dispatch<React.SetStateAction<Content[]>>;
   events: AppEvent[];
-  setEvents: React.Dispatch<React.SetStateAction<AppEvent[]>>;
+  onAddEvent: (event: Omit<AppEvent, 'id'>) => void;
+  onUpdateEvent: (id: string, event: Partial<Omit<AppEvent, 'id'>>) => void;
+  onDeleteEvent: (id: string) => void;
   bookings: Booking[];
   setBookings: React.Dispatch<React.SetStateAction<Booking[]>>;
   setShowMainHeader: (show: boolean) => void;
@@ -77,7 +79,7 @@ const adminCategories: AdminCategory[] = [
 ];
 
 
-const AdminHub = forwardRef<any, AdminHubProps>(({ content, setContent, events, setEvents, bookings, setBookings, setShowMainHeader }, ref) => {
+const AdminHub = forwardRef<any, AdminHubProps>(({ content, setContent, events, onAddEvent, onUpdateEvent, onDeleteEvent, bookings, setBookings, setShowMainHeader }, ref) => {
   const [activeView, setActiveView] = useState<AdminView>("dashboard");
 
   useImperativeHandle(ref, () => ({
@@ -167,7 +169,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({ content, setContent, events, 
     content: { component: ContentManagement, title: "Gestion des Contenus", props: { content, setContent } },
     bookings: { component: BookingSchedule, title: "Planning des Réservations", props: { bookings, setBookings, onAddBooking: handleAddBooking } },
     settings: { component: SiteSettings, title: "Paramètres du Site", props: {} },
-    events: { component: EventManagement, title: "Gestion des Événements", props: { events, setEvents } },
+    events: { component: EventManagement, title: "Gestion des Événements", props: { events, onAddEvent, onUpdateEvent, onDeleteEvent } },
     financial: { component: FinancialManagement, title: "Rapport Financier", props: { transactions, setTransactions } },
     contracts: { component: ContractManagement, title: "Gestion des Contrats", props: {} },
     activities: { component: ActivityLog, title: "Journal d'Activité", props: { bookings } },

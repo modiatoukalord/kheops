@@ -9,10 +9,10 @@ import StudioHub from "@/components/hubs/studio-hub";
 import WearHub from "@/components/hubs/wear-hub";
 import AdminHub from "@/components/hubs/admin-hub";
 import { initialContent, Content } from "@/components/admin/content-management";
-import { initialEvents, AppEvent } from "@/components/admin/event-management";
+import { AppEvent } from "@/components/admin/event-management";
 import { Booking, initialBookings } from "@/components/admin/booking-schedule";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, getDocs, query, orderBy, Timestamp } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, orderBy, Timestamp, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
 
 
 type Hubs = {
@@ -30,40 +30,52 @@ export default function Home() {
   const [activeHub, setActiveHub] = useState("culture");
   const [showMainHeader, setShowMainHeader] = useState(true);
   const [content, setContent] = useState<Content[]>(initialContent);
-  const [events, setEvents] = useState<AppEvent[]>(initialEvents);
+  const [events, setEvents] = useState<AppEvent[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const adminHubRef = useRef<{ setActiveView: (view: any) => void }>(null);
 
   useEffect(() => {
-    const fetchBookings = async () => {
-      try {
-        const q = query(collection(db, "bookings"), orderBy("date", "desc"));
-        const querySnapshot = await getDocs(q);
-        const bookingsData = querySnapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            ...data,
-            date: (data.date as Timestamp).toDate(),
-            // Ensure tracks also have dates converted
-            tracks: data.tracks?.map((track: any) => ({
-              ...track,
-              date: (track.date as Timestamp).toDate(),
-            }))
-          } as Booking;
+    const fetchBookings = onSnapshot(query(collection(db, "bookings"), orderBy("date", "desc")), (snapshot) => {
+        const bookingsData = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                date: (data.date as Timestamp).toDate(),
+                tracks: data.tracks?.map((track: any) => ({
+                    ...track,
+                    date: (track.date as Timestamp).toDate(),
+                }))
+            } as Booking;
         });
         setBookings(bookingsData);
-      } catch (error) {
-        console.error("Error fetching bookings: ", error);
-        // Fallback to initial data on error
-        setBookings(initialBookings);
-      } finally {
         setIsLoading(false);
-      }
-    };
+    }, (error) => {
+        console.error("Error fetching bookings: ", error);
+        setBookings(initialBookings);
+        setIsLoading(false);
+    });
 
-    fetchBookings();
+    const fetchEvents = onSnapshot(query(collection(db, "events"), orderBy("startDate", "desc")), (snapshot) => {
+        const eventsData = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                startDate: (data.startDate as Timestamp).toDate(),
+                endDate: data.endDate ? (data.endDate as Timestamp).toDate() : undefined,
+            } as AppEvent;
+        });
+        setEvents(eventsData);
+    }, (error) => {
+        console.error("Error fetching events: ", error);
+    });
+
+    return () => {
+        fetchBookings();
+        fetchEvents();
+    };
   }, []);
 
   const handleSetActiveHub = (hub: "culture" | "studio" | "wear" | "admin") => {
@@ -82,18 +94,36 @@ export default function Home() {
             status: "En attente" as const,
         };
 
-        const docRef = await addDoc(collection(db, "bookings"), bookingPayload);
-        
-        const newBooking: Booking = {
-            ...bookingPayload,
-            id: docRef.id,
-        };
-        
-        setBookings(prev => [newBooking, ...prev]);
-
+        await addDoc(collection(db, "bookings"), bookingPayload);
+        // State update will be handled by onSnapshot listener
     } catch (error) {
         console.error("Error adding document: ", error);
     }
+  };
+  
+  const handleAddEvent = async (newEventData: Omit<AppEvent, 'id'>) => {
+      try {
+          await addDoc(collection(db, "events"), newEventData);
+      } catch (error) {
+          console.error("Error adding event: ", error);
+      }
+  };
+
+  const handleUpdateEvent = async (eventId: string, updatedEventData: Partial<Omit<AppEvent, 'id'>>) => {
+      try {
+          const eventRef = doc(db, "events", eventId);
+          await updateDoc(eventRef, updatedEventData);
+      } catch (error) {
+          console.error("Error updating event: ", error);
+      }
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+      try {
+          await deleteDoc(doc(db, "events", eventId));
+      } catch (error) {
+          console.error("Error deleting event: ", error);
+      }
   };
 
 
@@ -102,7 +132,12 @@ export default function Home() {
   const componentProps: { [key: string]: any } = {
     culture: { content, events },
     studio: { bookings, onAddBooking: handleAddBooking },
-    admin: { content, setContent, events, setEvents, bookings, setBookings, setShowMainHeader, ref: adminHubRef },
+    admin: { 
+        content, setContent, 
+        events, onAddEvent: handleAddEvent, onUpdateEvent: handleUpdateEvent, onDeleteEvent: handleDeleteEvent,
+        bookings, setBookings, 
+        setShowMainHeader, ref: adminHubRef 
+    },
   };
 
   return (

@@ -4,7 +4,7 @@
 import React, { useState } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Edit, Trash2, CalendarIcon } from "lucide-react";
+import { PlusCircle, Edit, Trash2, CalendarIcon, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -18,33 +18,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
-export const initialEvents = [
-  {
-    id: "evt-001",
-    title: "Tournoi e-sport: La Fureur d'Anubis",
-    startDate: new Date("2024-07-30T10:00:00"),
-    endDate: new Date("2024-07-31T18:00:00"),
-    category: "Compétition",
-  },
-  {
-    id: "evt-002",
-    title: "Conférence: L'Influence de l'Égypte",
-    startDate: new Date("2024-08-15T15:00:00"),
-    category: "Conférence",
-  },
-  {
-    id: "evt-003",
-    title: "Atelier d'écriture de Manga",
-    startDate: new Date("2024-09-02T14:00:00"),
-    category: "Atelier",
-  },
-    {
-    id: "evt-004",
-    title: "Lancement KHEOPS WEAR",
-    startDate: new Date("2024-08-20T18:00:00"),
-    category: "Lancement",
-  },
-];
 
 export type AppEvent = {
   id: string;
@@ -60,42 +33,57 @@ const categoryColors: { [key: string]: string } = {
   Conférence: "bg-blue-500/80 text-white",
   Atelier: "bg-green-500/80 text-white",
   Lancement: "bg-purple-500/80 text-white",
+  Autre: "bg-gray-500/80 text-white",
 };
 
 interface EventManagementProps {
   events: AppEvent[];
-  setEvents: React.Dispatch<React.SetStateAction<AppEvent[]>>;
+  onAddEvent: (event: Omit<AppEvent, 'id'>) => void;
+  onUpdateEvent: (id: string, event: Partial<Omit<AppEvent, 'id'>>) => void;
+  onDeleteEvent: (id: string) => void;
 }
 
-export default function EventManagement({ events, setEvents }: EventManagementProps) {
+export default function EventManagement({ events, onAddEvent, onUpdateEvent, onDeleteEvent }: EventManagementProps) {
   const [date, setDate] = useState<DateRange | undefined>();
   const { toast } = useToast();
   const [isDialogOpen, setDialogOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<AppEvent | null>(null);
 
   const upcomingEvents = events
     .filter(event => (event.endDate || event.startDate) >= new Date())
     .sort((a,b) => a.startDate.getTime() - b.startDate.getTime())
     .slice(0, 5);
     
-  const handleAddEvent = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const title = formData.get("title") as string;
+    const category = formData.get("category") as string;
     
-    if (date?.from && title) {
-        const newEvent: AppEvent = {
-            id: `evt-${Date.now()}`,
+    if (date?.from && title && category) {
+        const eventData: Omit<AppEvent, 'id'> = {
             title,
             startDate: date.from,
             endDate: date.to,
-            category: formData.get("category") as string,
+            category,
         };
-        setEvents(prev => [newEvent, ...prev]);
-        toast({
-            title: "Événement Ajouté",
-            description: `L'événement "${title}" a été ajouté.`,
-        });
+
+        if (editingEvent) {
+            onUpdateEvent(editingEvent.id, eventData);
+            toast({
+                title: "Événement Modifié",
+                description: `L'événement "${title}" a été mis à jour.`,
+            });
+        } else {
+            onAddEvent(eventData);
+            toast({
+                title: "Événement Ajouté",
+                description: `L'événement "${title}" a été ajouté.`,
+            });
+        }
+
         setDialogOpen(false);
+        setEditingEvent(null);
         setDate(undefined);
     } else {
         toast({
@@ -105,6 +93,27 @@ export default function EventManagement({ events, setEvents }: EventManagementPr
         })
     }
   };
+
+  const handleOpenDialog = (event: AppEvent | null) => {
+    setEditingEvent(event);
+    if (event) {
+        setDate({ from: event.startDate, to: event.endDate });
+    } else {
+        setDate(undefined);
+    }
+    setDialogOpen(true);
+  };
+  
+  const handleDelete = (event: AppEvent) => {
+      if(window.confirm(`Êtes-vous sûr de vouloir supprimer l'événement "${event.title}" ?`)) {
+          onDeleteEvent(event.id);
+          toast({
+              title: "Événement Supprimé",
+              description: `L'événement a été supprimé.`,
+              variant: "destructive"
+          })
+      }
+  }
   
   const getEventDatesForCalendar = () => {
     return events.flatMap(e => {
@@ -132,29 +141,29 @@ export default function EventManagement({ events, setEvents }: EventManagementPr
                     Planifiez et visualisez tous les événements liés à la structure.
                     </CardDescription>
                 </div>
-                <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
+                <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { if(!isOpen) { setEditingEvent(null); setDate(undefined); } setDialogOpen(isOpen); }}>
                     <DialogTrigger asChild>
-                        <Button>
+                        <Button onClick={() => handleOpenDialog(null)}>
                             <PlusCircle className="mr-2 h-4 w-4"/>
                             Ajouter un événement
                         </Button>
                     </DialogTrigger>
                     <DialogContent>
-                        <form onSubmit={handleAddEvent}>
+                        <form onSubmit={handleFormSubmit}>
                             <DialogHeader>
-                                <DialogTitle>Ajouter un nouvel événement</DialogTitle>
+                                <DialogTitle>{editingEvent ? "Modifier l'événement" : "Ajouter un nouvel événement"}</DialogTitle>
                                 <DialogDescription>
-                                    Remplissez les informations pour créer un nouvel événement.
+                                    Remplissez les informations pour créer ou modifier un événement.
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="grid gap-4 py-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="title">Titre de l'événement</Label>
-                                    <Input id="title" name="title" placeholder="Ex: Tournoi e-sport" required/>
+                                    <Input id="title" name="title" placeholder="Ex: Tournoi e-sport" required defaultValue={editingEvent?.title}/>
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="category">Catégorie</Label>
-                                    <Select name="category" required>
+                                    <Select name="category" required defaultValue={editingEvent?.category}>
                                         <SelectTrigger><SelectValue placeholder="Sélectionner une catégorie"/></SelectTrigger>
                                         <SelectContent>
                                             {Object.keys(categoryColors).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
@@ -203,7 +212,7 @@ export default function EventManagement({ events, setEvents }: EventManagementPr
                                 </div>
                             </div>
                             <DialogFooter>
-                                <Button type="submit">Ajouter l'événement</Button>
+                                <Button type="submit">{editingEvent ? "Enregistrer" : "Ajouter l'événement"}</Button>
                             </DialogFooter>
                         </form>
                     </DialogContent>
@@ -237,7 +246,16 @@ export default function EventManagement({ events, setEvents }: EventManagementPr
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {upcomingEvents.length > 0 ? (
+              {events.length === 0 && (
+                <div className="flex items-center justify-center h-24 gap-2 text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>Chargement...</span>
+                </div>
+              )}
+              {events.length > 0 && upcomingEvents.length === 0 && (
+                 <p className="text-muted-foreground text-center py-10">Aucun événement à venir.</p>
+              )}
+              {upcomingEvents.length > 0 && 
                 upcomingEvents.map((event) => {
                     const formatEventDate = (event: AppEvent) => {
                         const startDate = format(event.startDate, "d MMM yyyy", { locale: fr });
@@ -246,7 +264,7 @@ export default function EventManagement({ events, setEvents }: EventManagementPr
                             if (startDate === endDate) {
                                 return `${startDate} à ${format(event.startDate, "HH:mm")}`;
                             }
-                            return `Du ${startDate} au ${endDate}`;
+                            return `Du ${format(event.startDate, "d MMM")} au ${endDate}`;
                         }
                         return `${startDate} à ${format(event.startDate, "HH:mm")}`;
                     };
@@ -260,20 +278,18 @@ export default function EventManagement({ events, setEvents }: EventManagementPr
                           </p>
                           <Badge className={`${categoryColors[event.category]} mt-1 border-0`}>{event.category}</Badge>
                         </div>
-                        <div className="flex gap-2 ml-2">
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <div className="flex gap-1 ml-2">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenDialog(event)}>
                                 <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-destructive hover:text-destructive-foreground">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-destructive hover:text-destructive-foreground" onClick={() => handleDelete(event)}>
                                 <Trash2 className="h-4 w-4" />
                             </Button>
                         </div>
                       </div>
                     )
                 })
-              ) : (
-                <p className="text-muted-foreground text-center">Aucun événement à venir.</p>
-              )}
+              }
             </div>
           </CardContent>
           <CardFooter className="pt-4 justify-center">
