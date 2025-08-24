@@ -251,7 +251,7 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
                 category: item.category,
                 totalAmount: item.amount,
                 duration,
-                paidAmount: paymentType === 'Échéancier' ? (item.category === "Réservation Studio" ? paidAmount : item.amount) : item.amount,
+                paidAmount: paymentType === 'Échéancier' ? (paidAmount) : item.amount,
                 remainingAmount: paymentType === 'Échéancier' ? item.amount - (paidAmount || 0) : 0,
                 bookingId: item.category === "Réservation Studio" ? bookingId : undefined,
             };
@@ -286,7 +286,7 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
     });
   };
 
-  const handleOpenDialog = (activity: ClientActivity | null, booking: Booking | null = null, remainingAmount: number = 0) => {
+  const handleOpenDialog = (activity: ClientActivity | null, booking: Booking | null = null, remainingToPay: number = 0) => {
     if (activity) { // Editing an existing activity
         setEditingActivity(activity);
         form.reset({
@@ -305,11 +305,13 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
         });
     } else if (booking) { // Creating a new activity from a booking
          setEditingActivity(null);
-         const amountToPay = remainingAmount > 0 ? remainingAmount : booking.amount;
+         const amountToPay = remainingToPay > 0 ? remainingToPay : booking.amount;
+         const isInstallment = remainingToPay > 0 && remainingToPay < booking.amount;
+         
          form.reset({
             clientName: booking.artistName,
             phone: booking.phone || '',
-            paymentType: "Direct",
+            paymentType: isInstallment ? "Échéancier" : "Direct",
             paidAmount: amountToPay,
             items: [{
                 description: `Réservation Studio: ${booking.projectName}`,
@@ -790,7 +792,3 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
     </div>
   );
 }
-
-    
-
-    
