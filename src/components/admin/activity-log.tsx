@@ -105,6 +105,11 @@ const activityFormSchema = z.object({
 
 type ActivityFormValues = z.infer<typeof activityFormSchema>;
 
+const installmentSchema = z.object({
+    amount: z.coerce.number().positive("Le montant doit être positif"),
+});
+type InstallmentFormValues = z.infer<typeof installmentSchema>;
+
 
 export default function ActivityLog({ bookings }: ActivityLogProps) {
   const [activities, setActivities] = useState<ClientActivity[]>([]);
@@ -113,7 +118,8 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
   const [dateFilter, setDateFilter] = useState<Date | undefined>();
   const [isActivityDialogOpen, setActivityDialogOpen] = useState(false);
   const [isDetailsDialogOpen, setDetailsDialogOpen] = useState(false);
-  const [editingActivity, setEditingActivity] = useState<ClientActivity | null>(null);
+  const [isInstallmentDialogOpen, setInstallmentDialogOpen] = useState(false);
+  const [activityForInstallment, setActivityForInstallment] = useState<ClientActivity | null>(null);
   const [detailsActivity, setDetailsActivity] = useState<ClientActivity | null>(null);
 
   const { toast } = useToast();
@@ -152,6 +158,10 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
       items: [{ description: "", category: "Autre", amount: 0, startTime: "", endTime: "" }],
     },
   });
+  
+  const installmentForm = useForm<InstallmentFormValues>({
+    resolver: zodResolver(installmentSchema),
+  });
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -185,81 +195,54 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
   const processActivityData = async (data: ActivityFormValues) => {
     const { clientName, phone, items, paymentType, paidAmount, bookingId } = data;
     
-    if(editingActivity) {
-         const item = items[0];
-        
-        const newPaidAmount = (editingActivity.paidAmount || 0) + (paidAmount || 0);
-        const newRemainingAmount = item.amount - newPaidAmount;
+     const baseActivityPayload = {
+      clientName,
+      phone,
+      paymentType,
+      date: new Date(),
+    };
 
-        const updatedPayload = {
-            paidAmount: newPaidAmount,
-            remainingAmount: newRemainingAmount,
-            paymentType,
-        };
-
-        try {
-            const activityRef = doc(db, "activities", editingActivity.id);
-            await updateDoc(activityRef, updatedPayload);
-            toast({
-                title: "Paiement Enregistré",
-                description: `Un nouveau versement pour "${clientName}" a été enregistré.`,
-            });
-        } catch (error) {
-            console.error("Error updating document: ", error);
-            toast({ title: "Erreur", description: "Impossible d'enregistrer le paiement.", variant: "destructive" });
+    const newActivitiesPromises = items.map(item => {
+        let duration = null;
+        if (item.startTime && item.endTime) {
+            try {
+                const start = parse(item.startTime, 'HH:mm', new Date());
+                const end = parse(item.endTime, 'HH:mm', new Date());
+                if (end > start) {
+                     duration = formatDistanceStrict(end, start, { locale: fr, unit: 'minute' });
+                }
+            } catch (e) { console.error("Invalid time format for duration calculation"); }
         }
-        
-    } else {
-         const baseActivityPayload = {
-          clientName,
-          phone,
-          paymentType,
-          date: new Date(),
+        const activityPayload: any = {
+            ...baseActivityPayload,
+            description: item.description,
+            category: item.category,
+            totalAmount: item.amount,
+            duration,
+            paidAmount: paymentType === 'Échéancier' ? (paidAmount || 0) : item.amount,
+            remainingAmount: paymentType === 'Échéancier' ? item.amount - (paidAmount || 0) : 0,
+            bookingId: item.category === "Réservation Studio" ? bookingId : undefined,
         };
 
-        const newActivitiesPromises = items.map(item => {
-            let duration = null;
-            if (item.startTime && item.endTime) {
-                try {
-                    const start = parse(item.startTime, 'HH:mm', new Date());
-                    const end = parse(item.endTime, 'HH:mm', new Date());
-                    if (end > start) {
-                         duration = formatDistanceStrict(end, start, { locale: fr, unit: 'minute' });
-                    }
-                } catch (e) { console.error("Invalid time format for duration calculation"); }
-            }
-            const activityPayload: any = {
-                ...baseActivityPayload,
-                description: item.description,
-                category: item.category,
-                totalAmount: item.amount,
-                duration,
-                paidAmount: paymentType === 'Échéancier' ? (paidAmount || 0) : item.amount,
-                remainingAmount: paymentType === 'Échéancier' ? item.amount - (paidAmount || 0) : 0,
-                bookingId: item.category === "Réservation Studio" ? bookingId : undefined,
-            };
+        if (duration === null) {
+          delete activityPayload.duration;
+        }
 
-            if (duration === null) {
-              delete activityPayload.duration;
-            }
+        return addDoc(collection(db, "activities"), activityPayload);
+    });
 
-            return addDoc(collection(db, "activities"), activityPayload);
+    try {
+        await Promise.all(newActivitiesPromises);
+        toast({
+          title: "Activités Ajoutées",
+          description: `${items.length} activité(s) pour "${clientName}" ont été ajoutées.`,
         });
-
-        try {
-            await Promise.all(newActivitiesPromises);
-            toast({
-              title: "Activités Ajoutées",
-              description: `${items.length} activité(s) pour "${clientName}" ont été ajoutées.`,
-            });
-        } catch (error) {
-            console.error("Error adding documents: ", error);
-            toast({ title: "Erreur", description: "Impossible d'ajouter les activités.", variant: "destructive" });
-        }
+    } catch (error) {
+        console.error("Error adding documents: ", error);
+        toast({ title: "Erreur", description: "Impossible d'ajouter les activités.", variant: "destructive" });
     }
 
     setActivityDialogOpen(false);
-    setEditingActivity(null);
     form.reset({
         clientName: "",
         phone: "",
@@ -269,25 +252,8 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
     });
   };
 
-  const handleOpenDialog = (activity: ClientActivity | null, booking: Booking | null = null, remainingToPay: number = 0) => {
-    if (activity) { // Editing an existing activity for installment payment
-        setEditingActivity(activity);
-        form.reset({
-            clientName: activity.clientName,
-            phone: activity.phone || '',
-            paymentType: activity.paymentType,
-            paidAmount: activity.remainingAmount || 0, // Pre-fill with remaining amount
-            items: [{
-                description: activity.description,
-                category: activity.category,
-                amount: activity.totalAmount,
-                startTime: '', 
-                endTime: ''
-            }],
-            bookingId: activity.bookingId
-        });
-    } else if (booking) { // Creating a new activity from a booking
-         setEditingActivity(null);
+  const handleOpenNewActivityDialog = (booking: Booking | null = null, remainingToPay: number = 0) => {
+     if (booking) { // Creating a new activity from a booking
          const amountToPay = remainingToPay > 0 ? remainingToPay : booking.amount;
          const isInstallment = remainingToPay > 0 && remainingToPay < booking.amount;
          
@@ -306,7 +272,6 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
             bookingId: booking.id
          });
     } else { // Creating a brand new activity
-        setEditingActivity(null);
         form.reset({
             clientName: "",
             phone: "",
@@ -332,24 +297,46 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
     }
   };
   
-  const handleCancelPayment = async (bookingId: string) => {
-    const activityToDelete = activities.find(act => act.bookingId === bookingId);
-    if (activityToDelete) {
-        await handleDeleteActivity(activityToDelete.id);
-        toast({
-            title: "Encaissement Annulé",
-            description: "Le dernier encaissement pour cette réservation a été annulé.",
-        });
-    }
+  const handleOpenInstallmentDialog = (activity: ClientActivity) => {
+      setActivityForInstallment(activity);
+      installmentForm.setValue('amount', activity.remainingAmount || 0);
+      setInstallmentDialogOpen(true);
+  };
+
+  const handleInstallmentSubmit = async (data: InstallmentFormValues) => {
+      if (!activityForInstallment) return;
+
+      const newPaidAmount = (activityForInstallment.paidAmount || 0) + data.amount;
+      const newRemainingAmount = activityForInstallment.totalAmount - newPaidAmount;
+
+      if (newRemainingAmount < 0) {
+          toast({ title: "Erreur de Paiement", description: "Le montant versé dépasse le montant restant.", variant: "destructive"});
+          return;
+      }
+
+      try {
+          const activityRef = doc(db, "activities", activityForInstallment.id);
+          await updateDoc(activityRef, {
+              paidAmount: newPaidAmount,
+              remainingAmount: newRemainingAmount,
+          });
+          toast({
+              title: "Paiement Enregistré",
+              description: `Un nouveau versement de ${data.amount.toLocaleString('fr-FR')} FCFA a été enregistré.`,
+          });
+      } catch (error) {
+          console.error("Error updating document: ", error);
+          toast({ title: "Erreur", description: "Impossible d'enregistrer le paiement.", variant: "destructive" });
+      }
+
+      setInstallmentDialogOpen(false);
+      setActivityForInstallment(null);
+      installmentForm.reset();
   };
 
   const handlePrintReceipt = () => {
     window.print();
   };
-  
-  const isEditingInstallment = editingActivity && editingActivity.paymentType === 'Échéancier';
-  const editingTotalAmount = editingActivity ? editingActivity.totalAmount : 0;
-  const editingPaidAmount = editingActivity ? editingActivity.paidAmount || 0 : 0;
 
   return (
     <div className="space-y-6">
@@ -416,12 +403,11 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
                 <Dialog open={isActivityDialogOpen} onOpenChange={(isOpen) => {
                     setActivityDialogOpen(isOpen);
                     if (!isOpen) {
-                        setEditingActivity(null);
                         form.reset();
                     }
                 }}>
                     <DialogTrigger asChild>
-                        <Button onClick={() => handleOpenDialog(null, null)}>
+                        <Button onClick={() => handleOpenNewActivityDialog(null)}>
                             <PlusCircle className="mr-2 h-4 w-4"/>
                             Ajouter
                         </Button>
@@ -430,17 +416,17 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
                        <Form {...form}>
                         <form onSubmit={form.handleSubmit(processActivityData)}>
                             <DialogHeader>
-                                <DialogTitle>{editingActivity ? (isEditingInstallment ? "Encaisser une échéance" : "Modifier l'activité") : "Ajouter une nouvelle vente/activité"}</DialogTitle>
+                                <DialogTitle>Ajouter une nouvelle vente/activité</DialogTitle>
                                 <DialogDescription>
-                                    {editingActivity ? (isEditingInstallment ? `Ajoutez un nouveau versement pour ${editingActivity.clientName}.` : "Mettez à jour les informations de l'activité.") : "Remplissez les informations du client et ajoutez un ou plusieurs articles/services."}
+                                    Remplissez les informations du client et ajoutez un ou plusieurs articles/services.
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="grid gap-6 py-4 max-h-[80vh] overflow-y-auto pr-4">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <FormField control={form.control} name="clientName" render={({ field }) => (<FormItem><Label>Nom du client</Label><FormControl><Input placeholder="Ex: Jean Dupont" {...field} disabled={!!editingActivity} /></FormControl><FormMessage /></FormItem>)} />
-                                    <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><Label>Téléphone</Label><FormControl><Input placeholder="Ex: +242 06 123 4567" {...field} disabled={!!editingActivity} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="clientName" render={({ field }) => (<FormItem><Label>Nom du client</Label><FormControl><Input placeholder="Ex: Jean Dupont" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><Label>Téléphone</Label><FormControl><Input placeholder="Ex: +242 06 123 4567" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     <FormField control={form.control} name="paymentType" render={({ field }) => (<FormItem><Label>Type de paiement</Label>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!!editingActivity}>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
                                             <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
                                             <SelectContent><SelectItem value="Direct">Direct</SelectItem><SelectItem value="Échéancier">Échéancier</SelectItem></SelectContent>
                                         </Select><FormMessage /></FormItem>)} />
@@ -451,31 +437,29 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
                                         <div key={field.id} className="p-3 border rounded-lg space-y-4">
                                             <div className="flex justify-between items-center">
                                                 <h4 className="font-medium text-primary">Article #{index + 1}</h4>
-                                                {fields.length > 1 && !editingActivity && (
+                                                {fields.length > 1 && (
                                                 <Button type="button" variant="ghost" size="icon" className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
                                                 )}
                                             </div>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <FormField control={form.control} name={`items.${index}.description`} render={({ field }) => (<FormItem><Label>Description</Label><FormControl><Input {...field} disabled={!!editingActivity} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField control={form.control} name={`items.${index}.category`} render={({ field }) => (<FormItem><Label>Catégorie</Label><Select onValueChange={field.onChange} defaultValue={field.value} disabled={!!editingActivity}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent>{Object.keys(categoryConfig).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name={`items.${index}.description`} render={({ field }) => (<FormItem><Label>Description</Label><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name={`items.${index}.category`} render={({ field }) => (<FormItem><Label>Catégorie</Label><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent>{Object.keys(categoryConfig).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
                                             </div>
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <FormField control={form.control} name={`items.${index}.amount`} render={({ field }) => (<FormItem><Label>Montant Total</Label><FormControl><Input type="number" {...field} disabled={!!editingActivity} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField control={form.control} name={`items.${index}.startTime`} render={({ field }) => (<FormItem><Label>Heure de début</Label><FormControl><Input type="time" {...field} disabled={isEditingInstallment} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField control={form.control} name={`items.${index}.endTime`} render={({ field }) => (<FormItem><Label>Heure de fin</Label><FormControl><Input type="time" {...field} disabled={isEditingInstallment} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name={`items.${index}.amount`} render={({ field }) => (<FormItem><Label>Montant Total</Label><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name={`items.${index}.startTime`} render={({ field }) => (<FormItem><Label>Heure de début</Label><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name={`items.${index}.endTime`} render={({ field }) => (<FormItem><Label>Heure de fin</Label><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
                                         </div>
                                     ))}
-                                    {!editingActivity && (
                                     <Button type="button" size="sm" variant="outline" onClick={() => append({ description: "", category: "Autre", amount: 0, startTime: "", endTime: "" })}>
                                         <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un article
                                     </Button>
-                                    )}
                                 </div>
                                 {(paymentType === 'Échéancier') && (
                                     <FormField control={form.control} name="paidAmount" render={({ field }) => (
                                         <FormItem>
-                                            <Label>{isEditingInstallment ? "Montant à verser" : "Montant Versé initialement"}</Label>
+                                            <Label>Montant Versé initialement</Label>
                                             <FormControl><Input type="number" {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -486,25 +470,21 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
                                 <div className="flex justify-end items-center gap-6 text-lg font-bold">
                                     {paymentType === 'Échéancier' && (
                                         <>
-                                            <div className="text-right">
-                                                <span>{isEditingInstallment ? "Déjà Versé:" : ""}</span>
-                                                {isEditingInstallment && <p className="text-muted-foreground font-normal text-base">{editingPaidAmount.toLocaleString('fr-FR')} FCFA</p>}
-                                            </div>
                                              <div className="text-right">
                                                 <span>Restant:</span>
-                                                <p className="text-red-500">{isEditingInstallment ? (editingTotalAmount - editingPaidAmount).toLocaleString('fr-FR') : remainingAmount.toLocaleString('fr-FR')} FCFA</p>
+                                                <p className="text-red-500">{remainingAmount.toLocaleString('fr-FR')} FCFA</p>
                                             </div>
                                             <Separator orientation="vertical" className="h-10" />
                                         </>
                                     )}
                                     <div className="text-right">
                                         <span>Total:</span>
-                                        <p>{isEditingInstallment ? editingTotalAmount.toLocaleString('fr-FR') : totalAmount.toLocaleString('fr-FR')} FCFA</p>
+                                        <p>{totalAmount.toLocaleString('fr-FR')} FCFA</p>
                                     </div>
                                 </div>
                             </div>
                             <DialogFooter className="pt-4 border-t">
-                                <Button type="submit">{editingActivity ? (isEditingInstallment ? "Enregistrer le versement" : "Enregistrer les modifications") : "Enregistrer la vente"}</Button>
+                                <Button type="submit">Enregistrer la vente</Button>
                             </DialogFooter>
                         </form>
                         </Form>
@@ -596,13 +576,9 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
                                             <DropdownMenuItem onClick={() => { setDetailsActivity(activity); setDetailsDialogOpen(true); }}>
                                                 <Eye className="mr-2 h-4 w-4" /> Voir les détails
                                             </DropdownMenuItem>
-                                            {isInstallmentAndUnpaid ? (
-                                                <DropdownMenuItem onClick={() => handleOpenDialog(activity, null)}>
+                                            {isInstallmentAndUnpaid && (
+                                                <DropdownMenuItem onClick={() => handleOpenInstallmentDialog(activity)}>
                                                     <HandCoins className="mr-2 h-4 w-4" /> Encaisser une échéance
-                                                </DropdownMenuItem>
-                                            ) : (
-                                                 <DropdownMenuItem disabled>
-                                                    <Edit className="mr-2 h-4 w-4" /> Modifier
                                                 </DropdownMenuItem>
                                             )}
                                             <DropdownMenuItem className="text-red-500" onClick={() => handleDeleteActivity(activity.id)}>
@@ -669,7 +645,7 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 {!isFullyPaid ? (
-                                                    <Button size="sm" onClick={() => handleOpenDialog(null, booking, remainingToPay)}>
+                                                    <Button size="sm" onClick={() => handleOpenNewActivityDialog(booking, remainingToPay)}>
                                                         <HandCoins className="mr-2 h-4 w-4"/>
                                                         Encaisser
                                                     </Button>
@@ -752,6 +728,56 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+        
+        <Dialog open={isInstallmentDialogOpen} onOpenChange={setInstallmentDialogOpen}>
+            <DialogContent className="sm:max-w-md">
+                <Form {...installmentForm}>
+                    <form onSubmit={installmentForm.handleSubmit(handleInstallmentSubmit)}>
+                        <DialogHeader>
+                            <DialogTitle>Encaisser une Échéance</DialogTitle>
+                            <DialogDescription>
+                                Enregistrez un nouveau versement pour {activityForInstallment?.clientName}.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-6">
+                            <div className="p-4 rounded-lg border bg-muted/50">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-muted-foreground">Total de la facture:</span>
+                                    <span className="font-medium">{activityForInstallment?.totalAmount.toLocaleString('fr-FR')} FCFA</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-muted-foreground">Déjà versé:</span>
+                                    <span className="font-medium">{activityForInstallment?.paidAmount?.toLocaleString('fr-FR')} FCFA</span>
+                                </div>
+                                <Separator className="my-2"/>
+                                <div className="flex justify-between font-bold text-base">
+                                    <span>Montant Restant:</span>
+                                    <span className="text-red-500">{activityForInstallment?.remainingAmount?.toLocaleString('fr-FR')} FCFA</span>
+                                </div>
+                            </div>
+                             <FormField
+                                control={installmentForm.control}
+                                name="amount"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <Label>Montant à verser</Label>
+                                        <FormControl>
+                                            <Input type="number" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => setInstallmentDialogOpen(false)}>Annuler</Button>
+                            <Button type="submit">Enregistrer le versement</Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
+            </DialogContent>
+        </Dialog>
+        
         <style jsx global>{`
             @page {
                 size: auto;
@@ -789,5 +815,3 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
     </div>
   );
 }
-
-    
