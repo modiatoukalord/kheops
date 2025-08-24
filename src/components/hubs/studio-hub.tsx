@@ -43,10 +43,11 @@ const services = [
 ];
 
 interface StudioHubProps {
+  bookings: Booking[];
   onAddBooking: (booking: Omit<Booking, 'id' | 'status' | 'amount'>) => void;
 }
 
-export default function StudioHub({ onAddBooking }: StudioHubProps) {
+export default function StudioHub({ bookings, onAddBooking }: StudioHubProps) {
   const [isChatOpen, setChatOpen] = useState(false);
     
   return (
@@ -122,7 +123,12 @@ export default function StudioHub({ onAddBooking }: StudioHubProps) {
          </Card>
       </section>
 
-      <BookingChat isOpen={isChatOpen} onOpenChange={setChatOpen} onBookingSubmit={onAddBooking} />
+      <BookingChat 
+        isOpen={isChatOpen} 
+        onOpenChange={setChatOpen} 
+        onBookingSubmit={onAddBooking}
+        bookings={bookings}
+       />
     </div>
   );
 }

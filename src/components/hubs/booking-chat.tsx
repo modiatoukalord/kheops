@@ -14,17 +14,19 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Send, User, Calendar as CalendarIcon, Bot, CheckCircle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Booking } from '@/components/admin/booking-schedule';
 
 type BookingData = Omit<Booking, 'id' | 'status' | 'amount'>;
 
+const availableTimeSlots = ["09:00 - 11:00", "11:00 - 13:00", "14:00 - 16:00", "16:00 - 18:00", "18:00 - 20:00"];
 
 interface BookingChatProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onBookingSubmit: (data: BookingData) => void;
+  bookings: Booking[];
 }
 
 type Message = {
@@ -39,11 +41,12 @@ const initialQuestions = [
   "Super. Quel type de projet est-ce ?", // select: Single, Mixtape, Album
   "Quelle prestation vous intéresse ?", // select: Prise de voix, Prise de voix + Mix, Full-package
   "Quelle date vous arrangerait ?", // calendar
+  "À quel créneau horaire ?", // select with disabled slots
   "Parfait. Un dernier détail : votre numéro de téléphone pour la confirmation ?",
   "Merci ! Votre demande de réservation a été enregistrée. Nous vous contacterons bientôt pour confirmer."
 ];
 
-export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit }: BookingChatProps) {
+export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit, bookings }: BookingChatProps) {
   const [step, setStep] = useState(0);
   const [messages, setMessages] = useState<Message[]>([]);
   const [formData, setFormData] = useState<Partial<BookingData>>({
@@ -52,7 +55,7 @@ export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit }: B
     projectType: 'Autre',
     service: '',
     date: new Date(),
-    timeSlot: '09:00 - 11:00',
+    timeSlot: '',
     phone: '',
   });
   const [inputValue, setInputValue] = useState('');
@@ -69,7 +72,7 @@ export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit }: B
         projectType: 'Autre',
         service: '',
         date: new Date(),
-        timeSlot: '09:00 - 11:00',
+        timeSlot: '',
         phone: '',
       });
     }
@@ -99,7 +102,8 @@ export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit }: B
     else if (currentStep === 2) newFormData.projectType = answer;
     else if (currentStep === 3) newFormData.service = answer;
     else if (currentStep === 4) newFormData.date = new Date(answer);
-    else if (currentStep === 5) newFormData.phone = answer;
+    else if (currentStep === 5) newFormData.timeSlot = answer;
+    else if (currentStep === 6) newFormData.phone = answer;
     setFormData(newFormData);
 
     const nextStep = currentStep + 1;
@@ -126,6 +130,14 @@ export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit }: B
     setInputValue('');
   };
   
+  const getBookedSlotsForDate = (date: Date) => {
+    return bookings
+      .filter(booking => isSameDay(booking.date, date) && booking.status !== 'Annulé')
+      .map(booking => booking.timeSlot);
+  };
+
+  const bookedSlots = formData.date ? getBookedSlotsForDate(formData.date) : [];
+
   const renderCurrentInput = () => {
     if (step >= initialQuestions.length -1 ) return null;
 
@@ -178,9 +190,30 @@ export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit }: B
             </PopoverContent>
           </Popover>
         );
+       case 5: // Time Slot
+        return (
+          <Select
+            onValueChange={(value) => handleNextStep(value)}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Choisir un créneau..." />
+            </SelectTrigger>
+            <SelectContent>
+              {availableTimeSlots.map((slot) => (
+                <SelectItem
+                  key={slot}
+                  value={slot}
+                  disabled={bookedSlots.includes(slot)}
+                >
+                  {slot} {bookedSlots.includes(slot) && "(Indisponible)"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
       case 0:
       case 1:
-      case 5:
+      case 6:
         return (
           <form
             onSubmit={(e) => {
@@ -190,7 +223,7 @@ export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit }: B
             className="flex items-center gap-2"
           >
             <Input
-              type={step === 5 ? 'tel' : 'text'}
+              type={step === 6 ? 'tel' : 'text'}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder="Écrivez votre réponse..."

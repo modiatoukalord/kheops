@@ -92,7 +92,7 @@ export default function Home() {
 
   const componentProps: { [key: string]: any } = {
     culture: { content, events },
-    studio: { onAddBooking: handleAddBooking },
+    studio: { bookings, onAddBooking: handleAddBooking },
     admin: { content, setContent, events, setEvents, bookings, setBookings },
   };
 
