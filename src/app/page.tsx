@@ -7,7 +7,7 @@ import Header from "@/components/layout/header";
 import CultureHub from "@/components/hubs/culture-hub";
 import StudioHub from "@/components/hubs/studio-hub";
 import WearHub from "@/components/hubs/wear-hub";
-import AdminHub from "@/components/hubs/admin-hub";
+import AdminHub, { Contract, Payout } from "@/components/hubs/admin-hub";
 import { initialContent, Content } from "@/components/admin/content-management";
 import { AppEvent } from "@/components/admin/event-management";
 import { Booking } from "@/components/admin/booking-schedule";
@@ -200,6 +200,16 @@ export default function Home() {
     }
   };
 
+  const handleUpdateContract = async (contractId: string, updatedContractData: Partial<Omit<Contract, 'id'>>) => {
+      try {
+          // This assumes contracts are stored in a 'contracts' collection
+          const contractRef = doc(db, "contracts", contractId);
+          await updateDoc(contractRef, updatedContractData);
+      } catch (error) {
+          console.error("Error updating contract: ", error);
+      }
+  }
+
 
   const ActiveComponent = hubComponents[activeHub];
 
@@ -212,6 +222,7 @@ export default function Home() {
         bookings, setBookings, onUpdateBookingStatus: handleUpdateBookingStatus,
         transactions, onAddTransaction: handleAddTransaction,
         subscribers, onAddSubscriber: handleAddSubscriber, onUpdateSubscriber: handleUpdateSubscriber, onDeleteSubscriber: handleDeleteSubscriber,
+        onUpdateContract: handleUpdateContract,
         setShowMainHeader, ref: adminHubRef 
     },
   };

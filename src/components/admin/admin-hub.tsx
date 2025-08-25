@@ -11,7 +11,7 @@ import BookingSchedule, { Booking } from "@/components/admin/booking-schedule";
 import SiteSettings from "@/components/admin/site-settings";
 import EventManagement, { AppEvent } from "@/components/admin/event-management";
 import FinancialManagement, { Transaction } from "@/components/admin/financial-management";
-import ContractManagement from "@/components/admin/contract-management";
+import ContractManagement, { Contract } from "@/components/admin/contract-management";
 import ActivityLog from "@/components/admin/activity-log";
 import PlatformManagement, { Payout, initialPayouts as iPayouts } from "@/components/admin/platform-management";
 import FixedCostsManagement, { FixedCost, initialFixedCosts as iFixedCosts } from "@/components/admin/fixed-costs-management";
@@ -21,6 +21,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 
 type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities" | "platforms" | "fixed-costs" | "pricing";
+
+export type { Contract, Payout };
 
 export type AdminHubProps = {
   content: Content[];
@@ -38,6 +40,7 @@ export type AdminHubProps = {
   onAddSubscriber: (subscriber: Omit<Subscriber, 'id'>) => Promise<void>;
   onUpdateSubscriber: (id: string, subscriber: Partial<Omit<Subscriber, 'id'>>) => Promise<void>;
   onDeleteSubscriber: (id: string) => Promise<void>;
+  onUpdateContract: (id: string, data: Partial<Omit<Contract, 'id'>>) => Promise<void>;
   setShowMainHeader: (show: boolean) => void;
 }
 
@@ -92,9 +95,12 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
     bookings, setBookings, onUpdateBookingStatus,
     transactions, onAddTransaction,
     subscribers, onAddSubscriber, onUpdateSubscriber, onDeleteSubscriber,
+    onUpdateContract,
     setShowMainHeader 
 }, ref) => {
   const [activeView, setActiveView] = useState<AdminView>("dashboard");
+  const [contractToPay, setContractToPay] = useState<Contract | null>(null);
+  const activityLogRef = useRef<{ openDialog: (data: any) => void }>(null);
 
   useImperativeHandle(ref, () => ({
     setActiveView
@@ -160,16 +166,26 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
     onAddTransaction(newTransaction);
   };
 
+  const handleRequestContractPayment = (contract: Contract) => {
+    setContractToPay(contract);
+    setActiveView("activities");
+  };
+  
+  const onContractPaid = (contractId: string) => {
+    onUpdateContract(contractId, { paymentStatus: 'Payé' });
+    setContractToPay(null);
+    setActiveView('contracts'); // Go back to contracts view
+  };
 
   const adminViews = {
     users: { component: UserManagement, title: "Gestion des Abonnements", props: { subscribers, onAddSubscriber: handleAddSubscriber, onUpdateSubscriber, onDeleteSubscriber, onValidateSubscription: handleValidateSubscription, onRenewSubscriber: handleRenewSubscriber } },
     content: { component: ContentManagement, title: "Gestion des Contenus", props: { content, setContent } },
-    bookings: { component: BookingSchedule, title: "Planning des Réservations", props: { bookings, setBookings, onAddBooking: handleAddBooking } },
+    bookings: { component: BookingSchedule, title: "Planning des Réservations", props: { bookings, setBookings, onAddBooking: handleAddBooking, onUpdateBookingStatus } },
     settings: { component: SiteSettings, title: "Paramètres du Site", props: {} },
     events: { component: EventManagement, title: "Gestion des Événements", props: { events, onAddEvent, onUpdateEvent, onDeleteEvent } },
     financial: { component: FinancialManagement, title: "Rapport Financier", props: { transactions, onAddTransaction } },
-    contracts: { component: ContractManagement, title: "Gestion des Contrats", props: {} },
-    activities: { component: ActivityLog, title: "Journal d'Activité", props: { bookings, onAddTransaction, onUpdateBookingStatus } },
+    contracts: { component: ContractManagement, title: "Gestion des Contrats", props: { onUpdateContract, onCollectPayment: handleRequestContractPayment } },
+    activities: { component: ActivityLog, title: "Journal d'Activité", props: { bookings, onAddTransaction, onUpdateBookingStatus, ref: activityLogRef, contractToPay, onContractPaid } },
     platforms: { component: PlatformManagement, title: "Gestion des Plateformes", props: { payouts, setPayouts, onAddPayout: handleAddPayout } },
     "fixed-costs": { component: FixedCostsManagement, title: "Gestion des Charges Fixes", props: { fixedCosts, setFixedCosts, onAddFixedCost: handleAddFixedCost } },
     pricing: { component: PricingSettings, title: "Tarifs des Services", props: {} },

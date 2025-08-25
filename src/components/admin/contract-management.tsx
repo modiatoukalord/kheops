@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -10,9 +10,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, Send, PenSquare, Download, Clock, CheckCircle2, FileText, PlusCircle, Trash2, FileUp, Edit, DollarSign, Calendar as CalendarIcon } from "lucide-react";
+import { MoreHorizontal, Send, PenSquare, Download, Clock, CheckCircle2, FileText, PlusCircle, Trash2, FileUp, Edit, DollarSign, Calendar as CalendarIcon, HandCoins } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Input } from "@/components/ui/input";
 import { DateRange } from "react-day-picker";
@@ -20,21 +20,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-const initialContracts = [
-    { id: "ctr-001", bookingId: "res-001", clientName: "KHEOPS Collective", status: "Signé" as const, lastUpdate: "2024-07-25", pdfFile: null, value: 100000, paymentStatus: "Payé" as const, type: "Prestation Studio" as const, startDate: new Date("2024-07-25"), endDate: new Date("2024-08-25") },
-    { id: "ctr-002", bookingId: "res-003", clientName: "Mc Solaar", status: "Envoyé" as const, lastUpdate: "2024-08-01", pdfFile: null, value: 150000, paymentStatus: "Échéancier" as const, type: "Prestation Studio" as const, startDate: new Date("2024-08-01"), endDate: new Date("2024-09-01") },
-    { id: "ctr-003", bookingId: "res-002", clientName: "L'Artiste Anonyme", status: "En attente" as const, lastUpdate: "2024-08-03", pdfFile: null, value: 60000, paymentStatus: "Non Payé" as const, type: "Prestation Studio" as const, startDate: new Date("2024-08-03"), endDate: undefined },
-];
-
-// Mock data, in a real app this would come from a shared service or store
-const allBookings = [
-  { id: "res-001", artistName: "KHEOPS Collective", amount: 100000 },
-  { id: "res-002", artistName: "L'Artiste Anonyme", amount: 60000 },
-  { id: "res-003", artistName: "Mc Solaar", amount: 150000 },
-  { id: "res-004", artistName: "Aya Nakamura", amount: 60000 },
-  { id: "res-005", artistName: "Damso", amount: 100000 },
-];
+import { db } from "@/lib/firebase";
+import { collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, Timestamp } from "firebase/firestore";
+import { Booking } from "@/components/admin/booking-schedule";
 
 const contractStatusConfig = {
     "En attente": { variant: "secondary", icon: Clock },
@@ -57,13 +45,14 @@ type ContractStatus = keyof typeof contractStatusConfig;
 type PaymentStatus = keyof typeof paymentStatusConfig;
 type ContractType = typeof contractTypes[number];
 
-type Contract = {
+export type Contract = {
     id: string;
-    bookingId: string;
+    bookingId?: string;
     clientName: string;
     status: "Signé" | "Envoyé" | "En attente" | "Archivé";
     lastUpdate: string;
-    pdfFile: File | null;
+    pdfFile?: File | null; // Making this optional
+    pdfUrl?: string;
     value: number;
     paymentStatus: PaymentStatus;
     type: ContractType;
@@ -71,8 +60,15 @@ type Contract = {
     endDate?: Date;
 };
 
-export default function ContractManagement() {
-    const [contracts, setContracts] = useState<Contract[]>(initialContracts);
+interface ContractManagementProps {
+  onUpdateContract: (id: string, data: Partial<Omit<Contract, 'id'>>) => Promise<void>;
+  onCollectPayment: (contract: Contract) => void;
+}
+
+
+export default function ContractManagement({ onUpdateContract, onCollectPayment }: ContractManagementProps) {
+    const [contracts, setContracts] = useState<Contract[]>([]);
+    const [bookings, setBookings] = useState<Booking[]>([]);
     const [isAddDialogOpen, setAddDialogOpen] = useState(false);
     const [isEditDialogOpen, setEditDialogOpen] = useState(false);
     const [editingContract, setEditingContract] = useState<Contract | null>(null);
@@ -80,15 +76,53 @@ export default function ContractManagement() {
     const [dateRange, setDateRange] = useState<DateRange | undefined>();
     const { toast } = useToast();
 
-    const handleContractStatusChange = (contractId: string, newStatus: ContractStatus) => {
-        setContracts(contracts.map(c => c.id === contractId ? { ...c, status: newStatus, lastUpdate: format(new Date(), 'yyyy-MM-dd') } : c));
-         toast({
-            title: "Statut du contrat mis à jour",
-            description: `Le statut du contrat ${contractId} est maintenant: ${newStatus}.`,
+    useEffect(() => {
+      const q = query(collection(db, "contracts"), orderBy("lastUpdate", "desc"));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const contractsData = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                startDate: data.startDate ? (data.startDate as Timestamp).toDate() : undefined,
+                endDate: data.endDate ? (data.endDate as Timestamp).toDate() : undefined,
+            } as Contract;
         });
+        setContracts(contractsData);
+      });
+      return () => unsubscribe();
+    }, []);
+
+    useEffect(() => {
+      const q = query(collection(db, "bookings"), orderBy("date", "desc"));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const bookingsData = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                date: (data.date as Timestamp).toDate()
+            } as Booking;
+        });
+        setBookings(bookingsData);
+      });
+       return () => unsubscribe();
+    }, []);
+
+    const handleContractStatusChange = async (contractId: string, newStatus: ContractStatus) => {
+        try {
+            await updateDoc(doc(db, "contracts", contractId), { status: newStatus, lastUpdate: format(new Date(), 'yyyy-MM-dd') });
+            toast({
+                title: "Statut du contrat mis à jour",
+                description: `Le statut du contrat ${contractId} est maintenant: ${newStatus}.`,
+            });
+        } catch (error) {
+            console.error("Error updating contract status: ", error);
+            toast({ title: "Erreur", description: "Impossible de mettre à jour le statut.", variant: "destructive" });
+        }
     };
     
-    const handleAddContract = (event: React.FormEvent<HTMLFormElement>) => {
+    const handleAddContract = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         
         const formData = new FormData(event.currentTarget);
@@ -103,12 +137,12 @@ export default function ContractManagement() {
             return;
         }
 
-        const booking = allBookings.find(b => b.id === bookingIdOrClientName);
+        const booking = bookings.find(b => b.id === bookingIdOrClientName);
         
         let clientName = booking ? booking.artistName : bookingIdOrClientName;
-        let bookingId = booking ? booking.id : `client-${Date.now()}`;
+        let bookingId = booking ? booking.id : undefined;
 
-        if (contracts.some(c => c.bookingId === bookingId && booking)) {
+        if (bookingId && contracts.some(c => c.bookingId === bookingId)) {
              toast({
                 title: "Erreur",
                 description: "Un contrat existe déjà pour cette réservation.",
@@ -117,13 +151,11 @@ export default function ContractManagement() {
             return;
         }
 
-        const newContract: Contract = {
-            id: `ctr-${Date.now()}`,
+        const newContractData = {
             bookingId: bookingId,
             clientName: clientName,
             status: "En attente",
             lastUpdate: format(new Date(), 'yyyy-MM-dd'),
-            pdfFile: pdfFile,
             value: Number(formData.get("value")) || 0,
             paymentStatus: (formData.get("paymentStatus") as PaymentStatus) || 'N/A',
             type: formData.get("type") as ContractType,
@@ -131,18 +163,22 @@ export default function ContractManagement() {
             endDate: dateRange?.to,
         };
 
-        setContracts(prev => [newContract, ...prev]);
-        toast({
-            title: "Contrat Ajouté",
-            description: `Le contrat pour ${clientName} a été créé.`,
-        });
-
-        setAddDialogOpen(false);
-        setPdfFile(null);
-        setDateRange(undefined);
+        try {
+            await addDoc(collection(db, "contracts"), newContractData);
+            toast({
+                title: "Contrat Ajouté",
+                description: `Le contrat pour ${clientName} a été créé.`,
+            });
+            setAddDialogOpen(false);
+            setPdfFile(null);
+            setDateRange(undefined);
+        } catch (error) {
+             console.error("Error adding contract: ", error);
+             toast({ title: "Erreur", description: "Impossible d'ajouter le contrat.", variant: "destructive"});
+        }
     };
 
-    const handleEditContract = (event: React.FormEvent<HTMLFormElement>) => {
+    const handleEditContract = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (!editingContract) return;
 
@@ -152,46 +188,51 @@ export default function ContractManagement() {
         const paymentStatus = (formData.get("paymentStatus") as PaymentStatus) || 'N/A';
         const type = formData.get("type") as ContractType;
 
-        setContracts(contracts.map(c => 
-            c.id === editingContract.id 
-            ? { ...c, 
-                clientName, 
-                value, 
-                paymentStatus, 
-                type, 
-                pdfFile: pdfFile ?? c.pdfFile, 
-                lastUpdate: format(new Date(), 'yyyy-MM-dd'),
-                startDate: dateRange?.from,
-                endDate: dateRange?.to,
-              } 
-            : c
-        ));
+        const updatedData: Partial<Contract> = {
+            clientName, 
+            value, 
+            paymentStatus, 
+            type, 
+            lastUpdate: format(new Date(), 'yyyy-MM-dd'),
+            startDate: dateRange?.from,
+            endDate: dateRange?.to,
+        };
 
-        toast({
-            title: "Contrat mis à jour",
-            description: `Le contrat pour ${editingContract.clientName} a été mis à jour.`,
-        });
-
-        setEditDialogOpen(false);
-        setEditingContract(null);
-        setPdfFile(null);
-        setDateRange(undefined);
+        try {
+            await updateDoc(doc(db, "contracts", editingContract.id), updatedData as any);
+             toast({
+                title: "Contrat mis à jour",
+                description: `Le contrat pour ${editingContract.clientName} a été mis à jour.`,
+            });
+            setEditDialogOpen(false);
+            setEditingContract(null);
+            setPdfFile(null);
+            setDateRange(undefined);
+        } catch (error) {
+            console.error("Error updating contract: ", error);
+            toast({ title: "Erreur", description: "Impossible de modifier le contrat.", variant: "destructive"});
+        }
     };
 
     const handleOpenEditDialog = (contract: Contract) => {
         setEditingContract(contract);
-        setPdfFile(contract.pdfFile);
         setDateRange({ from: contract.startDate, to: contract.endDate });
         setEditDialogOpen(true);
     };
     
-     const handleDeleteContract = (contractId: string) => {
-        setContracts(contracts.filter(c => c.id !== contractId));
-        toast({
-            title: "Contrat Supprimé",
-            description: `Le contrat ${contractId} a été supprimé.`,
-            variant: "destructive"
-        });
+     const handleDeleteContract = async (contractId: string) => {
+        if (!window.confirm("Êtes-vous sûr de vouloir supprimer ce contrat?")) return;
+        try {
+            await deleteDoc(doc(db, "contracts", contractId));
+            toast({
+                title: "Contrat Supprimé",
+                description: `Le contrat ${contractId} a été supprimé.`,
+                variant: "destructive"
+            });
+        } catch (error) {
+            console.error("Error deleting contract: ", error);
+            toast({ title: "Erreur", description: "Impossible de supprimer le contrat.", variant: "destructive" });
+        }
     };
 
     const handleViewPdf = (file: File) => {
@@ -231,7 +272,7 @@ export default function ContractManagement() {
                     return (
                         <TableRow key={contract.id}>
                             <TableCell>
-                                <div className="font-mono text-sm">{contract.id}</div>
+                                <div className="font-mono text-sm">{contract.id.substring(0, 10)}...</div>
                             </TableCell>
                             <TableCell>
                                 <div className="font-medium">{contract.clientName}</div>
@@ -260,16 +301,7 @@ export default function ContractManagement() {
                                 </Badge>
                             </TableCell>
                             <TableCell className="text-right flex justify-end items-center gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    disabled={!contract.pdfFile}
-                                    onClick={() => contract.pdfFile && handleViewPdf(contract.pdfFile)}
-                                >
-                                    <FileText className="h-4 w-4" />
-                                    <span className="sr-only">Voir le contrat</span>
-                                </Button>
-                                    <DropdownMenu>
+                                <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
                                     </DropdownMenuTrigger>
@@ -278,10 +310,19 @@ export default function ContractManagement() {
                                             <Edit className="mr-2 h-4 w-4" />
                                             Modifier
                                         </DropdownMenuItem>
+                                         {contract.status === "Signé" && contract.paymentStatus !== "Payé" && (
+                                            <DropdownMenuItem onClick={() => onCollectPayment(contract)}>
+                                                <HandCoins className="mr-2 h-4 w-4" />
+                                                Encaisser
+                                            </DropdownMenuItem>
+                                        )}
                                         <DropdownMenuSeparator />
                                         <DropdownMenuItem onClick={() => handleContractStatusChange(contract.id, "Envoyé")}><Send className="mr-2 h-4 w-4" />Marquer comme Envoyé</DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => handleContractStatusChange(contract.id, "Signé")}><PenSquare className="mr-2 h-4 w-4" />Marquer comme Signé</DropdownMenuItem>
-                                        <DropdownMenuItem disabled={!contract.pdfFile} onClick={() => contract.pdfFile && handleDownloadPdf(contract.pdfFile)}><Download className="mr-2 h-4 w-4" />Télécharger PDF</DropdownMenuItem>
+                                        <DropdownMenuItem disabled={!contract.pdfFile} onClick={() => contract.pdfFile && handleViewPdf(contract.pdfFile)}>
+                                            <FileText className="mr-2 h-4 w-4" />
+                                            Voir PDF
+                                        </DropdownMenuItem>
                                         <DropdownMenuItem className="text-red-500" onClick={() => handleDeleteContract(contract.id)}>
                                             <Trash2 className="mr-2 h-4 w-4" />
                                             Supprimer
@@ -528,7 +569,7 @@ export default function ContractManagement() {
                                     />
                                 </div>
                                 {pdfFile && <p className="text-sm text-muted-foreground mt-2">Nouveau fichier: {pdfFile.name}</p>}
-                                {!pdfFile && editingContract?.pdfFile && <p className="text-sm text-muted-foreground mt-2">Fichier actuel: {editingContract.pdfFile.name}</p>}
+                                {!pdfFile && editingContract?.pdfFile && <p className="text-sm text-muted-foreground mt-2">Fichier actuel: {(editingContract.pdfFile as any).name}</p>}
                             </div>
                         </div>
                         <DialogFooter>

@@ -1,12 +1,12 @@
 
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy, Trash2, Minus, MoreHorizontal, Edit, Eye, Printer, Pyramid, X, CreditCard, User, HandCoins, Loader2, CheckCircle2, Ban, AlertCircle } from "lucide-react";
+import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy, Trash2, Minus, MoreHorizontal, Edit, Eye, Printer, Pyramid, X, CreditCard, User, HandCoins, Loader2, CheckCircle2, Ban, AlertCircle, FileSignature } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -41,6 +41,7 @@ import { Booking } from "@/components/admin/booking-schedule";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, getDocs, query, orderBy, Timestamp, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { Transaction } from "./financial-management";
+import type { Contract } from "./contract-management";
 
 
 export type ClientActivity = {
@@ -48,7 +49,7 @@ export type ClientActivity = {
   clientName: string;
   phone?: string;
   description: string;
-  category: "Livre" | "Manga" | "Jeu de société" | "Session de jeu" | "Réservation Studio" | "Abonnement" | "Autre";
+  category: "Livre" | "Manga" | "Jeu de société" | "Session de jeu" | "Réservation Studio" | "Paiement Contrat" | "Abonnement" | "Autre";
   totalAmount: number;
   date: Date;
   duration?: string;
@@ -56,12 +57,15 @@ export type ClientActivity = {
   paidAmount?: number;
   remainingAmount?: number;
   bookingId?: string;
+  contractId?: string;
 };
 
 interface ActivityLogProps {
   bookings: Booking[];
   onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
   onUpdateBookingStatus: (bookingId: string, newStatus: Booking['status']) => void;
+  contractToPay?: Contract | null;
+  onContractPaid?: (contractId: string) => void;
 }
 
 const categoryConfig = {
@@ -71,6 +75,7 @@ const categoryConfig = {
     "Session de jeu": { icon: Gamepad2, color: "bg-red-500/20 text-red-700 border-red-500/30" },
     "Réservation Studio": { icon: MicVocal, color: "bg-purple-500/20 text-purple-700 border-purple-500/30" },
     "Abonnement": { icon: User, color: "bg-cyan-500/20 text-cyan-700 border-cyan-500/30" },
+    "Paiement Contrat": { icon: FileSignature, color: "bg-indigo-500/20 text-indigo-700 border-indigo-500/30" },
     "Autre": { icon: DollarSign, color: "bg-gray-500/20 text-gray-700 border-gray-500/30" },
 };
 
@@ -104,6 +109,7 @@ const activityFormSchema = z.object({
   paidAmount: z.coerce.number().optional(),
   items: z.array(activityItemSchema).min(1, "Veuillez ajouter au moins une activité."),
   bookingId: z.string().optional(),
+  contractId: z.string().optional(),
 });
 
 type ActivityFormValues = z.infer<typeof activityFormSchema>;
@@ -114,7 +120,7 @@ const installmentSchema = z.object({
 type InstallmentFormValues = z.infer<typeof installmentSchema>;
 
 
-export default function ActivityLog({ bookings, onAddTransaction, onUpdateBookingStatus }: ActivityLogProps) {
+const ActivityLog = forwardRef(({ bookings, onAddTransaction, onUpdateBookingStatus, contractToPay, onContractPaid }: ActivityLogProps, ref) => {
   const [activities, setActivities] = useState<ClientActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -149,6 +155,18 @@ export default function ActivityLog({ bookings, onAddTransaction, onUpdateBookin
 
     return () => unsubscribe();
   }, [toast]);
+  
+  useEffect(() => {
+    if (contractToPay) {
+      handleOpenNewActivityDialog(null, 0, contractToPay);
+    }
+  }, [contractToPay]);
+  
+  useImperativeHandle(ref, () => ({
+    openDialog: (data: any) => {
+      handleOpenNewActivityDialog(data.booking, data.remainingToPay, data.contract);
+    }
+  }));
 
 
   const form = useForm<ActivityFormValues>({
@@ -196,7 +214,7 @@ export default function ActivityLog({ bookings, onAddTransaction, onUpdateBookin
   }, 0);
 
   const processActivityData = async (data: ActivityFormValues) => {
-    const { clientName, phone, items, paymentType, paidAmount, bookingId } = data;
+    const { clientName, phone, items, paymentType, paidAmount, bookingId, contractId } = data;
     
      const baseActivityPayload = {
       clientName,
@@ -213,6 +231,7 @@ export default function ActivityLog({ bookings, onAddTransaction, onUpdateBookin
         "Jeu de société": "Vente",
         "Session de jeu": "Vente",
         "Réservation Studio": "Prestation Studio",
+        "Paiement Contrat": "Prestation Studio", // Or a specific category
         "Abonnement": "Abonnement",
         "Autre": "Vente"
     };
@@ -240,7 +259,10 @@ export default function ActivityLog({ bookings, onAddTransaction, onUpdateBookin
         };
         
         if (item.category === "Réservation Studio" && bookingId) {
-            (activityPayload as Partial<ClientActivity>).bookingId = bookingId;
+          (activityPayload as Partial<ClientActivity>).bookingId = bookingId;
+        }
+        if (item.category === "Paiement Contrat" && contractId) {
+          (activityPayload as Partial<ClientActivity>).contractId = contractId;
         }
 
         if (duration === null) {
@@ -267,6 +289,9 @@ export default function ActivityLog({ bookings, onAddTransaction, onUpdateBookin
           title: "Activités Ajoutées",
           description: `${items.length} activité(s) pour "${clientName}" ont été ajoutées.`,
         });
+        if (contractId && onContractPaid) {
+          onContractPaid(contractId);
+        }
     } catch (error) {
         console.error("Error adding documents: ", error);
         toast({ title: "Erreur", description: "Impossible d'ajouter les activités.", variant: "destructive" });
@@ -282,7 +307,7 @@ export default function ActivityLog({ bookings, onAddTransaction, onUpdateBookin
     });
   };
 
-  const handleOpenNewActivityDialog = (booking: Booking | null = null, remainingToPay: number = 0) => {
+  const handleOpenNewActivityDialog = (booking: Booking | null = null, remainingToPay: number = 0, contract: Contract | null = null) => {
      if (booking) { // Creating a new activity from a booking
          const amountToPay = remainingToPay > 0 ? remainingToPay : booking.amount;
          
@@ -300,6 +325,21 @@ export default function ActivityLog({ bookings, onAddTransaction, onUpdateBookin
             }],
             bookingId: booking.id
          });
+    } else if (contract) {
+        form.reset({
+            clientName: contract.clientName,
+            phone: '', // Contracts don't have phone numbers by default
+            paymentType: "Direct",
+            paidAmount: contract.value,
+            items: [{
+                description: `Paiement Contrat: ${contract.type} (${contract.id})`,
+                category: "Paiement Contrat",
+                amount: contract.value,
+                startTime: '',
+                endTime: ''
+            }],
+            contractId: contract.id,
+        });
     } else { // Creating a brand new activity
         form.reset({
             clientName: "",
@@ -368,6 +408,10 @@ export default function ActivityLog({ bookings, onAddTransaction, onUpdateBookin
               title: "Paiement Enregistré",
               description: `Un nouveau versement de ${data.amount.toLocaleString('fr-FR')} FCFA a été enregistré.`,
           });
+          
+          if (activityForInstallment.contractId && newRemainingAmount <= 0 && onContractPaid) {
+            onContractPaid(activityForInstallment.contractId);
+          }
       } catch (error) {
           console.error("Error updating document: ", error);
           toast({ title: "Erreur", description: "Impossible d'enregistrer le paiement.", variant: "destructive" });
@@ -476,10 +520,13 @@ export default function ActivityLog({ bookings, onAddTransaction, onUpdateBookin
                     setActivityDialogOpen(isOpen);
                     if (!isOpen) {
                         form.reset();
+                        if (contractToPay && onContractPaid) {
+                           onContractPaid(contractToPay.id); // A bit of a hack to reset state
+                        }
                     }
                 }}>
                     <DialogTrigger asChild>
-                        <Button onClick={() => handleOpenNewActivityDialog(null)}>
+                        <Button onClick={() => handleOpenNewActivityDialog(null, 0, null)}>
                             <PlusCircle className="mr-2 h-4 w-4"/>
                             Ajouter
                         </Button>
@@ -718,7 +765,7 @@ export default function ActivityLog({ bookings, onAddTransaction, onUpdateBookin
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 {totalPaid === 0 ? (
-                                                    <Button size="sm" onClick={() => handleOpenNewActivityDialog(booking, booking.amount - totalPaid)}>
+                                                    <Button size="sm" onClick={() => handleOpenNewActivityDialog(booking, booking.amount - totalPaid, null)}>
                                                         <HandCoins className="mr-2 h-4 w-4"/>
                                                         Encaisser
                                                     </Button>
@@ -904,7 +951,9 @@ export default function ActivityLog({ bookings, onAddTransaction, onUpdateBookin
         `}</style>
     </div>
   );
-}
+});
+
+ActivityLog.displayName = "ActivityLog";
+export default ActivityLog;
 
     
-
