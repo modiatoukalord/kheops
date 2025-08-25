@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Landmark, ArrowUpRight, ArrowDownLeft, PlusCircle, Search, Calendar, Filter, Building, Users, ShoppingCart, Megaphone, Settings } from "lucide-react";
+import { Landmark, ArrowUpRight, ArrowDownLeft, PlusCircle, Search, Calendar, Filter, Building, Users, ShoppingCart, Megaphone, Settings, Loader2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,15 +42,6 @@ export type Transaction = {
   status: "Complété" | "En attente" | "Annulé";
 };
 
-export const initialTransactions: Transaction[] = [
-    { id: "txn-001", date: "2024-07-25", description: "Abonnement Premium - F. N'diaye", type: "Revenu", category: "Abonnement", amount: 15000, status: "Complété" },
-    { id: "txn-002", date: "2024-07-24", description: "Achat matériel studio (micros)", type: "Dépense", category: "Équipement", amount: -150000, status: "Complété" },
-    { id: "txn-003", date: "2024-07-23", description: "Paiement location espace", type: "Dépense", category: "Loyer", amount: -250000, status: "Complété" },
-    { id: "txn-004", date: "2024-07-22", description: "Réservation studio - K. Collective", type: "Revenu", category: "Prestation Studio", amount: 75000, status: "Complété" },
-    { id: "txn-005", date: "2024-07-21", description: "Abonnement Membre - B. Traoré", type: "Revenu", category: "Abonnement", amount: 5000, status: "En attente" },
-    { id: "txn-006", date: "2024-06-15", description: "Abonnement Premium - M. Sow", type: "Revenu", category: "Abonnement", amount: 15000, status: "Complété" },
-];
-
 const monthlyChartData = [
   { name: 'Jan', Revenus: 400000, Dépenses: 240000 },
   { name: 'Fév', Revenus: 300000, Dépenses: 139800 },
@@ -78,15 +69,22 @@ const revenueCategories = ["Abonnement", "Prestation Studio", "Vente", "Paiement
 
 interface FinancialManagementProps {
   transactions: Transaction[];
-  setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
+  onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
 }
 
-export default function FinancialManagement({ transactions, setTransactions }: FinancialManagementProps) {
+export default function FinancialManagement({ transactions, onAddTransaction }: FinancialManagementProps) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
   const [typeFilters, setTypeFilters] = useState<("Revenu" | "Dépense")[]>([]);
   const [transactionType, setTransactionType] = useState<"Revenu" | "Dépense">("Dépense");
+
+  useMemo(() => {
+    if (transactions) {
+      setIsLoading(false);
+    }
+  }, [transactions])
 
 
   const handleAddTransaction = (event: React.FormEvent<HTMLFormElement>) => {
@@ -101,8 +99,7 @@ export default function FinancialManagement({ transactions, setTransactions }: F
         amount = -amount;
     }
     
-    const newTransaction: Transaction = {
-        id: `txn-${Date.now()}`,
+    const newTransaction: Omit<Transaction, 'id'> = {
         date: format(new Date(), 'yyyy-MM-dd'),
         description,
         type,
@@ -111,7 +108,7 @@ export default function FinancialManagement({ transactions, setTransactions }: F
         status: "Complété"
     };
 
-    setTransactions(prev => [newTransaction, ...prev]);
+    onAddTransaction(newTransaction);
 
     toast({
         title: "Transaction Ajoutée",
@@ -161,7 +158,13 @@ export default function FinancialManagement({ transactions, setTransactions }: F
         name: month,
         ...monthlyRevenue[month]
       }))
-      .sort((a, b) => parseISO(`01 ${a.name}`).getTime() - parseISO(`01 ${b.name}`).getTime());
+      .sort((a, b) => {
+        const [aMonth, aYear] = a.name.split(' ');
+        const [bMonth, bYear] = b.name.split(' ');
+        const aDate = new Date(`${aMonth} 1, ${aYear}`);
+        const bDate = new Date(`${bMonth} 1, ${bYear}`);
+        return aDate.getTime() - bDate.getTime();
+      });
   }, [transactions]);
 
 
@@ -339,41 +342,48 @@ export default function FinancialManagement({ transactions, setTransactions }: F
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Catégorie</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead className="text-right">Montant (FCFA)</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredTransactions.map((transaction) => (
-                  <TableRow key={transaction.id}>
-                    <TableCell>
-                        <div className="flex items-center gap-2">
-                           <Calendar className="h-4 w-4 text-muted-foreground" />
-                           {new Date(transaction.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </div>
-                    </TableCell>
-                    <TableCell className="font-medium">{transaction.description}</TableCell>
-                    <TableCell>
-                        <Badge variant={transaction.type === 'Revenu' ? 'secondary' : 'destructive'} className={`${transaction.type === 'Revenu' ? 'bg-green-500/20 text-green-700 border-green-500/30' : 'bg-red-500/20 text-red-700 border-red-500/30'}`}>{transaction.type}</Badge>
-                    </TableCell>
-                     <TableCell className="text-muted-foreground">{transaction.category}</TableCell>
-                    <TableCell>
-                        <Badge variant={statusVariant[transaction.status] || "default"}>{transaction.status}</Badge>
-                    </TableCell>
-                    <TableCell className={`text-right font-semibold ${transaction.amount > 0 ? "text-green-600" : "text-red-600"}`}>
-                        {transaction.amount.toLocaleString('fr-FR')}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            {isLoading ? (
+                <div className="flex items-center justify-center h-48 gap-2">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    <p className="text-muted-foreground">Chargement des transactions...</p>
+                </div>
+            ) : (
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Catégorie</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead className="text-right">Montant (FCFA)</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {filteredTransactions.map((transaction) => (
+                    <TableRow key={transaction.id}>
+                        <TableCell>
+                            <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            {new Date(transaction.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </div>
+                        </TableCell>
+                        <TableCell className="font-medium">{transaction.description}</TableCell>
+                        <TableCell>
+                            <Badge variant={transaction.type === 'Revenu' ? 'secondary' : 'destructive'} className={`${transaction.type === 'Revenu' ? 'bg-green-500/20 text-green-700 border-green-500/30' : 'bg-red-500/20 text-red-700 border-red-500/30'}`}>{transaction.type}</Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{transaction.category}</TableCell>
+                        <TableCell>
+                            <Badge variant={statusVariant[transaction.status] || "default"}>{transaction.status}</Badge>
+                        </TableCell>
+                        <TableCell className={`text-right font-semibold ${transaction.amount > 0 ? "text-green-600" : "text-red-600"}`}>
+                            {transaction.amount.toLocaleString('fr-FR')}
+                        </TableCell>
+                    </TableRow>
+                    ))}
+                </TableBody>
+                </Table>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -10,7 +10,7 @@ import ContentManagement, { initialContent as iContent, Content } from "@/compon
 import BookingSchedule, { initialBookings, Booking } from "@/components/admin/booking-schedule";
 import SiteSettings from "@/components/admin/site-settings";
 import EventManagement, { AppEvent } from "@/components/admin/event-management";
-import FinancialManagement, { Transaction, initialTransactions as iTransactions } from "@/components/admin/financial-management";
+import FinancialManagement, { Transaction } from "@/components/admin/financial-management";
 import ContractManagement from "@/components/admin/contract-management";
 import ActivityLog from "@/components/admin/activity-log";
 import PlatformManagement, { Payout, initialPayouts as iPayouts } from "@/components/admin/platform-management";
@@ -31,6 +31,8 @@ export type AdminHubProps = {
   onDeleteEvent: (id: string) => void;
   bookings: Booking[];
   setBookings: React.Dispatch<React.SetStateAction<Booking[]>>;
+  transactions: Transaction[];
+  onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
   setShowMainHeader: (show: boolean) => void;
 }
 
@@ -79,31 +81,24 @@ const adminCategories: AdminCategory[] = [
 ];
 
 
-const AdminHub = forwardRef<any, AdminHubProps>(({ content, setContent, events, onAddEvent, onUpdateEvent, onDeleteEvent, bookings, setBookings, setShowMainHeader }, ref) => {
+const AdminHub = forwardRef<any, AdminHubProps>(({ content, setContent, events, onAddEvent, onUpdateEvent, onDeleteEvent, bookings, setBookings, transactions, onAddTransaction, setShowMainHeader }, ref) => {
   const [activeView, setActiveView] = useState<AdminView>("dashboard");
 
   useImperativeHandle(ref, () => ({
     setActiveView
   }));
 
-  // Removed local bookings state to use the one from props
   const [subscribers, setSubscribers] = useState<Subscriber[]>(iSubscribers);
-  const [transactions, setTransactions] = useState<Transaction[]>(iTransactions);
   const [payouts, setPayouts] = useState<Payout[]>(iPayouts);
   const [fixedCosts, setFixedCosts] = useState<FixedCost[]>(iFixedCosts);
 
 
   const handleAddBooking = (newBooking: Omit<Booking, 'id' | 'status'>) => {
-    // This function will be handled by page.tsx now, but we keep it for other potential uses
-    // or pass the actual handler from page.tsx through props.
-    // For now, let's assume page.tsx handles the state update and Firestore write.
     console.log("Adding booking in AdminHub is deprecated. Should be handled in page.tsx");
   };
   
   const handleValidateSubscription = (subscriber: Subscriber) => {
-     // Add a corresponding transaction
-    const newTransaction: Transaction = {
-        id: `txn-${Date.now()}`,
+    const newTransaction: Omit<Transaction, 'id'> = {
         date: format(new Date(), "yyyy-MM-dd"),
         description: `Abonnement - ${subscriber.name}`,
         type: "Revenu",
@@ -111,7 +106,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({ content, setContent, events, 
         amount: parseFloat(subscriber.amount.replace(/\s/g, '').replace('FCFA', '')),
         status: "Complété"
     };
-    setTransactions(prev => [newTransaction, ...prev]);
+    onAddTransaction(newTransaction);
   };
   
   const handleAddSubscriber = (newSubscriber: Omit<Subscriber, 'id'>) => {
@@ -135,8 +130,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({ content, setContent, events, 
     const fullPayout = { ...newPayout, id: `p-${Date.now()}` };
     setPayouts(prev => [fullPayout, ...prev]);
 
-    const newTransaction: Transaction = {
-        id: `txn-payout-${fullPayout.id}`,
+    const newTransaction: Omit<Transaction, 'id'> = {
         date: format(new Date(fullPayout.date.split('/').reverse().join('-')), 'yyyy-MM-dd'),
         description: `Paiement plateforme - ${fullPayout.platform}`,
         type: "Revenu",
@@ -144,15 +138,14 @@ const AdminHub = forwardRef<any, AdminHubProps>(({ content, setContent, events, 
         amount: parseFloat(fullPayout.amount.replace(/\s/g, '').replace('FCFA', '')),
         status: "Complété"
     };
-    setTransactions(prev => [newTransaction, ...prev]);
+    onAddTransaction(newTransaction);
   };
   
   const handleAddFixedCost = (newCost: Omit<FixedCost, 'id'>) => {
     const fullCost = { ...newCost, id: `fc-${Date.now()}` };
     setFixedCosts(prev => [fullCost, ...prev]);
 
-    const newTransaction: Transaction = {
-        id: `txn-fc-${fullCost.id}`,
+    const newTransaction: Omit<Transaction, 'id'> = {
         date: format(fullCost.paymentDate, "yyyy-MM-dd"),
         description: `Charge Fixe: ${fullCost.name}`,
         type: "Dépense",
@@ -160,7 +153,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({ content, setContent, events, 
         amount: -fullCost.amount,
         status: "Complété"
     };
-    setTransactions(prev => [newTransaction, ...prev]);
+    onAddTransaction(newTransaction);
   };
 
 
@@ -170,7 +163,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({ content, setContent, events, 
     bookings: { component: BookingSchedule, title: "Planning des Réservations", props: { bookings, setBookings, onAddBooking: handleAddBooking } },
     settings: { component: SiteSettings, title: "Paramètres du Site", props: {} },
     events: { component: EventManagement, title: "Gestion des Événements", props: { events, onAddEvent, onUpdateEvent, onDeleteEvent } },
-    financial: { component: FinancialManagement, title: "Rapport Financier", props: { transactions, setTransactions } },
+    financial: { component: FinancialManagement, title: "Rapport Financier", props: { transactions, onAddTransaction } },
     contracts: { component: ContractManagement, title: "Gestion des Contrats", props: {} },
     activities: { component: ActivityLog, title: "Journal d'Activité", props: { bookings } },
     platforms: { component: PlatformManagement, title: "Gestion des Plateformes", props: { payouts, setPayouts, onAddPayout: handleAddPayout } },
@@ -268,4 +261,3 @@ const AdminHub = forwardRef<any, AdminHubProps>(({ content, setContent, events, 
 
 AdminHub.displayName = "AdminHub";
 export default AdminHub;
-    

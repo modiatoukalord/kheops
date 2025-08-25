@@ -11,6 +11,7 @@ import AdminHub from "@/components/hubs/admin-hub";
 import { initialContent, Content } from "@/components/admin/content-management";
 import { AppEvent } from "@/components/admin/event-management";
 import { Booking, initialBookings } from "@/components/admin/booking-schedule";
+import { Transaction } from "@/components/admin/financial-management";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, getDocs, query, orderBy, Timestamp, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
 
@@ -32,6 +33,7 @@ export default function Home() {
   const [content, setContent] = useState<Content[]>(initialContent);
   const [events, setEvents] = useState<AppEvent[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const adminHubRef = useRef<{ setActiveView: (view: any) => void }>(null);
 
@@ -72,9 +74,23 @@ export default function Home() {
         console.error("Error fetching events: ", error);
     });
 
+    const fetchTransactions = onSnapshot(query(collection(db, "transactions"), orderBy("date", "desc")), (snapshot) => {
+        const transactionsData = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+            } as Transaction;
+        });
+        setTransactions(transactionsData);
+    }, (error) => {
+        console.error("Error fetching transactions: ", error);
+    });
+
     return () => {
         fetchBookings();
         fetchEvents();
+        fetchTransactions();
     };
   }, []);
 
@@ -126,6 +142,14 @@ export default function Home() {
       }
   };
 
+  const handleAddTransaction = async (newTransactionData: Omit<Transaction, 'id'>) => {
+    try {
+      await addDoc(collection(db, "transactions"), newTransactionData);
+    } catch (error) {
+      console.error("Error adding transaction: ", error);
+    }
+  };
+
 
   const ActiveComponent = hubComponents[activeHub];
 
@@ -136,6 +160,7 @@ export default function Home() {
         content, setContent, 
         events, onAddEvent: handleAddEvent, onUpdateEvent: handleUpdateEvent, onDeleteEvent: handleDeleteEvent,
         bookings, setBookings, 
+        transactions, onAddTransaction: handleAddTransaction,
         setShowMainHeader, ref: adminHubRef 
     },
   };
