@@ -40,6 +40,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Booking } from "@/components/admin/booking-schedule";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, getDocs, query, orderBy, Timestamp, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { Transaction } from "./financial-management";
 
 
 export type ClientActivity = {
@@ -59,6 +60,7 @@ export type ClientActivity = {
 
 interface ActivityLogProps {
   bookings: Booking[];
+  onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
 }
 
 const categoryConfig = {
@@ -111,7 +113,7 @@ const installmentSchema = z.object({
 type InstallmentFormValues = z.infer<typeof installmentSchema>;
 
 
-export default function ActivityLog({ bookings }: ActivityLogProps) {
+export default function ActivityLog({ bookings, onAddTransaction }: ActivityLogProps) {
   const [activities, setActivities] = useState<ClientActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -201,6 +203,18 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
       paymentType,
       date: new Date(),
     };
+    
+    const totalAmount = items.reduce((acc, item) => acc + item.amount, 0);
+
+    const activityTransactionMapping: { [key: string]: Transaction['category'] } = {
+        "Livre": "Vente",
+        "Manga": "Vente",
+        "Jeu de société": "Vente",
+        "Session de jeu": "Vente",
+        "Réservation Studio": "Prestation Studio",
+        "Abonnement": "Abonnement",
+        "Autre": "Vente"
+    };
 
     const newActivitiesPromises = items.map(item => {
         let duration: string | null = null;
@@ -228,6 +242,17 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
         if (duration === null) {
             delete (activityPayload as Partial<typeof activityPayload>).duration;
         }
+
+        // Create transaction for this activity
+        const transactionPayload: Omit<Transaction, 'id'> = {
+            date: format(new Date(), 'yyyy-MM-dd'),
+            description: `Vente: ${item.description} - ${clientName}`,
+            type: 'Revenu',
+            category: activityTransactionMapping[item.category] || "Vente",
+            amount: paymentType === 'Échéancier' ? (paidAmount || 0) : item.amount,
+            status: 'Complété'
+        };
+        onAddTransaction(transactionPayload);
 
         return addDoc(collection(db, "activities"), activityPayload);
     });
@@ -324,6 +349,18 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
               paidAmount: newPaidAmount,
               remainingAmount: newRemainingAmount,
           });
+
+          // Create transaction for this installment
+          const transactionPayload: Omit<Transaction, 'id'> = {
+              date: format(new Date(), 'yyyy-MM-dd'),
+              description: `Échéance: ${activityForInstallment.description} - ${activityForInstallment.clientName}`,
+              type: 'Revenu',
+              category: activityForInstallment.category === "Réservation Studio" ? "Prestation Studio" : "Vente",
+              amount: data.amount,
+              status: 'Complété'
+          };
+          onAddTransaction(transactionPayload);
+
           toast({
               title: "Paiement Enregistré",
               description: `Un nouveau versement de ${data.amount.toLocaleString('fr-FR')} FCFA a été enregistré.`,
@@ -352,6 +389,9 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
         try {
             const deletePromises = relatedActivitiesToDelete.map(act => deleteDoc(doc(db, "activities", act.id)));
             await Promise.all(deletePromises);
+            
+            // Note: This does not create a counter-transaction. You might want to add a "Dépense" transaction for refunds.
+            
             toast({
                 title: "Paiement Annulé",
                 description: "Le paiement pour cette réservation a été annulé avec succès.",
@@ -844,5 +884,3 @@ export default function ActivityLog({ bookings }: ActivityLogProps) {
     </div>
   );
 }
-
-    

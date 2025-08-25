@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home, Wallet, Cog, DollarSign } from "lucide-react";
 import UserManagement, { Subscriber, initialSubscribers as iSubscribers } from "@/components/admin/user-management";
 import ContentManagement, { initialContent as iContent, Content } from "@/components/admin/content-management";
-import BookingSchedule, { initialBookings, Booking } from "@/components/admin/booking-schedule";
+import BookingSchedule, { Booking } from "@/components/admin/booking-schedule";
 import SiteSettings from "@/components/admin/site-settings";
 import EventManagement, { AppEvent } from "@/components/admin/event-management";
 import FinancialManagement, { Transaction } from "@/components/admin/financial-management";
@@ -131,11 +131,11 @@ const AdminHub = forwardRef<any, AdminHubProps>(({ content, setContent, events, 
     setPayouts(prev => [fullPayout, ...prev]);
 
     const newTransaction: Omit<Transaction, 'id'> = {
-        date: format(new Date(fullPayout.date.split('/').reverse().join('-')), 'yyyy-MM-dd'),
-        description: `Paiement plateforme - ${fullPayout.platform}`,
+        date: format(new Date(newPayout.date.split('/').reverse().join('-')), 'yyyy-MM-dd'),
+        description: `Paiement plateforme - ${newPayout.platform}`,
         type: "Revenu",
         category: "Paiement Plateforme",
-        amount: parseFloat(fullPayout.amount.replace(/\s/g, '').replace('FCFA', '')),
+        amount: parseFloat(newPayout.amount.replace(/\s/g, '').replace('FCFA', '')),
         status: "Complété"
     };
     onAddTransaction(newTransaction);
@@ -165,7 +165,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({ content, setContent, events, 
     events: { component: EventManagement, title: "Gestion des Événements", props: { events, onAddEvent, onUpdateEvent, onDeleteEvent } },
     financial: { component: FinancialManagement, title: "Rapport Financier", props: { transactions, onAddTransaction } },
     contracts: { component: ContractManagement, title: "Gestion des Contrats", props: {} },
-    activities: { component: ActivityLog, title: "Journal d'Activité", props: { bookings } },
+    activities: { component: ActivityLog, title: "Journal d'Activité", props: { bookings, onAddTransaction } },
     platforms: { component: PlatformManagement, title: "Gestion des Plateformes", props: { payouts, setPayouts, onAddPayout: handleAddPayout } },
     "fixed-costs": { component: FixedCostsManagement, title: "Gestion des Charges Fixes", props: { fixedCosts, setFixedCosts, onAddFixedCost: handleAddFixedCost } },
     pricing: { component: PricingSettings, title: "Tarifs des Services", props: {} },
@@ -261,5 +261,3 @@ const AdminHub = forwardRef<any, AdminHubProps>(({ content, setContent, events, 
 
 AdminHub.displayName = "AdminHub";
 export default AdminHub;
-
-    
