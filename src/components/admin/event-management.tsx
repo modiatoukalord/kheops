@@ -54,7 +54,7 @@ export default function EventManagement({ events, onAddEvent, onUpdateEvent, onD
     .filter(event => (event.endDate || event.startDate) >= new Date())
     .sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
 
-  const upcomingEvents = showAllEvents ? sortedUpcomingEvents : sortedUpcomingEvents.slice(0, 5);
+  const upcomingEvents = showAllEvents ? sortedUpcomingEvents : sortedUpcomingEvents.slice(0, 3);
     
   const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -297,7 +297,7 @@ export default function EventManagement({ events, onAddEvent, onUpdateEvent, onD
               }
             </div>
           </CardContent>
-          {sortedUpcomingEvents.length > 5 && (
+          {sortedUpcomingEvents.length > 3 && (
             <CardFooter className="pt-4 justify-center">
               <Button variant="ghost" className="w-full" onClick={() => setShowAllEvents(!showAllEvents)}>
                 {showAllEvents ? "Voir moins" : "Voir tous les événements"}
@@ -309,3 +309,5 @@ export default function EventManagement({ events, onAddEvent, onUpdateEvent, onD
     </div>
   );
 }
+
+    
