@@ -217,7 +217,6 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
   }, 0);
 
   const signedContracts = useMemo(() => {
-    // A contract must be signed to be eligible for payment.
     return (contracts || []).filter(c => c.status === "Signé");
   }, [contracts]);
 
