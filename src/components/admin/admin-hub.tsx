@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home, Wallet, Cog, DollarSign } from "lucide-react";
 import UserManagement, { Subscriber } from "@/components/admin/user-management";
 import ContentManagement, { initialContent as iContent, Content } from "@/components/admin/content-management";
-import BookingSchedule, { initialBookings, Booking } from "@/components/admin/booking-schedule";
+import BookingSchedule, { Booking } from "@/components/admin/booking-schedule";
 import SiteSettings from "@/components/admin/site-settings";
 import EventManagement, { AppEvent } from "@/components/admin/event-management";
 import FinancialManagement, { Transaction } from "@/components/admin/financial-management";
@@ -31,6 +31,7 @@ export type AdminHubProps = {
   onDeleteEvent: (id: string) => void;
   bookings: Booking[];
   setBookings: React.Dispatch<React.SetStateAction<Booking[]>>;
+  onUpdateBookingStatus: (bookingId: string, newStatus: Booking['status']) => void;
   transactions: Transaction[];
   onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
   subscribers: Subscriber[];
@@ -88,7 +89,7 @@ const adminCategories: AdminCategory[] = [
 const AdminHub = forwardRef<any, AdminHubProps>(({ 
     content, setContent, 
     events, onAddEvent, onUpdateEvent, onDeleteEvent, 
-    bookings, setBookings, 
+    bookings, setBookings, onUpdateBookingStatus,
     transactions, onAddTransaction,
     subscribers, onAddSubscriber, onUpdateSubscriber, onDeleteSubscriber,
     setShowMainHeader 
@@ -168,7 +169,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
     events: { component: EventManagement, title: "Gestion des Événements", props: { events, onAddEvent, onUpdateEvent, onDeleteEvent } },
     financial: { component: FinancialManagement, title: "Rapport Financier", props: { transactions, onAddTransaction } },
     contracts: { component: ContractManagement, title: "Gestion des Contrats", props: {} },
-    activities: { component: ActivityLog, title: "Journal d'Activité", props: { bookings, onAddTransaction } },
+    activities: { component: ActivityLog, title: "Journal d'Activité", props: { bookings, onAddTransaction, onUpdateBookingStatus } },
     platforms: { component: PlatformManagement, title: "Gestion des Plateformes", props: { payouts, setPayouts, onAddPayout: handleAddPayout } },
     "fixed-costs": { component: FixedCostsManagement, title: "Gestion des Charges Fixes", props: { fixedCosts, setFixedCosts, onAddFixedCost: handleAddFixedCost } },
     pricing: { component: PricingSettings, title: "Tarifs des Services", props: {} },

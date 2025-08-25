@@ -132,6 +132,15 @@ export default function Home() {
         console.error("Error adding document: ", error);
     }
   };
+
+    const handleUpdateBookingStatus = async (bookingId: string, newStatus: Booking['status']) => {
+        try {
+            const bookingRef = doc(db, "bookings", bookingId);
+            await updateDoc(bookingRef, { status: newStatus });
+        } catch (error) {
+            console.error("Error updating booking status: ", error);
+        }
+    };
   
   const handleAddEvent = async (newEventData: Omit<AppEvent, 'id'>) => {
       try {
@@ -200,7 +209,7 @@ export default function Home() {
     admin: { 
         content, setContent, 
         events, onAddEvent: handleAddEvent, onUpdateEvent: handleUpdateEvent, onDeleteEvent: handleDeleteEvent,
-        bookings, setBookings, 
+        bookings, setBookings, onUpdateBookingStatus: handleUpdateBookingStatus,
         transactions, onAddTransaction: handleAddTransaction,
         subscribers, onAddSubscriber: handleAddSubscriber, onUpdateSubscriber: handleUpdateSubscriber, onDeleteSubscriber: handleDeleteSubscriber,
         setShowMainHeader, ref: adminHubRef 

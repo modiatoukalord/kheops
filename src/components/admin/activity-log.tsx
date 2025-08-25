@@ -61,6 +61,7 @@ export type ClientActivity = {
 interface ActivityLogProps {
   bookings: Booking[];
   onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
+  onUpdateBookingStatus: (bookingId: string, newStatus: Booking['status']) => void;
 }
 
 const categoryConfig = {
@@ -113,7 +114,7 @@ const installmentSchema = z.object({
 type InstallmentFormValues = z.infer<typeof installmentSchema>;
 
 
-export default function ActivityLog({ bookings, onAddTransaction }: ActivityLogProps) {
+export default function ActivityLog({ bookings, onAddTransaction, onUpdateBookingStatus }: ActivityLogProps) {
   const [activities, setActivities] = useState<ClientActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -391,10 +392,11 @@ export default function ActivityLog({ bookings, onAddTransaction }: ActivityLogP
             await Promise.all(deletePromises);
             
             // Note: This does not create a counter-transaction. You might want to add a "Dépense" transaction for refunds.
+            await onUpdateBookingStatus(bookingId, 'En attente');
             
             toast({
                 title: "Paiement Annulé",
-                description: "Le paiement pour cette réservation a été annulé avec succès.",
+                description: "Le paiement pour cette réservation a été annulé et le statut de la réservation a été mis à jour.",
                 variant: "destructive"
             });
         } catch (error) {
