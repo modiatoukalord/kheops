@@ -216,16 +216,20 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
       }
   }, 0);
 
-  const signedContracts = contracts.filter(c => c.status === "Signé");
+  const signedContracts = (contracts || []).filter(c => c.status === "Signé");
 
   useEffect(() => {
     const contractId = form.watch("contractId");
+    if (!contractId) {
+        setSelectedContract(null);
+        return;
+    }
     const contract = contracts.find(c => c.id === contractId);
     setSelectedContract(contract || null);
     if (contract) {
         form.setValue("clientName", contract.clientName);
     }
-  }, [form.watch("contractId"), contracts]);
+  }, [form.watch("contractId"), contracts, form]);
 
   useEffect(() => {
     const items = form.watch("items");
@@ -569,9 +573,10 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
                                      <FormField control={form.control} name="contractId" render={({ field }) => (
                                         <FormItem>
                                             <Label>Contrat Associé (Optionnel)</Label>
-                                             <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                             <Select onValueChange={(value) => { field.onChange(value === 'none' ? undefined : value); if (value === 'none') form.setValue('clientName', ''); }} defaultValue={field.value}>
                                                 <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un contrat..." /></SelectTrigger></FormControl>
                                                 <SelectContent>
+                                                    <SelectItem value="none">Sans Contrat</SelectItem>
                                                     {signedContracts.map(c => <SelectItem key={c.id} value={c.id}>{c.clientName} - {c.type}</SelectItem>)}
                                                 </SelectContent>
                                             </Select>
@@ -1023,3 +1028,4 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
 
 ActivityLog.displayName = "ActivityLog";
 export default ActivityLog;
+
