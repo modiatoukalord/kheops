@@ -42,7 +42,7 @@ import { db } from "@/lib/firebase";
 import { collection, addDoc, getDocs, query, orderBy, Timestamp, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { Transaction } from "./financial-management";
 import type { Contract } from "./contract-management";
-import { servicesWithPrices } from "@/lib/pricing";
+import { servicesWithPrices, calculatePrice } from "@/lib/pricing";
 
 
 export type ClientActivity = {
@@ -225,21 +225,19 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
     if (contract) {
         form.setValue("clientName", contract.clientName);
     }
-  }, [form, contracts]);
+  }, [form.watch("contractId"), contracts]);
 
   useEffect(() => {
     const items = form.watch("items");
-    if (selectedContract?.customPrices) {
-        items.forEach((item, index) => {
-            if (item.category === "Réservation Studio" && selectedContract.customPrices?.[item.description]) {
-                const newAmount = selectedContract.customPrices[item.description];
-                if (item.amount !== newAmount) {
-                     update(index, { ...item, amount: newAmount });
-                }
+    items.forEach((item, index) => {
+        if (item.category === "Réservation Studio" && selectedContract?.customPrices?.[item.description]) {
+            const newAmount = selectedContract.customPrices[item.description];
+            if (item.amount !== newAmount) {
+                 update(index, { ...item, amount: newAmount });
             }
-        });
-    }
-  }, [form, selectedContract, update]);
+        }
+    });
+  }, [form.watch("items"), selectedContract, update]);
 
   const processActivityData = async (data: ActivityFormValues) => {
     const { clientName, phone, items, paymentType, paidAmount, bookingId, contractId } = data;
@@ -276,7 +274,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
             } catch (e) { console.error("Invalid time format for duration calculation"); }
         }
         
-        const activityPayload: Omit<ClientActivity, 'id'> & { date: Date } = {
+        const activityPayload: Omit<ClientActivity, 'id'> & { date: Date, bookingId?: string, contractId?: string } = {
             ...baseActivityPayload,
             description: item.description,
             category: item.category,
@@ -284,9 +282,15 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
             duration: duration || undefined,
             paidAmount: paymentType === 'Échéancier' ? (paidAmount || 0) : item.amount,
             remainingAmount: paymentType === 'Échéancier' ? item.amount - (paidAmount || 0) : 0,
-            ...(item.category === "Réservation Studio" && bookingId && { bookingId }),
-            ...(contractId && { contractId }),
         };
+
+        if (item.category === "Réservation Studio" && bookingId) {
+            activityPayload.bookingId = bookingId;
+        }
+
+        if (contractId) {
+            activityPayload.contractId = contractId;
+        }
 
         // Create transaction for this activity
         const transactionPayload: Omit<Transaction, 'id'> = {
@@ -595,8 +599,38 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
                                                 )}
                                             </div>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <FormField control={form.control} name={`items.${index}.description`} render={({ field }) => (<FormItem><Label>Description</Label><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                                                 <FormField control={form.control} name={`items.${index}.category`} render={({ field }) => (<FormItem><Label>Catégorie</Label><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent>{Object.keys(categoryConfig).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                                                {watchedItems[index]?.category === 'Réservation Studio' ? (
+                                                     <FormField
+                                                        control={form.control}
+                                                        name={`items.${index}.description`}
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <Label>Prestation</Label>
+                                                                <Select 
+                                                                    onValueChange={(value) => {
+                                                                        field.onChange(value);
+                                                                        const price = calculatePrice(value, 1, selectedContract?.customPrices);
+                                                                        form.setValue(`items.${index}.amount`, price);
+                                                                    }}
+                                                                    defaultValue={field.value}
+                                                                >
+                                                                    <FormControl><SelectTrigger><SelectValue placeholder="Choisir une prestation..."/></SelectTrigger></FormControl>
+                                                                    <SelectContent>
+                                                                        {Object.keys(servicesWithPrices).map(service => (
+                                                                            <SelectItem key={service} value={service}>
+                                                                                {service}
+                                                                            </SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                ) : (
+                                                    <FormField control={form.control} name={`items.${index}.description`} render={({ field }) => (<FormItem><Label>Description</Label><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                )}
                                             </div>
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                 <FormField control={form.control} name={`items.${index}.amount`} render={({ field }) => (<FormItem><Label>Montant Total</Label><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
