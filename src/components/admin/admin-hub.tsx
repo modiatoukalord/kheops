@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, forwardRef, useImperativeHandle } from "react";
+import { useState, forwardRef, useImperativeHandle, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home, Wallet, Cog, DollarSign } from "lucide-react";
@@ -18,6 +18,8 @@ import FixedCostsManagement, { FixedCost, initialFixedCosts as iFixedCosts } fro
 import PricingSettings from "@/components/admin/pricing-settings";
 import { format } from "date-fns";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { db } from "@/lib/firebase";
+import { collection, onSnapshot, query } from "firebase/firestore";
 
 
 type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities" | "platforms" | "fixed-costs" | "pricing";
@@ -34,6 +36,7 @@ export type AdminHubProps = {
   bookings: Booking[];
   setBookings: React.Dispatch<React.SetStateAction<Booking[]>>;
   onUpdateBookingStatus: (bookingId: string, newStatus: Booking['status']) => void;
+  onAddBooking: (booking: Omit<Booking, 'id' | 'status'>) => void;
   transactions: Transaction[];
   onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
   subscribers: Subscriber[];
@@ -92,7 +95,7 @@ const adminCategories: AdminCategory[] = [
 const AdminHub = forwardRef<any, AdminHubProps>(({ 
     content, setContent, 
     events, onAddEvent, onUpdateEvent, onDeleteEvent, 
-    bookings, setBookings, onUpdateBookingStatus,
+    bookings, setBookings, onUpdateBookingStatus, onAddBooking,
     transactions, onAddTransaction,
     subscribers, onAddSubscriber, onUpdateSubscriber, onDeleteSubscriber,
     onUpdateContract,
@@ -100,6 +103,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
 }, ref) => {
   const [activeView, setActiveView] = useState<AdminView>("dashboard");
   const [contractToPay, setContractToPay] = useState<Contract | null>(null);
+  const [contracts, setContracts] = useState<Contract[]>([]);
   const activityLogRef = useRef<{ openDialog: (data: any) => void }>(null);
 
   useImperativeHandle(ref, () => ({
@@ -109,10 +113,14 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
   const [payouts, setPayouts] = useState<Payout[]>(iPayouts);
   const [fixedCosts, setFixedCosts] = useState<FixedCost[]>(iFixedCosts);
 
+  useEffect(() => {
+    const q = query(collection(db, "contracts"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        setContracts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Contract)));
+    });
+    return () => unsubscribe();
+  }, []);
 
-  const handleAddBooking = (newBooking: Omit<Booking, 'id' | 'status'>) => {
-    console.log("Adding booking in AdminHub is deprecated. Should be handled in page.tsx");
-  };
   
   const handleValidateSubscription = (subscriber: Subscriber) => {
     const newTransaction: Omit<Transaction, 'id'> = {
@@ -180,12 +188,12 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
   const adminViews = {
     users: { component: UserManagement, title: "Gestion des Abonnements", props: { subscribers, onAddSubscriber: handleAddSubscriber, onUpdateSubscriber, onDeleteSubscriber, onValidateSubscription: handleValidateSubscription, onRenewSubscriber: handleRenewSubscriber } },
     content: { component: ContentManagement, title: "Gestion des Contenus", props: { content, setContent } },
-    bookings: { component: BookingSchedule, title: "Planning des Réservations", props: { bookings, setBookings, onAddBooking: handleAddBooking, onUpdateBookingStatus } },
+    bookings: { component: BookingSchedule, title: "Planning des Réservations", props: { bookings, setBookings, onAddBooking, onUpdateBookingStatus, contracts } },
     settings: { component: SiteSettings, title: "Paramètres du Site", props: {} },
     events: { component: EventManagement, title: "Gestion des Événements", props: { events, onAddEvent, onUpdateEvent, onDeleteEvent } },
     financial: { component: FinancialManagement, title: "Rapport Financier", props: { transactions, onAddTransaction } },
     contracts: { component: ContractManagement, title: "Gestion des Contrats", props: { onUpdateContract, onCollectPayment: handleRequestContractPayment } },
-    activities: { component: ActivityLog, title: "Journal d'Activité", props: { bookings, onAddTransaction, onUpdateBookingStatus, ref: activityLogRef, contractToPay, onContractPaid } },
+    activities: { component: ActivityLog, title: "Journal d'Activité", props: { bookings, contracts, onAddTransaction, onUpdateBookingStatus, ref: activityLogRef, contractToPay, onContractPaid } },
     platforms: { component: PlatformManagement, title: "Gestion des Plateformes", props: { payouts, setPayouts, onAddPayout: handleAddPayout } },
     "fixed-costs": { component: FixedCostsManagement, title: "Gestion des Charges Fixes", props: { fixedCosts, setFixedCosts, onAddFixedCost: handleAddFixedCost } },
     pricing: { component: PricingSettings, title: "Tarifs des Services", props: {} },

@@ -10,7 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, Send, PenSquare, Download, Clock, CheckCircle2, FileText, PlusCircle, Trash2, FileUp, Edit, DollarSign, Calendar as CalendarIcon, HandCoins } from "lucide-react";
+import { MoreHorizontal, Send, PenSquare, Download, Clock, CheckCircle2, FileText, PlusCircle, Trash2, FileUp, Edit, DollarSign, Calendar as CalendarIcon, HandCoins, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { db } from "@/lib/firebase";
 import { collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, Timestamp } from "firebase/firestore";
 import { Booking } from "@/components/admin/booking-schedule";
+import { servicesWithPrices } from "@/lib/pricing";
 
 const contractStatusConfig = {
     "En attente": { variant: "secondary", icon: Clock },
@@ -58,6 +59,7 @@ export type Contract = {
     type: ContractType;
     startDate?: Date;
     endDate?: Date;
+    customPrices?: { [key: string]: number };
 };
 
 interface ContractManagementProps {
@@ -150,8 +152,17 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
             });
             return;
         }
+        
+        const customPrices: { [key: string]: number } = {};
+        Object.keys(servicesWithPrices).forEach(service => {
+            const price = formData.get(`price-${service}`) as string;
+            if (price) {
+                customPrices[service] = Number(price);
+            }
+        });
 
-        const newContractData: any = {
+
+        const newContractData: Omit<Contract, 'id'> = {
             clientName: clientName,
             status: "En attente",
             lastUpdate: format(new Date(), 'yyyy-MM-dd'),
@@ -160,10 +171,11 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
             type: formData.get("type") as ContractType,
             startDate: dateRange?.from,
             endDate: dateRange?.to,
+            customPrices: Object.keys(customPrices).length > 0 ? customPrices : undefined,
         };
 
         if (bookingId) {
-            newContractData.bookingId = bookingId;
+            (newContractData as any).bookingId = bookingId;
         }
 
 
@@ -192,6 +204,14 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
         const paymentStatus = (formData.get("paymentStatus") as PaymentStatus) || 'N/A';
         const type = formData.get("type") as ContractType;
 
+        const customPrices: { [key: string]: number } = {};
+        Object.keys(servicesWithPrices).forEach(service => {
+            const price = formData.get(`price-${service}`) as string;
+            if (price) {
+                customPrices[service] = Number(price);
+            }
+        });
+
         const updatedData: Partial<Contract> = {
             clientName, 
             value, 
@@ -200,6 +220,7 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
             lastUpdate: format(new Date(), 'yyyy-MM-dd'),
             startDate: dateRange?.from,
             endDate: dateRange?.to,
+            customPrices: Object.keys(customPrices).length > 0 ? customPrices : undefined,
         };
 
         try {
@@ -255,6 +276,117 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     };
+    
+    const renderContractFormFields = (contract?: Contract | null) => (
+         <div className="grid gap-4 py-4 max-h-[80vh] overflow-y-auto pr-4">
+            <div className="space-y-2">
+                <Label htmlFor="bookingId">Client ou Réservation ID</Label>
+                <Input id="bookingId" name="bookingId" placeholder="Ex: res-001 ou Nom du Client" required defaultValue={contract?.bookingId || contract?.clientName} disabled={!!contract} />
+            </div>
+             <div className="space-y-2">
+                 <Label>Durée du contrat (Début - Fin)</Label>
+                 <Popover>
+                    <PopoverTrigger asChild>
+                    <Button
+                        id="date"
+                        variant={"outline"}
+                        className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !dateRange && "text-muted-foreground"
+                        )}
+                    >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dateRange?.from ? (
+                            dateRange.to ? (
+                                <>
+                                    {format(dateRange.from, "d MMM y", { locale: fr })} - {format(dateRange.to, "d MMM y", { locale: fr })}
+                                </>
+                            ) : (
+                                format(dateRange.from, "d MMM y", { locale: fr })
+                            )
+                        ) : (
+                            <span>Choisir les dates</span>
+                        )}
+                    </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                        initialFocus
+                        mode="range"
+                        defaultMonth={dateRange?.from}
+                        selected={dateRange}
+                        onSelect={setDateRange}
+                        numberOfMonths={2}
+                        locale={fr}
+                    />
+                    </PopoverContent>
+                </Popover>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="type">Type de contrat</Label>
+                    <Select name="type" defaultValue={contract?.type || "Prestation Studio"} required>
+                        <SelectTrigger id="type">
+                            <SelectValue placeholder="Type..." />
+                        </SelectTrigger>
+                        <SelectContent>{contractTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent>
+                    </Select>
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="paymentStatus">Statut Paiement</Label>
+                    <Select name="paymentStatus" defaultValue={contract?.paymentStatus || "En attente"}>
+                        <SelectTrigger id="paymentStatus">
+                            <SelectValue placeholder="Statut..." />
+                        </SelectTrigger>
+                        <SelectContent>{Object.keys(paymentStatusConfig).map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent>
+                    </Select>
+                </div>
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="value">Valeur Globale du Contrat (FCFA)</Label>
+                <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input id="value" name="value" type="number" placeholder="Ex: 150000" className="pl-10" defaultValue={contract?.value}/>
+                </div>
+            </div>
+            
+            <div className="space-y-4 pt-4 border-t">
+                 <Label className="flex items-center gap-2">
+                    <Info className="h-4 w-4 text-muted-foreground" />
+                    Tarifs de Prestation Personnalisés (Optionnel)
+                </Label>
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {Object.keys(servicesWithPrices).map(service => (
+                         <div className="space-y-1" key={service}>
+                            <Label htmlFor={`price-${service}`} className="text-xs">{service}</Label>
+                            <Input
+                                id={`price-${service}`}
+                                name={`price-${service}`}
+                                type="number"
+                                placeholder={servicesWithPrices[service as keyof typeof servicesWithPrices].toLocaleString('fr-FR')}
+                                defaultValue={contract?.customPrices?.[service]}
+                            />
+                        </div>
+                    ))}
+                 </div>
+            </div>
+
+             <div className="space-y-2">
+                <Label htmlFor="pdf-upload">PDF du Contrat (Optionnel)</Label>
+                <div className="flex items-center gap-2">
+                    <FileUp className="h-5 w-5 text-muted-foreground" />
+                    <Input 
+                        id="pdf-upload" 
+                        type="file" 
+                        accept="application/pdf"
+                        onChange={(e) => setPdfFile(e.target.files ? e.target.files[0] : null)}
+                        className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                    />
+                </div>
+                {pdfFile && <p className="text-sm text-muted-foreground mt-1">Nouveau: {pdfFile.name}</p>}
+            </div>
+        </div>
+    );
 
     const renderContractTable = (contractList: Contract[]) => (
         <Table>
@@ -276,7 +408,7 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
                     return (
                         <TableRow key={contract.id}>
                             <TableCell>
-                                <div className="font-mono text-sm">{contract.id.substring(0, 10)}...</div>
+                                <div className="font-mono text-xs">{contract.id}</div>
                             </TableCell>
                             <TableCell>
                                 <div className="font-medium">{contract.clientName}</div>
@@ -363,98 +495,14 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
                             Ajouter un contrat
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-lg">
+                    <DialogContent className="sm:max-w-2xl">
                         <form onSubmit={handleAddContract}>
                             <DialogHeader>
                                 <DialogTitle>Créer un nouveau contrat</DialogTitle>
                                 <DialogDescription>Saisissez l'ID de réservation ou le nom du client et remplissez les détails pour générer un nouveau contrat.</DialogDescription>
                             </DialogHeader>
-                            <div className="grid gap-4 py-4">
-                               <div className="space-y-2">
-                                    <Label htmlFor="bookingId">Client ou Réservation</Label>
-                                    <Input id="bookingId" name="bookingId" placeholder="Ex: res-001 ou Nom du Client" required />
-                                </div>
-                                 <div className="space-y-2">
-                                     <Label>Durée du contrat (Début - Fin)</Label>
-                                     <Popover>
-                                        <PopoverTrigger asChild>
-                                        <Button
-                                            id="date"
-                                            variant={"outline"}
-                                            className={cn(
-                                            "w-full justify-start text-left font-normal",
-                                            !dateRange && "text-muted-foreground"
-                                            )}
-                                        >
-                                            <CalendarIcon className="mr-2 h-4 w-4" />
-                                            {dateRange?.from ? (
-                                                dateRange.to ? (
-                                                    <>
-                                                        {format(dateRange.from, "d MMM y", { locale: fr })} - {format(dateRange.to, "d MMM y", { locale: fr })}
-                                                    </>
-                                                ) : (
-                                                    format(dateRange.from, "d MMM y", { locale: fr })
-                                                )
-                                            ) : (
-                                                <span>Choisir les dates</span>
-                                            )}
-                                        </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0" align="start">
-                                        <Calendar
-                                            initialFocus
-                                            mode="range"
-                                            defaultMonth={dateRange?.from}
-                                            selected={dateRange}
-                                            onSelect={setDateRange}
-                                            numberOfMonths={2}
-                                            locale={fr}
-                                        />
-                                        </PopoverContent>
-                                    </Popover>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="type">Type de contrat</Label>
-                                        <Select name="type" defaultValue="Prestation Studio" required>
-                                            <SelectTrigger id="type">
-                                                <SelectValue placeholder="Type..." />
-                                            </SelectTrigger>
-                                            <SelectContent>{contractTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="paymentStatus">Statut Paiement</Label>
-                                        <Select name="paymentStatus" defaultValue="En attente">
-                                            <SelectTrigger id="paymentStatus">
-                                                <SelectValue placeholder="Statut..." />
-                                            </SelectTrigger>
-                                            <SelectContent>{Object.keys(paymentStatusConfig).map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="value">Valeur du Contrat (FCFA)</Label>
-                                    <div className="relative">
-                                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                        <Input id="value" name="value" type="number" placeholder="Ex: 150000" className="pl-10" />
-                                    </div>
-                                </div>
-                                 <div className="space-y-2">
-                                    <Label htmlFor="pdf-upload">PDF du Contrat (Optionnel)</Label>
-                                    <div className="flex items-center gap-2">
-                                        <FileUp className="h-5 w-5 text-muted-foreground" />
-                                        <Input 
-                                            id="pdf-upload" 
-                                            type="file" 
-                                            accept="application/pdf"
-                                            onChange={(e) => setPdfFile(e.target.files ? e.target.files[0] : null)}
-                                            className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                            <DialogFooter>
+                            {renderContractFormFields(null)}
+                            <DialogFooter className="pt-4 border-t">
                                 <Button onClick={() => setAddDialogOpen(false)} variant="ghost" type="button">Annuler</Button>
                                 <Button type="submit">Créer le contrat</Button>
                             </DialogFooter>
@@ -482,101 +530,14 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
                 </CardFooter>
             )}
              <Dialog open={isEditDialogOpen} onOpenChange={(isOpen) => { setEditDialogOpen(isOpen); if (!isOpen) setDateRange(undefined); }}>
-                <DialogContent className="sm:max-w-lg">
+                <DialogContent className="sm:max-w-2xl">
                     <form onSubmit={handleEditContract}>
                         <DialogHeader>
                             <DialogTitle>Modifier le contrat</DialogTitle>
                             <DialogDescription>Mettez à jour les informations pour le contrat de {editingContract?.clientName}.</DialogDescription>
                         </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="clientName-edit">Nom du Client</Label>
-                                <Input 
-                                    id="clientName-edit" 
-                                    name="clientName"
-                                    defaultValue={editingContract?.clientName}
-                                    required 
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                 <Label>Durée du contrat (Début - Fin)</Label>
-                                 <Popover>
-                                    <PopoverTrigger asChild>
-                                    <Button
-                                        id="date-edit"
-                                        variant={"outline"}
-                                        className={cn(
-                                        "w-full justify-start text-left font-normal",
-                                        !dateRange && "text-muted-foreground"
-                                        )}
-                                    >
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {dateRange?.from ? (
-                                            dateRange.to ? (
-                                                <>
-                                                    {format(dateRange.from, "d MMM y", { locale: fr })} - {format(dateRange.to, "d MMM y", { locale: fr })}
-                                                </>
-                                            ) : (
-                                                format(dateRange.from, "d MMM y", { locale: fr })
-                                            )
-                                        ) : (
-                                            <span>Choisir les dates</span>
-                                        )}
-                                    </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar
-                                        initialFocus
-                                        mode="range"
-                                        defaultMonth={dateRange?.from}
-                                        selected={dateRange}
-                                        onSelect={setDateRange}
-                                        numberOfMonths={2}
-                                        locale={fr}
-                                    />
-                                    </PopoverContent>
-                                </Popover>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="type-edit">Type de contrat</Label>
-                                    <Select name="type" defaultValue={editingContract?.type} required>
-                                        <SelectTrigger id="type-edit"><SelectValue placeholder="Type..." /></SelectTrigger>
-                                        <SelectContent>{contractTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="paymentStatus-edit">Statut Paiement</Label>
-                                    <Select name="paymentStatus" defaultValue={editingContract?.paymentStatus}>
-                                        <SelectTrigger id="paymentStatus-edit"><SelectValue placeholder="Statut..." /></SelectTrigger>
-                                        <SelectContent>{Object.keys(paymentStatusConfig).map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="value-edit">Valeur du Contrat (FCFA)</Label>
-                                <div className="relative">
-                                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <Input id="value-edit" name="value" type="number" placeholder="Ex: 150000" className="pl-10" defaultValue={editingContract?.value} />
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="pdf-upload-edit">PDF du Contrat</Label>
-                                <div className="flex items-center gap-2">
-                                    <FileUp className="h-5 w-5 text-muted-foreground" />
-                                    <Input 
-                                        id="pdf-upload-edit" 
-                                        type="file" 
-                                        accept="application/pdf"
-                                        onChange={(e) => setPdfFile(e.target.files ? e.target.files[0] : null)}
-                                        className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
-                                    />
-                                </div>
-                                {pdfFile && <p className="text-sm text-muted-foreground mt-2">Nouveau fichier: {pdfFile.name}</p>}
-                                {!pdfFile && editingContract?.pdfFile && <p className="text-sm text-muted-foreground mt-2">Fichier actuel: {(editingContract.pdfFile as any).name}</p>}
-                            </div>
-                        </div>
-                        <DialogFooter>
+                        {renderContractFormFields(editingContract)}
+                        <DialogFooter className="pt-4 border-t">
                             <Button onClick={() => setEditDialogOpen(false)} variant="ghost" type="button">Annuler</Button>
                             <Button type="submit">Enregistrer les modifications</Button>
                         </DialogFooter>
@@ -586,5 +547,3 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
         </Card>
     );
 }
-
-    

@@ -42,6 +42,7 @@ import { db } from "@/lib/firebase";
 import { collection, addDoc, getDocs, query, orderBy, Timestamp, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { Transaction } from "./financial-management";
 import type { Contract } from "./contract-management";
+import { servicesWithPrices } from "@/lib/pricing";
 
 
 export type ClientActivity = {
@@ -62,6 +63,7 @@ export type ClientActivity = {
 
 interface ActivityLogProps {
   bookings: Booking[];
+  contracts: Contract[];
   onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
   onUpdateBookingStatus: (bookingId: string, newStatus: Booking['status']) => void;
   contractToPay?: Contract | null;
@@ -120,7 +122,7 @@ const installmentSchema = z.object({
 type InstallmentFormValues = z.infer<typeof installmentSchema>;
 
 
-const ActivityLog = forwardRef(({ bookings, onAddTransaction, onUpdateBookingStatus, contractToPay, onContractPaid }: ActivityLogProps, ref) => {
+const ActivityLog = forwardRef(({ bookings, contracts, onAddTransaction, onUpdateBookingStatus, contractToPay, onContractPaid }: ActivityLogProps, ref) => {
   const [activities, setActivities] = useState<ClientActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -130,6 +132,8 @@ const ActivityLog = forwardRef(({ bookings, onAddTransaction, onUpdateBookingSta
   const [isInstallmentDialogOpen, setInstallmentDialogOpen] = useState(false);
   const [activityForInstallment, setActivityForInstallment] = useState<ClientActivity | null>(null);
   const [detailsActivity, setDetailsActivity] = useState<ClientActivity | null>(null);
+  const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
+
 
   const { toast } = useToast();
   const receiptRef = useRef<HTMLDivElement>(null);
@@ -168,7 +172,6 @@ const ActivityLog = forwardRef(({ bookings, onAddTransaction, onUpdateBookingSta
     }
   }));
 
-
   const form = useForm<ActivityFormValues>({
     resolver: zodResolver(activityFormSchema),
     defaultValues: {
@@ -184,7 +187,7 @@ const ActivityLog = forwardRef(({ bookings, onAddTransaction, onUpdateBookingSta
     resolver: zodResolver(installmentSchema),
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, update } = useFieldArray({
     control: form.control,
     name: "items",
   });
@@ -212,6 +215,31 @@ const ActivityLog = forwardRef(({ bookings, onAddTransaction, onUpdateBookingSta
           return acc + (activity.paidAmount || 0);
       }
   }, 0);
+
+  const signedContracts = contracts.filter(c => c.status === "Signé");
+
+  useEffect(() => {
+    const contractId = form.watch("contractId");
+    const contract = contracts.find(c => c.id === contractId);
+    setSelectedContract(contract || null);
+    if (contract) {
+        form.setValue("clientName", contract.clientName);
+    }
+  }, [form.watch("contractId"), contracts]);
+
+  useEffect(() => {
+    const items = form.watch("items");
+    if (selectedContract?.customPrices) {
+        items.forEach((item, index) => {
+            if (item.category === "Réservation Studio" && selectedContract.customPrices?.[item.description]) {
+                const newAmount = selectedContract.customPrices[item.description];
+                if (item.amount !== newAmount) {
+                     update(index, { ...item, amount: newAmount });
+                }
+            }
+        });
+    }
+  }, [form.watch("items"), selectedContract, update]);
 
   const processActivityData = async (data: ActivityFormValues) => {
     const { clientName, phone, items, paymentType, paidAmount, bookingId, contractId } = data;
@@ -253,21 +281,12 @@ const ActivityLog = forwardRef(({ bookings, onAddTransaction, onUpdateBookingSta
             description: item.description,
             category: item.category,
             totalAmount: item.amount,
-            duration: duration,
+            duration: duration || undefined,
             paidAmount: paymentType === 'Échéancier' ? (paidAmount || 0) : item.amount,
             remainingAmount: paymentType === 'Échéancier' ? item.amount - (paidAmount || 0) : 0,
+            bookingId: item.category === "Réservation Studio" && bookingId ? bookingId : undefined,
+            contractId: contractId || undefined,
         };
-        
-        if (item.category === "Réservation Studio" && bookingId) {
-          (activityPayload as Partial<ClientActivity>).bookingId = bookingId;
-        }
-        if (item.category === "Paiement Contrat" && contractId) {
-          (activityPayload as Partial<ClientActivity>).contractId = contractId;
-        }
-
-        if (duration === null) {
-            delete (activityPayload as Partial<typeof activityPayload>).duration;
-        }
 
         // Create transaction for this activity
         const transactionPayload: Omit<Transaction, 'id'> = {
@@ -332,7 +351,7 @@ const ActivityLog = forwardRef(({ bookings, onAddTransaction, onUpdateBookingSta
             paymentType: "Direct",
             paidAmount: contract.value,
             items: [{
-                description: `Paiement Contrat: ${contract.type} (${contract.id})`,
+                description: `Paiement Contrat: ${contract.type} (${contract.id.substring(0, 5)})`,
                 category: "Paiement Contrat",
                 amount: contract.value,
                 startTime: '',
@@ -347,6 +366,7 @@ const ActivityLog = forwardRef(({ bookings, onAddTransaction, onUpdateBookingSta
             paymentType: "Direct",
             paidAmount: 0,
             items: [{ description: "", category: "Autre", amount: 0, startTime: "", endTime: "" }],
+            contractId: undefined,
         });
     }
     setActivityDialogOpen(true);
@@ -541,8 +561,22 @@ const ActivityLog = forwardRef(({ bookings, onAddTransaction, onUpdateBookingSta
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="grid gap-6 py-4 max-h-[80vh] overflow-y-auto pr-4">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <FormField control={form.control} name="clientName" render={({ field }) => (<FormItem><Label>Nom du client</Label><FormControl><Input placeholder="Ex: Jean Dupont" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                     <FormField control={form.control} name="contractId" render={({ field }) => (
+                                        <FormItem>
+                                            <Label>Contrat Associé (Optionnel)</Label>
+                                             <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un contrat..." /></SelectTrigger></FormControl>
+                                                <SelectContent>
+                                                    {signedContracts.map(c => <SelectItem key={c.id} value={c.id}>{c.clientName} - {c.type}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage/>
+                                        </FormItem>
+                                    )} />
+                                    <FormField control={form.control} name="clientName" render={({ field }) => (<FormItem><Label>Nom du client</Label><FormControl><Input placeholder="Ex: Jean Dupont" {...field} disabled={!!selectedContract} /></FormControl><FormMessage /></FormItem>)} />
+                               </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><Label>Téléphone</Label><FormControl><Input placeholder="Ex: +242 06 123 4567" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     <FormField control={form.control} name="paymentType" render={({ field }) => (<FormItem><Label>Type de paiement</Label>
                                         <Select onValueChange={field.onChange} defaultValue={field.value}>
@@ -955,5 +989,3 @@ const ActivityLog = forwardRef(({ bookings, onAddTransaction, onUpdateBookingSta
 
 ActivityLog.displayName = "ActivityLog";
 export default ActivityLog;
-
-    
