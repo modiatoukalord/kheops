@@ -633,7 +633,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
                                                 )}
                                             </div>
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <FormField control={form.control} name={`items.${index}.amount`} render={({ field }) => (<FormItem><Label>Montant Total</Label><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name={`items.${index}.amount`} render={({ field }) => (<FormItem><Label>Montant Total</Label><FormControl><Input type="number" {...field} value={field.value || 0} /></FormControl><FormMessage /></FormItem>)} />
                                                 <FormField control={form.control} name={`items.${index}.startTime`} render={({ field }) => (<FormItem><Label>Heure de début</Label><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                                 <FormField control={form.control} name={`items.${index}.endTime`} render={({ field }) => (<FormItem><Label>Heure de fin</Label><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
@@ -647,7 +647,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
                                     <FormField control={form.control} name="paidAmount" render={({ field }) => (
                                         <FormItem>
                                             <Label>Montant Versé initialement</Label>
-                                            <FormControl><Input type="number" {...field} /></FormControl>
+                                            <FormControl><Input type="number" {...field} value={field.value || 0} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )} />
