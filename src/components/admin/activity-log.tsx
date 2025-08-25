@@ -122,7 +122,7 @@ const installmentSchema = z.object({
 type InstallmentFormValues = z.infer<typeof installmentSchema>;
 
 
-const ActivityLog = forwardRef(({ bookings, contracts, onAddTransaction, onUpdateBookingStatus, contractToPay, onContractPaid }: ActivityLogProps, ref) => {
+const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, onUpdateBookingStatus, contractToPay, onContractPaid }: ActivityLogProps, ref) => {
   const [activities, setActivities] = useState<ClientActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -225,7 +225,7 @@ const ActivityLog = forwardRef(({ bookings, contracts, onAddTransaction, onUpdat
     if (contract) {
         form.setValue("clientName", contract.clientName);
     }
-  }, [form.watch("contractId"), contracts]);
+  }, [form, contracts]);
 
   useEffect(() => {
     const items = form.watch("items");
@@ -239,7 +239,7 @@ const ActivityLog = forwardRef(({ bookings, contracts, onAddTransaction, onUpdat
             }
         });
     }
-  }, [form.watch("items"), selectedContract, update]);
+  }, [form, selectedContract, update]);
 
   const processActivityData = async (data: ActivityFormValues) => {
     const { clientName, phone, items, paymentType, paidAmount, bookingId, contractId } = data;
@@ -284,8 +284,8 @@ const ActivityLog = forwardRef(({ bookings, contracts, onAddTransaction, onUpdat
             duration: duration || undefined,
             paidAmount: paymentType === 'Échéancier' ? (paidAmount || 0) : item.amount,
             remainingAmount: paymentType === 'Échéancier' ? item.amount - (paidAmount || 0) : 0,
-            bookingId: item.category === "Réservation Studio" && bookingId ? bookingId : undefined,
-            contractId: contractId || undefined,
+            ...(item.category === "Réservation Studio" && bookingId && { bookingId }),
+            ...(contractId && { contractId }),
         };
 
         // Create transaction for this activity
@@ -814,7 +814,7 @@ const ActivityLog = forwardRef(({ bookings, contracts, onAddTransaction, onUpdat
                                                              <DropdownMenuItem onClick={() => { setDetailsActivity(firstActivity); setDetailsDialogOpen(true); }}>
                                                                 <Eye className="mr-2 h-4 w-4" /> Voir les détails
                                                             </DropdownMenuItem>
-                                                            {!isFullyPaid && firstActivity && (
+                                                            {!isFullyPaid && firstActivity && firstActivity.paymentType === 'Échéancier' && (
                                                                 <DropdownMenuItem onClick={() => handleOpenInstallmentDialog(firstActivity)}>
                                                                     <HandCoins className="mr-2 h-4 w-4" /> Encaisser le reste
                                                                 </DropdownMenuItem>
