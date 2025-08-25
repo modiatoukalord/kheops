@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 
 export type AppEvent = {
@@ -55,6 +56,10 @@ export default function EventManagement({ events, onAddEvent, onUpdateEvent, onD
     .sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
 
   const upcomingEvents = showAllEvents ? sortedUpcomingEvents : sortedUpcomingEvents.slice(0, 3);
+  
+  const pastEvents = events
+    .filter(event => (event.endDate || event.startDate) < new Date())
+    .sort((a, b) => b.startDate.getTime() - a.startDate.getTime());
     
   const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -80,7 +85,13 @@ export default function EventManagement({ events, onAddEvent, onUpdateEvent, onD
                 description: `L'événement "${title}" a été mis à jour.`,
             });
         } else {
-            onAddEvent(eventData as Omit<AppEvent, 'id'>);
+            const finalEventData: Omit<AppEvent, 'id'> = {
+                title,
+                startDate: date.from,
+                category,
+                ...(date.to && { endDate: date.to }),
+            };
+            onAddEvent(finalEventData);
             toast({
                 title: "Événement Ajouté",
                 description: `L'événement "${title}" a été ajouté.`,
@@ -137,7 +148,7 @@ export default function EventManagement({ events, onAddEvent, onUpdateEvent, onD
 
   return (
     <div className="grid md:grid-cols-3 gap-6">
-      <div className="md:col-span-2">
+      <div className="md:col-span-2 space-y-6">
         <Card>
             <CardHeader className="flex flex-row justify-between items-start">
                 <div>
@@ -242,6 +253,40 @@ export default function EventManagement({ events, onAddEvent, onUpdateEvent, onD
             />
           </CardContent>
         </Card>
+        <Card>
+            <CardHeader>
+                <CardTitle>Événements Passés</CardTitle>
+                <CardDescription>Historique de tous les événements terminés.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Événement</TableHead>
+                            <TableHead>Catégorie</TableHead>
+                            <TableHead>Date</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {pastEvents.length > 0 ? (
+                            pastEvents.map((event) => (
+                                <TableRow key={event.id}>
+                                    <TableCell className="font-medium">{event.title}</TableCell>
+                                    <TableCell>
+                                        <Badge className={`${categoryColors[event.category]} border-0`} variant="secondary">{event.category}</Badge>
+                                    </TableCell>
+                                    <TableCell>{format(event.startDate, "d MMM yyyy", { locale: fr })}</TableCell>
+                                </TableRow>
+                            ))
+                        ) : (
+                            <TableRow>
+                                <TableCell colSpan={3} className="text-center h-24">Aucun événement passé.</TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
       </div>
       <div>
         <Card>
@@ -309,5 +354,3 @@ export default function EventManagement({ events, onAddEvent, onUpdateEvent, onD
     </div>
   );
 }
-
-    
