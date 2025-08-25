@@ -48,11 +48,13 @@ export default function EventManagement({ events, onAddEvent, onUpdateEvent, onD
   const { toast } = useToast();
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<AppEvent | null>(null);
+  const [showAllEvents, setShowAllEvents] = useState(false);
 
-  const upcomingEvents = events
+  const sortedUpcomingEvents = events
     .filter(event => (event.endDate || event.startDate) >= new Date())
-    .sort((a,b) => a.startDate.getTime() - b.startDate.getTime())
-    .slice(0, 5);
+    .sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
+
+  const upcomingEvents = showAllEvents ? sortedUpcomingEvents : sortedUpcomingEvents.slice(0, 5);
     
   const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -242,7 +244,7 @@ export default function EventManagement({ events, onAddEvent, onUpdateEvent, onD
         <Card>
           <CardHeader>
             <CardTitle>Événements à venir</CardTitle>
-            <CardDescription>Les 5 prochains événements prévus.</CardDescription>
+            <CardDescription>Les prochains événements prévus.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -292,11 +294,17 @@ export default function EventManagement({ events, onAddEvent, onUpdateEvent, onD
               }
             </div>
           </CardContent>
-          <CardFooter className="pt-4 justify-center">
-             <Button variant="ghost" className="w-full">Voir tous les événements</Button>
-          </CardFooter>
+          {sortedUpcomingEvents.length > 5 && (
+            <CardFooter className="pt-4 justify-center">
+              <Button variant="ghost" className="w-full" onClick={() => setShowAllEvents(!showAllEvents)}>
+                {showAllEvents ? "Voir moins" : "Voir tous les événements"}
+              </Button>
+            </CardFooter>
+          )}
         </Card>
       </div>
     </div>
   );
 }
+
+    
