@@ -151,8 +151,7 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
             return;
         }
 
-        const newContractData = {
-            bookingId: bookingId,
+        const newContractData: any = {
             clientName: clientName,
             status: "En attente",
             lastUpdate: format(new Date(), 'yyyy-MM-dd'),
@@ -162,6 +161,11 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
             startDate: dateRange?.from,
             endDate: dateRange?.to,
         };
+
+        if (bookingId) {
+            newContractData.bookingId = bookingId;
+        }
+
 
         try {
             await addDoc(collection(db, "contracts"), newContractData);
@@ -363,7 +367,7 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
                         <form onSubmit={handleAddContract}>
                             <DialogHeader>
                                 <DialogTitle>Créer un nouveau contrat</DialogTitle>
-                                <DialogDescription>Saisissez l'ID de réservation et remplissez les détails pour générer un nouveau contrat.</DialogDescription>
+                                <DialogDescription>Saisissez l'ID de réservation ou le nom du client et remplissez les détails pour générer un nouveau contrat.</DialogDescription>
                             </DialogHeader>
                             <div className="grid gap-4 py-4">
                                <div className="space-y-2">
@@ -582,3 +586,5 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
         </Card>
     );
 }
+
+    
