@@ -10,8 +10,8 @@ import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, Search, Users, CreditCard, Activity, DollarSign, Filter, Phone, CalendarOff, PlusCircle, Check, ChevronsUpDown, CheckCircle, Trash2, Clock, User, UserPlus, Edit } from "lucide-react";
-import { addMonths, parse, format } from "date-fns";
+import { MoreHorizontal, Search, Users, CreditCard, Activity, DollarSign, Filter, Phone, CalendarOff, PlusCircle, Check, ChevronsUpDown, CheckCircle, Trash2, Clock, User, UserPlus, Edit, Loader2 } from "lucide-react";
+import { addMonths, parse, format, isValid } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import UserProfile from "./user-profile";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -19,72 +19,17 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from "@/lib/utils";
 import { KHEOPS_MEMBER_FEE } from "@/lib/pricing";
 
-
-const subscribersData = [
-  {
-    id: "user-001",
-    name: "Amina Dubois",
-    phone: "+242 06 123 4567",
-    plan: "Abonnement KHEOPS",
-    status: "Actif" as "Actif" | "En attente" | "Annulé",
-    startDate: "15-07-2024",
-    amount: "5 000 FCFA",
-  },
-  {
-    id: "user-002",
-    name: "Binta Traoré",
-    phone: "+242 05 987 6543",
-    plan: "Abonnement KHEOPS",
-    status: "Actif" as "Actif" | "En attente" | "Annulé",
-    startDate: "12-07-2024",
-    amount: "5 000 FCFA",
-  },
-  {
-    id: "user-003",
-    name: "Mamadou Sow",
-    phone: "+242 06 111 2233",
-    plan: "Abonnement KHEOPS",
-    status: "Annulé" as "Actif" | "En attente" | "Annulé",
-    startDate: "01-06-2024",
-    amount: "15 000 FCFA",
-  },
-  {
-    id: "user-004",
-    name: "Fatou N'diaye",
-    phone: "+242 05 444 5566",
-    plan: "Abonnement KHEOPS",
-    status: "Actif" as "Actif" | "En attente" | "Annulé",
-    startDate: "28-06-2024",
-    amount: "15 000 FCFA",
-  },
-  {
-    id: "user-005",
-    name: "Jean-Pierre Diallo",
-    phone: "+242 06 777 8899",
-    plan: "Abonnement KHEOPS",
-    status: "En attente" as "Actif" | "En attente" | "Annulé",
-    startDate: "20-07-2024",
-    amount: "5 000 FCFA",
-  },
-];
-
-const getEndDate = (startDate: string, durationMonths = 1) => {
-  try {
-    const date = parse(startDate, 'dd-MM-yyyy', new Date());
-    const endDate = addMonths(date, durationMonths);
-    return endDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
-  } catch (error) {
-    return "N/A";
-  }
+export type Subscriber = {
+  id: string;
+  name: string;
+  phone: string;
+  plan: string;
+  status: "Actif" | "En attente" | "Annulé";
+  startDate: string;
+  amount: string;
+  endDate: string;
 };
 
-
-export const initialSubscribers = subscribersData.map(s => ({
-  ...s,
-  endDate: s.status === "Annulé" ? "N/A" : getEndDate(s.startDate, 1),
-}));
-
-export type Subscriber = (typeof initialSubscribers)[0];
 type SubscriberStatus = Subscriber["status"];
 
 const statusVariant: { [key: string]: "default" | "secondary" | "destructive" } = {
@@ -97,18 +42,32 @@ type DialogMode = "new" | "renew" | "edit";
 
 interface UserManagementProps {
   subscribers: Subscriber[];
-  setSubscribers: React.Dispatch<React.SetStateAction<Subscriber[]>>;
-  onValidateSubscription: (subscriber: Subscriber) => void;
   onAddSubscriber: (newSubscriber: Omit<Subscriber, 'id'>) => void;
+  onUpdateSubscriber: (id: string, data: Partial<Omit<Subscriber, 'id'>>) => void;
+  onDeleteSubscriber: (id: string) => void;
+  onValidateSubscription: (subscriber: Subscriber) => void;
   onRenewSubscriber: (subscriberToRenew: Subscriber, durationMonths: number) => void;
 }
 
+const getEndDate = (startDate: string, durationMonths = 1) => {
+  try {
+    const date = parse(startDate, 'dd-MM-yyyy', new Date());
+    if (!isValid(date)) return "N/A";
+    const endDate = addMonths(date, durationMonths);
+    return format(endDate, 'dd-MM-yyyy');
+  } catch (error) {
+    return "N/A";
+  }
+};
+
+
 export default function UserManagement({
   subscribers,
-  setSubscribers,
-  onValidateSubscription,
   onAddSubscriber,
-  onRenewSubscriber
+  onUpdateSubscriber,
+  onDeleteSubscriber,
+  onValidateSubscription,
+  onRenewSubscriber,
 }: UserManagementProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setDialogOpen] = useState(false);
@@ -134,7 +93,7 @@ export default function UserManagement({
     const amount = (KHEOPS_MEMBER_FEE) * durationMonths;
 
     if (dialogMode === "renew" && subscriberForDialog) {
-        const updatedSubscriber = {
+        const updatedSubscriber: Subscriber = {
             ...subscriberForDialog,
             plan: 'Abonnement KHEOPS',
             status: 'Actif' as 'Actif',
@@ -149,14 +108,13 @@ export default function UserManagement({
         });
 
     } else if (dialogMode === 'edit' && subscriberForDialog) {
-        const updatedSubscriber = { ...subscriberForDialog, name, phone };
-        setSubscribers(subscribers.map(s => s.id === subscriberForDialog.id ? updatedSubscriber : s));
+        onUpdateSubscriber(subscriberForDialog.id, { name, phone });
         toast({
             title: "Abonné Modifié",
             description: `Les informations de ${name} ont été mises à jour.`,
         });
     } else {
-        const newSubscriber = {
+        const newSubscriber: Omit<Subscriber, 'id'> = {
             name,
             phone,
             plan: 'Abonnement KHEOPS',
@@ -181,9 +139,6 @@ export default function UserManagement({
     const subscriber = subscribers.find(s => s.id === subscriberId);
     if (!subscriber) return;
 
-    let title = "";
-    let description = "";
-
     switch (action) {
       case "view":
         setSelectedSubscriber(subscriber);
@@ -194,22 +149,15 @@ export default function UserManagement({
         setDialogOpen(true);
         break;
       case "validate":
-         const updatedSubscribers = subscribers.map(s => 
-          s.id === subscriberId ? { ...s, status: "Actif" as const } : s
-        );
-        setSubscribers(updatedSubscribers);
-        const validatedSubscriber = updatedSubscribers.find(s => s.id === subscriberId);
-        if(validatedSubscriber) onValidateSubscription(validatedSubscriber);
-
-        title = "Abonnement Validé";
-        description = `L'abonnement de ${subscriber.name} est maintenant actif.`;
-        toast({ title, description });
+        onUpdateSubscriber(subscriberId, { status: "Actif" });
+        onValidateSubscription({ ...subscriber, status: "Actif" });
+        toast({ title: "Abonnement Validé", description: `L'abonnement de ${subscriber.name} est maintenant actif.` });
         break;
       case "delete":
-        setSubscribers(subscribers.filter(s => s.id !== subscriberId));
-        title = "Abonnement Supprimé";
-        description = `L'abonnement de ${subscriber.name} a été supprimé.`;
-        toast({ title, description, variant: "destructive" });
+        if (window.confirm(`Êtes-vous sûr de vouloir supprimer l'abonnement de ${subscriber.name}?`)) {
+            onDeleteSubscriber(subscriberId);
+            toast({ title: "Abonnement Supprimé", description: `L'abonnement de ${subscriber.name} a été supprimé.`, variant: "destructive" });
+        }
         break;
       default:
         return;
@@ -218,7 +166,7 @@ export default function UserManagement({
   
   const filteredSubscribers = subscribers.filter(subscriber => {
     const matchesSearch = subscriber.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          subscriber.phone.toLowerCase().includes(searchTerm.toLowerCase());
+                          (subscriber.phone && subscriber.phone.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesStatus = statusFilters.length === 0 || statusFilters.includes(subscriber.status);
     return matchesSearch && matchesStatus;
   });
@@ -417,7 +365,7 @@ export default function UserManagement({
                                     <Label htmlFor="phone">Téléphone</Label>
                                     <div className="relative">
                                         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                        <Input id="phone" name="phone" placeholder="Ex: +242 06 123 4567" className="pl-10" required defaultValue={subscriberForDialog?.phone} disabled={dialogMode === 'renew'} />
+                                        <Input id="phone" name="phone" placeholder="Ex: +242 06 123 4567" className="pl-10" required defaultValue={subscriberForDialog?.phone} disabled={dialogMode === 'renew' && !subscriberForDialog?.phone} />
                                     </div>
                                 </div>
                                 {dialogMode !== 'edit' && (
@@ -450,7 +398,8 @@ export default function UserManagement({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredSubscribers.map((subscriber) => (
+                {filteredSubscribers.length > 0 ? (
+                  filteredSubscribers.map((subscriber) => (
                   <TableRow key={subscriber.id}>
                     <TableCell>
                         <div className="font-medium">{subscriber.name}</div>
@@ -494,7 +443,7 @@ export default function UserManagement({
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleAction('edit', subscriber.id)}>
                             <Edit className="mr-2 h-4 w-4" />
-                            Modifier l'abonnement
+                            Modifier l'abonné
                           </DropdownMenuItem>
                           {subscriber.status === 'En attente' && (
                               <DropdownMenuItem onClick={() => handleAction('validate', subscriber.id)}>
@@ -511,7 +460,18 @@ export default function UserManagement({
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                ))}
+                ))) : (
+                     <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center">
+                          {subscribers.length === 0 ? (
+                             <div className="flex items-center justify-center gap-2">
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                                <span>Chargement des abonnés...</span>
+                             </div>
+                           ) : "Aucun abonné trouvé."}
+                        </TableCell>
+                    </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
@@ -520,7 +480,3 @@ export default function UserManagement({
     </div>
   );
 }
-
-    
-
-    

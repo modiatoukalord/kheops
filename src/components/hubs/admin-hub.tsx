@@ -5,7 +5,7 @@ import { useState, forwardRef, useImperativeHandle } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home, Wallet, Cog, DollarSign } from "lucide-react";
-import UserManagement, { Subscriber, initialSubscribers as iSubscribers } from "@/components/admin/user-management";
+import UserManagement, { Subscriber } from "@/components/admin/user-management";
 import ContentManagement, { initialContent as iContent, Content } from "@/components/admin/content-management";
 import BookingSchedule, { Booking } from "@/components/admin/booking-schedule";
 import SiteSettings from "@/components/admin/site-settings";
@@ -33,6 +33,10 @@ export type AdminHubProps = {
   setBookings: React.Dispatch<React.SetStateAction<Booking[]>>;
   transactions: Transaction[];
   onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
+  subscribers: Subscriber[];
+  onAddSubscriber: (subscriber: Omit<Subscriber, 'id'>) => Promise<void>;
+  onUpdateSubscriber: (id: string, subscriber: Partial<Omit<Subscriber, 'id'>>) => Promise<void>;
+  onDeleteSubscriber: (id: string) => Promise<void>;
   setShowMainHeader: (show: boolean) => void;
 }
 
@@ -81,14 +85,20 @@ const adminCategories: AdminCategory[] = [
 ];
 
 
-const AdminHub = forwardRef<any, AdminHubProps>(({ content, setContent, events, onAddEvent, onUpdateEvent, onDeleteEvent, bookings, setBookings, transactions, onAddTransaction, setShowMainHeader }, ref) => {
+const AdminHub = forwardRef<any, AdminHubProps>(({ 
+    content, setContent, 
+    events, onAddEvent, onUpdateEvent, onDeleteEvent, 
+    bookings, setBookings, 
+    transactions, onAddTransaction,
+    subscribers, onAddSubscriber, onUpdateSubscriber, onDeleteSubscriber,
+    setShowMainHeader 
+}, ref) => {
   const [activeView, setActiveView] = useState<AdminView>("dashboard");
 
   useImperativeHandle(ref, () => ({
     setActiveView
   }));
 
-  const [subscribers, setSubscribers] = useState<Subscriber[]>(iSubscribers);
   const [payouts, setPayouts] = useState<Payout[]>(iPayouts);
   const [fixedCosts, setFixedCosts] = useState<FixedCost[]>(iFixedCosts);
 
@@ -110,20 +120,13 @@ const AdminHub = forwardRef<any, AdminHubProps>(({ content, setContent, events, 
   };
   
   const handleAddSubscriber = (newSubscriber: Omit<Subscriber, 'id'>) => {
-    const fullSubscriber = { ...newSubscriber, id: `user-${Date.now()}`};
-    setSubscribers(prev => [fullSubscriber, ...prev]);
-    handleValidateSubscription(fullSubscriber);
+    onAddSubscriber(newSubscriber);
+    handleValidateSubscription({ ...newSubscriber, id: 'temp-id-for-transaction' });
   };
   
   const handleRenewSubscriber = (subscriberToRenew: Subscriber, durationMonths: number) => {
-    setSubscribers(prev => 
-        prev.map(sub => 
-            sub.id === subscriberToRenew.id
-            ? { ...subscriberToRenew }
-            : sub
-        )
-    );
-     handleValidateSubscription(subscriberToRenew);
+    onUpdateSubscriber(subscriberToRenew.id, { ...subscriberToRenew });
+    handleValidateSubscription(subscriberToRenew);
   };
 
   const handleAddPayout = (newPayout: Omit<Payout, 'id'>) => {
@@ -158,7 +161,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({ content, setContent, events, 
 
 
   const adminViews = {
-    users: { component: UserManagement, title: "Gestion des Abonnements", props: { subscribers, setSubscribers, onValidateSubscription: handleValidateSubscription, onAddSubscriber: handleAddSubscriber, onRenewSubscriber: handleRenewSubscriber } },
+    users: { component: UserManagement, title: "Gestion des Abonnements", props: { subscribers, onAddSubscriber: handleAddSubscriber, onUpdateSubscriber, onDeleteSubscriber, onValidateSubscription: handleValidateSubscription, onRenewSubscriber: handleRenewSubscriber } },
     content: { component: ContentManagement, title: "Gestion des Contenus", props: { content, setContent } },
     bookings: { component: BookingSchedule, title: "Planning des Réservations", props: { bookings, setBookings, onAddBooking: handleAddBooking } },
     settings: { component: SiteSettings, title: "Paramètres du Site", props: {} },

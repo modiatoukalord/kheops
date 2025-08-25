@@ -12,6 +12,7 @@ import { initialContent, Content } from "@/components/admin/content-management";
 import { AppEvent } from "@/components/admin/event-management";
 import { Booking } from "@/components/admin/booking-schedule";
 import { Transaction } from "@/components/admin/financial-management";
+import { Subscriber } from "@/components/admin/user-management";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, getDocs, query, orderBy, Timestamp, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
 
@@ -34,6 +35,7 @@ export default function Home() {
   const [events, setEvents] = useState<AppEvent[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const adminHubRef = useRef<{ setActiveView: (view: any) => void }>(null);
 
@@ -86,11 +88,25 @@ export default function Home() {
     }, (error) => {
         console.error("Error fetching transactions: ", error);
     });
+    
+    const fetchSubscribers = onSnapshot(query(collection(db, "subscribers"), orderBy("startDate", "desc")), (snapshot) => {
+        const subscribersData = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+            } as Subscriber;
+        });
+        setSubscribers(subscribersData);
+    }, (error) => {
+        console.error("Error fetching subscribers: ", error);
+    });
 
     return () => {
         fetchBookings();
         fetchEvents();
         fetchTransactions();
+        fetchSubscribers();
     };
   }, []);
 
@@ -149,6 +165,31 @@ export default function Home() {
       console.error("Error adding transaction: ", error);
     }
   };
+  
+  const handleAddSubscriber = async (newSubscriberData: Omit<Subscriber, 'id'>) => {
+    try {
+      await addDoc(collection(db, "subscribers"), newSubscriberData);
+    } catch (error) {
+      console.error("Error adding subscriber: ", error);
+    }
+  };
+
+  const handleUpdateSubscriber = async (subscriberId: string, updatedSubscriberData: Partial<Omit<Subscriber, 'id'>>) => {
+    try {
+      const subscriberRef = doc(db, "subscribers", subscriberId);
+      await updateDoc(subscriberRef, updatedSubscriberData);
+    } catch (error) {
+      console.error("Error updating subscriber: ", error);
+    }
+  };
+
+  const handleDeleteSubscriber = async (subscriberId: string) => {
+    try {
+      await deleteDoc(doc(db, "subscribers", subscriberId));
+    } catch (error) {
+      console.error("Error deleting subscriber: ", error);
+    }
+  };
 
 
   const ActiveComponent = hubComponents[activeHub];
@@ -161,6 +202,7 @@ export default function Home() {
         events, onAddEvent: handleAddEvent, onUpdateEvent: handleUpdateEvent, onDeleteEvent: handleDeleteEvent,
         bookings, setBookings, 
         transactions, onAddTransaction: handleAddTransaction,
+        subscribers, onAddSubscriber: handleAddSubscriber, onUpdateSubscriber: handleUpdateSubscriber, onDeleteSubscriber: handleDeleteSubscriber,
         setShowMainHeader, ref: adminHubRef 
     },
   };
