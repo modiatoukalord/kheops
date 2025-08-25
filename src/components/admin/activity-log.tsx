@@ -282,7 +282,6 @@ export default function ActivityLog({ bookings, onAddTransaction, onUpdateBookin
   const handleOpenNewActivityDialog = (booking: Booking | null = null, remainingToPay: number = 0) => {
      if (booking) { // Creating a new activity from a booking
          const amountToPay = remainingToPay > 0 ? remainingToPay : booking.amount;
-         const isInstallment = remainingToPay > 0 && remainingToPay < booking.amount;
          
          form.reset({
             clientName: booking.artistName,
@@ -590,8 +589,8 @@ export default function ActivityLog({ bookings, onAddTransaction, onUpdateBookin
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredActivities.length > 0 ? (
-                            filteredActivities.map((activity) => {
+                            {filteredActivities.filter(act => act.category !== 'Réservation Studio').length > 0 ? (
+                            filteredActivities.filter(act => act.category !== 'Réservation Studio').map((activity) => {
                                 const catInfo = categoryConfig[activity.category];
                                 const isInstallmentAndUnpaid = activity.paymentType === 'Échéancier' && (activity.remainingAmount || 0) > 0;
                                 return (
@@ -662,7 +661,7 @@ export default function ActivityLog({ bookings, onAddTransaction, onUpdateBookin
                             ) : (
                             <TableRow>
                                 <TableCell colSpan={7} className="h-24 text-center">
-                                Aucune activité trouvée.
+                                Aucune activité diverse trouvée.
                                 </TableCell>
                             </TableRow>
                             )}
@@ -691,6 +690,7 @@ export default function ActivityLog({ bookings, onAddTransaction, onUpdateBookin
                                         const totalPaid = relatedActivities.reduce((sum, act) => sum + (act.paidAmount || 0), 0);
                                         const isFullyPaid = totalPaid >= booking.amount;
                                         const isPartiallyPaid = totalPaid > 0 && totalPaid < booking.amount;
+                                        const firstActivity = relatedActivities[0];
 
                                         return (
                                         <TableRow key={booking.id}>
@@ -714,16 +714,33 @@ export default function ActivityLog({ bookings, onAddTransaction, onUpdateBookin
                                                 )}
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                {totalPaid > 0 ? (
-                                                    <Button size="sm" variant="destructive" onClick={() => handleCancelPayment(booking.id)}>
-                                                        <Ban className="mr-2 h-4 w-4"/>
-                                                        Annuler
-                                                    </Button>
-                                                ) : (
-                                                     <Button size="sm" onClick={() => handleOpenNewActivityDialog(booking, booking.amount - totalPaid)}>
+                                                {totalPaid === 0 ? (
+                                                    <Button size="sm" onClick={() => handleOpenNewActivityDialog(booking, booking.amount - totalPaid)}>
                                                         <HandCoins className="mr-2 h-4 w-4"/>
                                                         Encaisser
                                                     </Button>
+                                                ) : (
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon">
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                             <DropdownMenuItem onClick={() => { setDetailsActivity(firstActivity); setDetailsDialogOpen(true); }}>
+                                                                <Eye className="mr-2 h-4 w-4" /> Voir les détails
+                                                            </DropdownMenuItem>
+                                                            {!isFullyPaid && firstActivity && (
+                                                                <DropdownMenuItem onClick={() => handleOpenInstallmentDialog(firstActivity)}>
+                                                                    <HandCoins className="mr-2 h-4 w-4" /> Encaisser le reste
+                                                                </DropdownMenuItem>
+                                                            )}
+                                                            <DropdownMenuItem className="text-red-500" onClick={() => handleCancelPayment(booking.id)}>
+                                                                <Ban className="mr-2 h-4 w-4"/>
+                                                                Annuler le paiement
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
                                                 )}
                                             </TableCell>
                                         </TableRow>
