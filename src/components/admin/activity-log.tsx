@@ -391,7 +391,6 @@ export default function ActivityLog({ bookings, onAddTransaction, onUpdateBookin
             const deletePromises = relatedActivitiesToDelete.map(act => deleteDoc(doc(db, "activities", act.id)));
             await Promise.all(deletePromises);
             
-            // Note: This does not create a counter-transaction. You might want to add a "Dépense" transaction for refunds.
             await onUpdateBookingStatus(bookingId, 'En attente');
             
             toast({
@@ -886,3 +885,5 @@ export default function ActivityLog({ bookings, onAddTransaction, onUpdateBookin
     </div>
   );
 }
+
+    
