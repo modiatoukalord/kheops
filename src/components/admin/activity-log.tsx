@@ -237,9 +237,12 @@ export default function ActivityLog({ bookings, onAddTransaction, onUpdateBookin
             duration: duration,
             paidAmount: paymentType === 'Échéancier' ? (paidAmount || 0) : item.amount,
             remainingAmount: paymentType === 'Échéancier' ? item.amount - (paidAmount || 0) : 0,
-            bookingId: item.category === "Réservation Studio" ? bookingId : undefined,
         };
         
+        if (item.category === "Réservation Studio" && bookingId) {
+            (activityPayload as Partial<ClientActivity>).bookingId = bookingId;
+        }
+
         if (duration === null) {
             delete (activityPayload as Partial<typeof activityPayload>).duration;
         }
@@ -904,3 +907,4 @@ export default function ActivityLog({ bookings, onAddTransaction, onUpdateBookin
 }
 
     
+
