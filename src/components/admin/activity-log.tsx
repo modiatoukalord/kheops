@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle, useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -216,7 +216,9 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
       }
   }, 0);
 
-  const signedContracts = (contracts || []).filter(c => c.status === "Signé");
+  const signedContracts = useMemo(() => {
+    return (contracts || []).filter(c => c.status === "Signé");
+  }, [contracts]);
 
   useEffect(() => {
     const contractId = form.watch("contractId");
@@ -452,6 +454,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
   
     const handleCancelPayment = async (bookingId: string) => {
         const relatedActivitiesToDelete = activities.filter(act => act.bookingId === bookingId);
+        
         if (relatedActivitiesToDelete.length === 0) {
             toast({ title: "Aucun paiement trouvé", description: "Aucun paiement à annuler pour cette réservation.", variant: "destructive" });
             return;
@@ -573,7 +576,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
                                      <FormField control={form.control} name="contractId" render={({ field }) => (
                                         <FormItem>
                                             <Label>Contrat Associé (Optionnel)</Label>
-                                             <Select onValueChange={(value) => { field.onChange(value === 'none' ? undefined : value); if (value === 'none') form.setValue('clientName', ''); }} defaultValue={field.value}>
+                                             <Select onValueChange={(value) => { field.onChange(value === 'none' ? undefined : value); if (value === 'none') { form.setValue('clientName', ''); setSelectedContract(null); } }} defaultValue={field.value}>
                                                 <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un contrat..." /></SelectTrigger></FormControl>
                                                 <SelectContent>
                                                     <SelectItem value="none">Sans Contrat</SelectItem>
