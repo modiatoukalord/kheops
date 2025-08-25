@@ -10,7 +10,7 @@ import WearHub from "@/components/hubs/wear-hub";
 import AdminHub from "@/components/hubs/admin-hub";
 import { initialContent, Content } from "@/components/admin/content-management";
 import { AppEvent } from "@/components/admin/event-management";
-import { Booking, initialBookings } from "@/components/admin/booking-schedule";
+import { Booking } from "@/components/admin/booking-schedule";
 import { Transaction } from "@/components/admin/financial-management";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, getDocs, query, orderBy, Timestamp, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
@@ -55,7 +55,7 @@ export default function Home() {
         setIsLoading(false);
     }, (error) => {
         console.error("Error fetching bookings: ", error);
-        setBookings(initialBookings);
+        setBookings([]);
         setIsLoading(false);
     });
 

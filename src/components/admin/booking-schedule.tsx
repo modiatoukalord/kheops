@@ -48,72 +48,6 @@ export type Booking = {
 }
 
 
-export const initialBookings: Booking[] = [
-  {
-    id: "res-001",
-    artistName: "KHEOPS Collective",
-    projectName: "Chroniques de l'Aube",
-    projectType: "Album",
-    date: new Date("2024-07-31T09:00:00"),
-    timeSlot: "09:00 - 11:00",
-    service: "Prise de voix + Mix",
-    status: "Confirmé",
-    amount: 100000,
-    phone: "+242 06 000 0001",
-    tracks: [
-        { name: "Intro", date: new Date("2024-07-31T09:00:00"), timeSlot: "09:00 - 11:00" },
-        { name: "Outro", date: new Date("2024-08-01T09:00:00"), timeSlot: "09:00 - 11:00" },
-    ]
-  },
-  {
-    id: "res-002",
-    artistName: "L'Artiste Anonyme",
-    projectName: "Single 'Mirage'",
-    projectType: "Single",
-    date: new Date("2024-08-02T14:00:00"),
-    timeSlot: "14:00 - 16:00",
-    service: "Prise de voix",
-    status: "En attente",
-    amount: 30000,
-    phone: "+242 06 000 0002",
-  },
-  {
-    id: "res-003",
-    artistName: "Mc Solaar",
-    projectName: "Projet 'Nouvelle Vague'",
-    projectType: "Mixtape",
-    date: new Date("2024-08-05T16:00:00"),
-    timeSlot: "16:00 - 18:00",
-    service: "Full-package",
-    status: "Confirmé",
-    amount: 75000,
-    phone: "+242 06 000 0003",
-  },
-    {
-    id: "res-004",
-    artistName: "Aya Nakamura",
-    projectName: "Maquette 'Djadja 2'",
-    projectType: "Single",
-    date: new Date("2024-08-01T11:00:00"),
-    timeSlot: "11:00 - 13:00",
-    service: "Prise de voix",
-    status: "Annulé",
-    amount: 30000,
-  },
-  {
-    id: "res-005",
-    artistName: "Damso",
-    projectName: "Album 'QALF 2'",
-    projectType: "Album",
-    date: new Date(),
-    timeSlot: "18:00 - 20:00",
-    service: "Prise de voix + Mix",
-    status: "En attente",
-    amount: 50000,
-  },
-];
-
-
 const bookingStatusConfig = {
   "Confirmé": { variant: "default", icon: CheckCircle2, color: "text-green-500" },
   "En attente": { variant: "secondary", icon: Clock, color: "text-yellow-500" },
@@ -201,7 +135,6 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
     try {
       const bookingRef = doc(db, "bookings", bookingId);
       await updateDoc(bookingRef, { status: newStatus });
-      setBookings(bookings.map(b => b.id === bookingId ? { ...b, status: newStatus } : b));
       toast({
           title: "Statut de la réservation mis à jour",
           description: `La réservation a été marquée comme "${newStatus}".`,
@@ -217,9 +150,9 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
   };
 
   const handleDeleteBooking = async (bookingId: string) => {
+    if (!window.confirm("Êtes-vous sûr de vouloir supprimer cette réservation ?")) return;
     try {
         await deleteDoc(doc(db, "bookings", bookingId));
-        setBookings(bookings.filter(b => b.id !== bookingId));
         toast({
             title: "Réservation Supprimée",
             description: "La réservation a été supprimée avec succès.",
@@ -283,8 +216,7 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
     if (editingBooking) {
       try {
         const bookingRef = doc(db, "bookings", editingBooking.id);
-        await updateDoc(bookingRef, bookingData);
-        setBookings(bookings.map(b => b.id === editingBooking.id ? { ...b, ...bookingData } : b));
+        await updateDoc(bookingRef, { ...bookingData });
         toast({
           title: "Réservation modifiée",
           description: `La réservation pour ${bookingData.artistName} a été mise à jour.`,
@@ -666,5 +598,3 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking }:
     </div>
   );
 }
-
-    
