@@ -42,16 +42,6 @@ export type Transaction = {
   status: "Complété" | "En attente" | "Annulé";
 };
 
-const monthlyChartData = [
-  { name: 'Jan', Revenus: 400000, Dépenses: 240000 },
-  { name: 'Fév', Revenus: 300000, Dépenses: 139800 },
-  { name: 'Mar', Revenus: 500000, Dépenses: 380000 },
-  { name: 'Avr', Revenus: 478000, Dépenses: 290800 },
-  { name: 'Mai', Revenus: 689000, Dépenses: 480000 },
-  { name: 'Juin', Revenus: 640000, Dépenses: 380000 },
-  { name: 'Juil', Revenus: 720000, Dépenses: 430000 },
-];
-
 const statusVariant: { [key: string]: "default" | "secondary" | "destructive" } = {
   "Complété": "default",
   "En attente": "secondary",
@@ -133,6 +123,37 @@ export default function FinancialManagement({ transactions, onAddTransaction }: 
     { title: "Bénéfice Net", value: `${netProfit.toLocaleString('fr-FR')} FCFA`, icon: ArrowUpRight, change: "+20% ce mois", color: "text-green-500" },
   ];
   
+  const monthlyChartData = useMemo(() => {
+    const monthlyData: { [month: string]: { Revenus: number, Dépenses: number } } = {};
+
+    transactions
+      .filter(t => t.status === 'Complété')
+      .forEach(t => {
+        const month = format(parseISO(t.date), 'MMM yyyy', { locale: fr });
+        if (!monthlyData[month]) {
+          monthlyData[month] = { Revenus: 0, Dépenses: 0 };
+        }
+        if (t.type === 'Revenu') {
+          monthlyData[month].Revenus += t.amount;
+        } else if (t.type === 'Dépense') {
+          monthlyData[month].Dépenses += Math.abs(t.amount);
+        }
+      });
+      
+    return Object.keys(monthlyData)
+      .map(month => ({
+        name: month,
+        ...monthlyData[month]
+      }))
+      .sort((a, b) => {
+        const [aMonth, aYear] = a.name.split(' ');
+        const [bMonth, bYear] = b.name.split(' ');
+        const aDate = new Date(`${aMonth} 1, ${aYear}`);
+        const bDate = new Date(`${bMonth} 1, ${bYear}`);
+        return aDate.getTime() - bDate.getTime();
+      });
+  }, [transactions]);
+  
   const revenueByCategoryData = useMemo(() => {
     const monthlyRevenue: { [month: string]: { [category: string]: number } } = {};
 
@@ -195,7 +216,7 @@ export default function FinancialManagement({ transactions, onAddTransaction }: 
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={monthlyChartData}>
                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.5)"/>
-                            <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))"/>
+                            <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" angle={-45} textAnchor="end" height={50} interval={0} />
                             <YAxis stroke="hsl(var(--muted-foreground))" tickFormatter={(value) => `${Number(value) / 1000}k`}/>
                             <Tooltip
                                  contentStyle={{
@@ -390,3 +411,5 @@ export default function FinancialManagement({ transactions, onAddTransaction }: 
     </div>
   );
 }
+
+  
