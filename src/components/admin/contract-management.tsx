@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -162,7 +162,7 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
         });
 
 
-        const newContractData: Omit<Contract, 'id'> = {
+        const newContractData: Omit<Contract, 'id' | 'bookingId'> & {bookingId?: string} = {
             clientName: clientName,
             status: "En attente",
             lastUpdate: format(new Date(), 'yyyy-MM-dd'),
@@ -175,7 +175,7 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
         };
 
         if (bookingId) {
-            (newContractData as any).bookingId = bookingId;
+            newContractData.bookingId = bookingId;
         }
 
 
