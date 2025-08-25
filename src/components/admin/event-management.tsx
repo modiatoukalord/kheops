@@ -63,12 +63,15 @@ export default function EventManagement({ events, onAddEvent, onUpdateEvent, onD
     const category = formData.get("category") as string;
     
     if (date?.from && title && category) {
-        const eventData: Omit<AppEvent, 'id'> = {
+        const eventData: Partial<Omit<AppEvent, 'id'>> = {
             title,
             startDate: date.from,
-            endDate: date.to,
             category,
         };
+
+        if (date.to) {
+            eventData.endDate = date.to;
+        }
 
         if (editingEvent) {
             onUpdateEvent(editingEvent.id, eventData);
@@ -77,7 +80,7 @@ export default function EventManagement({ events, onAddEvent, onUpdateEvent, onD
                 description: `L'événement "${title}" a été mis à jour.`,
             });
         } else {
-            onAddEvent(eventData);
+            onAddEvent(eventData as Omit<AppEvent, 'id'>);
             toast({
                 title: "Événement Ajouté",
                 description: `L'événement "${title}" a été ajouté.`,
@@ -306,5 +309,3 @@ export default function EventManagement({ events, onAddEvent, onUpdateEvent, onD
     </div>
   );
 }
-
-    
