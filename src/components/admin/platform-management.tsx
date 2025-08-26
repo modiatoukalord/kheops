@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,6 +64,24 @@ export default function PlatformManagement({ payouts, setPayouts, onAddPayout }:
   const [tiktokStats, setTiktokStats] = useState<TiktokStats | null>(null);
   const [isLoadingYoutube, setIsLoadingYoutube] = useState(false);
   const [isLoadingTiktok, setIsLoadingTiktok] = useState(false);
+  
+  useEffect(() => {
+    // Check if TikTok stats are available (e.g., after auth callback)
+    const fetchStats = async () => {
+        setIsLoadingTiktok(true);
+        const stats = await getTiktokStats();
+        if (stats) {
+            setTiktokStats(stats);
+            toast({
+                title: "Statistiques TikTok chargées",
+                description: "Les données réelles de votre compte ont été récupérées.",
+            });
+        }
+        setIsLoadingTiktok(false);
+    };
+    fetchStats();
+  }, [toast]);
+
 
   const handleAddPayout = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -117,33 +135,8 @@ export default function PlatformManagement({ payouts, setPayouts, onAddPayout }:
     }
   };
   
-  const handleConnectTiktok = async () => {
-    setIsLoadingTiktok(true);
-    try {
-        const stats = await getTiktokStats();
-        if(stats) {
-            setTiktokStats(stats);
-            toast({
-                title: "Connexion Simulée Réussie",
-                description: "Les statistiques TikTok ont été chargées (données simulées).",
-            });
-        } else {
-             toast({
-                title: "Erreur de Connexion",
-                description: "Impossible de charger les statistiques TikTok simulées.",
-                variant: "destructive",
-            });
-        }
-    } catch (error) {
-        console.error(error);
-        toast({
-            title: "Erreur de Connexion",
-            description: "Une erreur est survenue lors de la simulation de connexion TikTok.",
-            variant: "destructive",
-        });
-    } finally {
-        setIsLoadingTiktok(false);
-    }
+  const handleConnectTiktok = () => {
+    window.location.href = '/api/tiktok/auth';
   };
 
   const staticPlatformData = {
@@ -228,28 +221,28 @@ export default function PlatformManagement({ payouts, setPayouts, onAddPayout }:
                     <div className="grid grid-cols-3 gap-4 text-center">
                         <div className="p-3 bg-card/50 rounded-lg">
                             <Users className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
-                            <p className="text-xl font-bold">{tiktokStats.followerCount}</p>
+                            <p className="text-xl font-bold">{tiktokStats.follower_count.toLocaleString('fr-FR')}</p>
                             <p className="text-xs text-muted-foreground">Followers</p>
                         </div>
                         <div className="p-3 bg-card/50 rounded-lg">
                             <Eye className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
-                            <p className="text-xl font-bold">{tiktokStats.likeCount}</p>
+                            <p className="text-xl font-bold">{tiktokStats.likes_count.toLocaleString('fr-FR')}</p>
                             <p className="text-xs text-muted-foreground">J'aime</p>
                         </div>
                         <div className="p-3 bg-card/50 rounded-lg">
                            <Library className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
-                            <p className="text-xl font-bold">{tiktokStats.videoCount}</p>
+                            <p className="text-xl font-bold">{tiktokStats.video_count.toLocaleString('fr-FR')}</p>
                             <p className="text-xs text-muted-foreground">Vidéos</p>
                         </div>
                     </div>
                 ) : (
                     <div className="text-center p-4 bg-card/50 rounded-lg">
-                        <p className="text-muted-foreground mb-3">Connectez votre compte TikTok.</p>
+                        <p className="text-muted-foreground mb-3">Connectez votre compte TikTok pour voir vos vraies données.</p>
                         <Button onClick={handleConnectTiktok} disabled={isLoadingTiktok}>
                             <LinkIcon className="mr-2 h-4 w-4" />
                             {isLoadingTiktok ? <><Loader2 className="animate-spin mr-2"/> Connexion...</> : 'Connecter à TikTok'}
                         </Button>
-                         <p className="text-xs text-muted-foreground mt-2">La connexion réelle nécessite une authentification (OAuth)</p>
+                         <p className="text-xs text-muted-foreground mt-2">Vous serez redirigé vers TikTok pour autoriser l'accès.</p>
                     </div>
                 )}
             </CardContent>

@@ -1,7 +1,8 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
+import { useSearchParams } from 'next/navigation';
 import type { ComponentType } from "react";
 import Header from "@/components/layout/header";
 import CultureHub from "@/components/hubs/culture-hub";
@@ -28,7 +29,8 @@ const hubComponents: Hubs = {
   admin: AdminHub,
 };
 
-export default function Home() {
+function HomePageContent() {
+  const searchParams = useSearchParams();
   const [activeHub, setActiveHub] = useState("culture");
   const [showMainHeader, setShowMainHeader] = useState(true);
   const [content, setContent] = useState<Content[]>(initialContent);
@@ -38,6 +40,17 @@ export default function Home() {
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const adminHubRef = useRef<{ setActiveView: (view: any) => void }>(null);
+
+  useEffect(() => {
+      const hub = searchParams.get('hub');
+      const view = searchParams.get('view');
+      if (hub === 'admin') {
+          setActiveHub('admin');
+          if (view && adminHubRef.current) {
+              adminHubRef.current.setActiveView(view);
+          }
+      }
+  }, [searchParams]);
 
   useEffect(() => {
     const fetchBookings = onSnapshot(query(collection(db, "bookings"), orderBy("date", "desc")), (snapshot) => {
@@ -219,7 +232,7 @@ export default function Home() {
     admin: { 
         content, setContent, 
         events, onAddEvent: handleAddEvent, onUpdateEvent: handleUpdateEvent, onDeleteEvent: handleDeleteEvent,
-        bookings, setBookings, onAddBooking: handleAddBooking, onUpdateBookingStatus: handleUpdateBookingStatus,
+        bookings, onAddBooking: handleAddBooking, onUpdateBookingStatus: handleUpdateBookingStatus,
         transactions, onAddTransaction: handleAddTransaction,
         subscribers, onAddSubscriber: handleAddSubscriber, onUpdateSubscriber: handleUpdateSubscriber, onDeleteSubscriber: handleDeleteSubscriber,
         onUpdateContract: handleUpdateContract,
@@ -237,4 +250,13 @@ export default function Home() {
       </main>
     </div>
   );
+}
+
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <HomePageContent />
+    </Suspense>
+  )
 }
