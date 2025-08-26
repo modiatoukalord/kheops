@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { getYoutubeChannelStats, YouTubeStats } from "@/ai/flows/youtube-stats-flow";
-import { getTiktokStats, TiktokStats } from "@/ai/flows/tiktok-stats-flow";
+import { getSocialStats, SocialStats } from "@/ai/flows/ayrshare-flow";
 
 
 const platformLinks = {
@@ -61,27 +61,9 @@ export default function PlatformManagement({ payouts, setPayouts, onAddPayout }:
   const [isDialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
   const [youtubeStats, setYoutubeStats] = useState<YouTubeStats | null>(null);
-  const [tiktokStats, setTiktokStats] = useState<TiktokStats | null>(null);
+  const [tiktokStats, setTiktokStats] = useState<SocialStats | null>(null);
   const [isLoadingYoutube, setIsLoadingYoutube] = useState(false);
   const [isLoadingTiktok, setIsLoadingTiktok] = useState(false);
-  
-  useEffect(() => {
-    // Check if TikTok stats are available (e.g., after auth callback)
-    const fetchStats = async () => {
-        setIsLoadingTiktok(true);
-        const stats = await getTiktokStats();
-        if (stats) {
-            setTiktokStats(stats);
-            toast({
-                title: "Statistiques TikTok chargées",
-                description: "Les données réelles de votre compte ont été récupérées.",
-            });
-        }
-        setIsLoadingTiktok(false);
-    };
-    fetchStats();
-  }, [toast]);
-
 
   const handleAddPayout = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -135,8 +117,33 @@ export default function PlatformManagement({ payouts, setPayouts, onAddPayout }:
     }
   };
   
-  const handleConnectTiktok = () => {
-    window.location.href = '/api/tiktok/auth';
+  const handleConnectTiktok = async () => {
+    setIsLoadingTiktok(true);
+    try {
+        const stats = await getSocialStats('tiktok');
+        if(stats) {
+            setTiktokStats(stats);
+            toast({
+                title: "Statistiques TikTok chargées",
+                description: "Les données de votre compte ont été récupérées via Ayrshare.",
+            });
+        } else {
+            toast({
+                title: "Erreur de Connexion",
+                description: "Impossible de charger les statistiques TikTok. Vérifiez votre clé API Ayrshare dans le fichier .env.",
+                variant: "destructive",
+            });
+        }
+    } catch (error) {
+        console.error(error);
+        toast({
+            title: "Erreur de Connexion",
+            description: "Une erreur est survenue. Vérifiez la console pour plus de détails.",
+            variant: "destructive",
+        });
+    } finally {
+        setIsLoadingTiktok(false);
+    }
   };
 
   const staticPlatformData = {
@@ -221,28 +228,28 @@ export default function PlatformManagement({ payouts, setPayouts, onAddPayout }:
                     <div className="grid grid-cols-3 gap-4 text-center">
                         <div className="p-3 bg-card/50 rounded-lg">
                             <Users className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
-                            <p className="text-xl font-bold">{tiktokStats.follower_count.toLocaleString('fr-FR')}</p>
+                            <p className="text-xl font-bold">{tiktokStats.followers.toLocaleString('fr-FR')}</p>
                             <p className="text-xs text-muted-foreground">Followers</p>
                         </div>
                         <div className="p-3 bg-card/50 rounded-lg">
                             <Eye className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
-                            <p className="text-xl font-bold">{tiktokStats.likes_count.toLocaleString('fr-FR')}</p>
+                            <p className="text-xl font-bold">{tiktokStats.likes.toLocaleString('fr-FR')}</p>
                             <p className="text-xs text-muted-foreground">J'aime</p>
                         </div>
-                        <div className="p-3 bg-card/50 rounded-lg">
-                           <Library className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
-                            <p className="text-xl font-bold">{tiktokStats.video_count.toLocaleString('fr-FR')}</p>
-                            <p className="text-xs text-muted-foreground">Vidéos</p>
+                         <div className="p-3 bg-card/50 rounded-lg">
+                            <Users className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
+                            <p className="text-xl font-bold">{tiktokStats.following.toLocaleString('fr-FR')}</p>
+                            <p className="text-xs text-muted-foreground">Suivis</p>
                         </div>
                     </div>
                 ) : (
                     <div className="text-center p-4 bg-card/50 rounded-lg">
-                        <p className="text-muted-foreground mb-3">Connectez votre compte TikTok pour voir vos vraies données.</p>
+                        <p className="text-muted-foreground mb-3">Actualisez les données de votre compte TikTok via Ayrshare.</p>
                         <Button onClick={handleConnectTiktok} disabled={isLoadingTiktok}>
                             <LinkIcon className="mr-2 h-4 w-4" />
-                            {isLoadingTiktok ? <><Loader2 className="animate-spin mr-2"/> Connexion...</> : 'Connecter à TikTok'}
+                            {isLoadingTiktok ? <><Loader2 className="animate-spin mr-2"/> Chargement...</> : 'Actualiser les stats TikTok'}
                         </Button>
-                         <p className="text-xs text-muted-foreground mt-2">Vous serez redirigé vers TikTok pour autoriser l'accès.</p>
+                         <p className="text-xs text-muted-foreground mt-2">Nécessite la configuration de la clé API Ayrshare dans le fichier .env</p>
                     </div>
                 )}
             </CardContent>
