@@ -6,12 +6,12 @@ import { getFirestore } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
+  apiKey: "AIzaSyBszUJS1QdD3c2BVnH5HQZ9a-16NVHOBR4",
+  authDomain: "kheops-hub.firebaseapp.com",
+  projectId: "kheops-hub",
+  storageBucket: "kheops-hub.appspot.com",
+  messagingSenderId: "444707922937",
+  appId: "1:444707922937:web:9a1f03c413e0f8b1995328"
 };
 
 
