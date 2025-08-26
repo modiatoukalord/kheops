@@ -29,6 +29,16 @@ const hubComponents: Hubs = {
   admin: AdminHub,
 };
 
+export interface EventRegistration {
+    id: string;
+    eventId: string;
+    eventName: string;
+    participantName: string;
+    participantPhone: string;
+    registrationDate: Date;
+}
+
+
 function HomePageContent() {
   const searchParams = useSearchParams();
   const [activeHub, setActiveHub] = useState("culture");
@@ -38,6 +48,7 @@ function HomePageContent() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
+  const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const adminHubRef = useRef<{ setActiveView: (view: any) => void }>(null);
 
@@ -115,11 +126,26 @@ function HomePageContent() {
         console.error("Error fetching subscribers: ", error);
     });
 
+    const fetchRegistrations = onSnapshot(query(collection(db, "registrations"), orderBy("registrationDate", "desc")), (snapshot) => {
+        const registrationsData = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                registrationDate: (data.registrationDate as Timestamp).toDate(),
+            } as EventRegistration;
+        });
+        setRegistrations(registrationsData);
+    }, (error) => {
+        console.error("Error fetching registrations: ", error);
+    });
+
     return () => {
         fetchBookings();
         fetchEvents();
         fetchTransactions();
         fetchSubscribers();
+        fetchRegistrations();
     };
   }, []);
 
@@ -179,6 +205,17 @@ function HomePageContent() {
           console.error("Error deleting event: ", error);
       }
   };
+  
+  const handleEventRegistration = async (registrationData: Omit<EventRegistration, 'id' | 'registrationDate'>) => {
+    try {
+      await addDoc(collection(db, "registrations"), {
+        ...registrationData,
+        registrationDate: new Date(),
+      });
+    } catch (error) {
+      console.error("Error adding registration: ", error);
+    }
+  };
 
   const handleAddTransaction = async (newTransactionData: Omit<Transaction, 'id'>) => {
     try {
@@ -227,7 +264,7 @@ function HomePageContent() {
   const ActiveComponent = hubComponents[activeHub];
 
   const componentProps: { [key: string]: any } = {
-    culture: { content, events },
+    culture: { content, events, onEventRegistration: handleEventRegistration },
     studio: { bookings, onAddBooking: handleAddBooking },
     admin: { 
         content, setContent, 

@@ -1,16 +1,19 @@
 
 "use client";
 
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { BookOpen, CalendarDays, BookCopy, FileText, Film, Puzzle } from "lucide-react";
-import React from "react";
+import { BookOpen, CalendarDays, BookCopy, FileText, Film, Puzzle, User, Phone } from "lucide-react";
 import type { Content } from "@/components/admin/content-management";
 import type { AppEvent } from "@/components/admin/event-management";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 type CulturalContent = Pick<Content, 'title' | 'type'> & { description: string };
 
@@ -34,11 +37,14 @@ const categoryIcons: { [key in Content['type']]: React.ElementType } = {
 interface CultureHubProps {
     content: Content[];
     events: AppEvent[];
+    onEventRegistration: (registrationData: { eventId: string; eventName: string; participantName: string; participantPhone: string; }) => void;
 }
 
 
-export default function CultureHub({ content, events }: CultureHubProps) {
+export default function CultureHub({ content, events, onEventRegistration }: CultureHubProps) {
   const { toast } = useToast();
+  const [isRegisterOpen, setRegisterOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<AppEvent | null>(null);
 
   const culturalContent: CulturalContent[] = content
     .filter(c => c.status === "Publié")
@@ -60,13 +66,36 @@ export default function CultureHub({ content, events }: CultureHubProps) {
     });
   };
 
-  const handleRegistration = (eventTitle: string) => {
-    toast({
-      title: "Inscription Reçue",
-      description: `Votre inscription pour "${eventTitle}" a bien été prise en compte.`,
-    });
+  const handleOpenRegistration = (event: AppEvent) => {
+    setSelectedEvent(event);
+    setRegisterOpen(true);
   };
   
+  const handleRegistrationSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!selectedEvent) return;
+
+    const formData = new FormData(e.currentTarget);
+    const participantName = formData.get("name") as string;
+    const participantPhone = formData.get("phone") as string;
+
+    if (participantName && participantPhone) {
+        onEventRegistration({
+            eventId: selectedEvent.id,
+            eventName: selectedEvent.title,
+            participantName,
+            participantPhone,
+        });
+
+        setRegisterOpen(false);
+        setSelectedEvent(null);
+        toast({
+          title: "Inscription Réussie !",
+          description: `Merci, votre inscription pour "${selectedEvent.title}" a bien été prise en compte.`,
+        });
+    }
+  };
+
   const handleDiscover = (contentTitle: string) => {
     toast({
       title: "Contenu à venir",
@@ -133,7 +162,7 @@ export default function CultureHub({ content, events }: CultureHubProps) {
             };
 
             return (
-             <Card key={event.title} className="bg-card border-border/50 flex flex-col md:flex-row items-center p-4 gap-4 transition-all duration-300 hover:border-accent">
+             <Card key={event.id} className="bg-card border-border/50 flex flex-col md:flex-row items-center p-4 gap-4 transition-all duration-300 hover:border-accent">
                 <div className="flex-shrink-0 text-center md:text-left">
                     <p className="text-lg font-bold text-primary">{format(event.startDate, "d MMM", { locale: fr }).toUpperCase()}</p>
                     <p className="text-sm text-muted-foreground">{format(event.startDate, "yyyy")}</p>
@@ -143,11 +172,44 @@ export default function CultureHub({ content, events }: CultureHubProps) {
                     <h3 className="text-xl font-semibold">{event.title}</h3>
                     <p className="text-muted-foreground">{formatEventDate(event)}</p>
                 </div>
-                <Button className="flex-shrink-0 bg-accent text-accent-foreground hover:bg-accent/80" onClick={() => handleRegistration(event.title)}>S'inscrire</Button>
+                <Button className="flex-shrink-0 bg-accent text-accent-foreground hover:bg-accent/80" onClick={() => handleOpenRegistration(event)}>S'inscrire</Button>
              </Card>
           )})}
         </div>
       </section>
+
+      <Dialog open={isRegisterOpen} onOpenChange={setRegisterOpen}>
+          <DialogContent>
+              <form onSubmit={handleRegistrationSubmit}>
+                  <DialogHeader>
+                      <DialogTitle>S'inscrire à l'événement</DialogTitle>
+                      <DialogDescription>
+                          Confirmez votre participation pour "{selectedEvent?.title}".
+                      </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-6">
+                      <div className="space-y-2">
+                          <Label htmlFor="name">Votre Nom Complet</Label>
+                          <div className="relative">
+                            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input id="name" name="name" placeholder="Ex: Jean Dupont" className="pl-10" required />
+                          </div>
+                      </div>
+                      <div className="space-y-2">
+                          <Label htmlFor="phone">Votre Numéro de Téléphone</Label>
+                          <div className="relative">
+                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input id="phone" name="phone" placeholder="Ex: +242 06 123 4567" className="pl-10" required />
+                          </div>
+                      </div>
+                  </div>
+                  <DialogFooter>
+                      <Button type="button" variant="ghost" onClick={() => setRegisterOpen(false)}>Annuler</Button>
+                      <Button type="submit">Confirmer l'inscription</Button>
+                  </DialogFooter>
+              </form>
+          </DialogContent>
+      </Dialog>
     </div>
   );
 }
