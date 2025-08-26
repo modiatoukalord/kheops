@@ -219,7 +219,7 @@ export default function Home() {
     admin: { 
         content, setContent, 
         events, onAddEvent: handleAddEvent, onUpdateEvent: handleUpdateEvent, onDeleteEvent: handleDeleteEvent,
-        bookings, setBookings, onUpdateBookingStatus: handleUpdateBookingStatus,
+        bookings, setBookings, onAddBooking: handleAddBooking, onUpdateBookingStatus: handleUpdateBookingStatus,
         transactions, onAddTransaction: handleAddTransaction,
         subscribers, onAddSubscriber: handleAddSubscriber, onUpdateSubscriber: handleUpdateSubscriber, onDeleteSubscriber: handleDeleteSubscriber,
         onUpdateContract: handleUpdateContract,
