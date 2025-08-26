@@ -66,8 +66,8 @@ const projectTypes = ["Single", "Mixtape", "Album", "Autre"] as const;
 
 interface BookingScheduleProps {
   bookings: Booking[];
-  setBookings: React.Dispatch<React.SetStateAction<Booking[]>>;
   onAddBooking: (booking: Omit<Booking, 'id' | 'status'>) => void;
+  onUpdateBookingStatus: (bookingId: string, newStatus: Booking['status']) => void;
   contracts: Contract[];
 }
 
@@ -105,7 +105,7 @@ const bookingFormSchema = z.object({
 type BookingFormValues = z.infer<typeof bookingFormSchema>;
 
 
-export default function BookingSchedule({ bookings, setBookings, onAddBooking, contracts }: BookingScheduleProps) {
+export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookingStatus, contracts }: BookingScheduleProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [isBookingDialogOpen, setBookingDialogOpen] = useState(false);
   const [isDetailsDialogOpen, setDetailsDialogOpen] = useState(false);
@@ -157,8 +157,7 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking, c
 
   const handleBookingStatusChange = async (bookingId: string, newStatus: BookingStatus) => {
     try {
-      const bookingRef = doc(db, "bookings", bookingId);
-      await updateDoc(bookingRef, { status: newStatus });
+      await onUpdateBookingStatus(bookingId, newStatus);
       toast({
           title: "Statut de la réservation mis à jour",
           description: `La réservation a été marquée comme "${newStatus}".`,
@@ -334,22 +333,6 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking, c
                           </DialogHeader>
                           
                           <div className="grid md:grid-cols-2 gap-4">
-                              <FormField control={form.control} name="artistName" render={({ field }) => (<FormItem><Label>Artiste</Label><FormControl><Input placeholder="Nom de l'artiste" {...field} disabled={!!selectedContract} /></FormControl><FormMessage /></FormItem>)} />
-                              <FormField control={form.control} name="projectName" render={({ field }) => (<FormItem><Label>Projet</Label><FormControl><Input placeholder="Nom du projet" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                               <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><Label>Téléphone</Label><FormControl><Input placeholder="Numéro de téléphone" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                              <FormField control={form.control} name="projectType" render={({ field }) => (
-                                  <FormItem>
-                                  <Label>Type de Projet</Label>
-                                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                      <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un type" /></SelectTrigger></FormControl>
-                                      <SelectContent>
-                                        {projectTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
-                                      </SelectContent>
-                                  </Select>
-                                  <FormMessage />
-                                  </FormItem>
-                              )} />
-                               <FormField control={form.control} name="service" render={({ field }) => (<FormItem><Label>Service</Label><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un service" /></SelectTrigger></FormControl><SelectContent>{availableServices.map(service => <SelectItem key={service} value={service}>{service} {selectedContract && selectedContract.customPrices?.[service] !== undefined ? `(${selectedContract.customPrices[service].toLocaleString('fr-FR')} FCFA)` : `(${servicesWithPrices[service as keyof typeof servicesWithPrices].toLocaleString('fr-FR')} FCFA)`}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
                                <FormField
                                   control={form.control}
                                   name="contractId"
@@ -378,6 +361,22 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking, c
                                     </FormItem>
                                   )}
                                 />
+                              <FormField control={form.control} name="artistName" render={({ field }) => (<FormItem><Label>Artiste</Label><FormControl><Input placeholder="Nom de l'artiste" {...field} disabled={!!selectedContract} /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField control={form.control} name="projectName" render={({ field }) => (<FormItem><Label>Projet</Label><FormControl><Input placeholder="Nom du projet" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                               <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><Label>Téléphone</Label><FormControl><Input placeholder="Numéro de téléphone" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField control={form.control} name="projectType" render={({ field }) => (
+                                  <FormItem>
+                                  <Label>Type de Projet</Label>
+                                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                      <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un type" /></SelectTrigger></FormControl>
+                                      <SelectContent>
+                                        {projectTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                                      </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                  </FormItem>
+                              )} />
+                               <FormField control={form.control} name="service" render={({ field }) => (<FormItem><Label>Service</Label><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un service" /></SelectTrigger></FormControl><SelectContent>{availableServices.map(service => <SelectItem key={service} value={service}>{service} {selectedContract && selectedContract.customPrices?.[service] !== undefined ? `(${selectedContract.customPrices[service].toLocaleString('fr-FR')} FCFA)` : `(${servicesWithPrices[service as keyof typeof servicesWithPrices].toLocaleString('fr-FR')} FCFA)`}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
                           </div>
                           
                           <Separator/>
@@ -664,3 +663,6 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking, c
     </div>
   );
 }
+
+
+    

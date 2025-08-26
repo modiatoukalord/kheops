@@ -180,7 +180,8 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
   };
   
   const onContractPaid = async (contractId: string) => {
-    await updateDoc(doc(db, "contracts", contractId), { paymentStatus: 'Payé' });
+    const contractRef = doc(db, "contracts", contractId);
+    await updateDoc(contractRef, { paymentStatus: 'Payé' });
     setContractToPay(null);
     setActiveView('contracts'); // Go back to contracts view
   };
@@ -188,7 +189,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
   const adminViews = {
     users: { component: UserManagement, title: "Gestion des Abonnements", props: { subscribers, onAddSubscriber: handleAddSubscriber, onUpdateSubscriber, onDeleteSubscriber, onValidateSubscription: handleValidateSubscription, onRenewSubscriber: handleRenewSubscriber } },
     content: { component: ContentManagement, title: "Gestion des Contenus", props: { content, setContent } },
-    bookings: { component: BookingSchedule, title: "Planning des Réservations", props: { bookings, setBookings, onAddBooking, onUpdateBookingStatus, contracts } },
+    bookings: { component: BookingSchedule, title: "Planning des Réservations", props: { bookings, onAddBooking, onUpdateBookingStatus, contracts } },
     settings: { component: SiteSettings, title: "Paramètres du Site", props: {} },
     events: { component: EventManagement, title: "Gestion des Événements", props: { events, onAddEvent, onUpdateEvent, onDeleteEvent } },
     financial: { component: FinancialManagement, title: "Rapport Financier", props: { transactions, onAddTransaction } },
@@ -289,3 +290,6 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
 
 AdminHub.displayName = "AdminHub";
 export default AdminHub;
+
+
+    
