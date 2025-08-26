@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingUp, Youtube, Users, Eye, DollarSign, ExternalLink, Library, Headphones, PlusCircle } from "lucide-react";
+import { TrendingUp, Youtube, Users, Eye, DollarSign, ExternalLink, Library, Headphones, PlusCircle, LinkIcon } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -26,36 +26,14 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { getYoutubeChannelStats, YouTubeStats } from "@/ai/flows/youtube-stats-flow";
 
-const platformData = {
-    youtube: {
-        subscribers: "1.2M",
-        views: "150M",
-        revenue: "35,000,000 FCFA",
-        lastUpdate: "31/07/2024",
-        link: "https://youtube.com/kheops"
-    },
-    tiktok: {
-        followers: "2.5M",
-        views: "500M",
-        revenue: "15,000,000 FCFA",
-        lastUpdate: "31/07/2024",
-        link: "https://tiktok.com/@kheops"
-    },
-    facebook: {
-        followers: "850K",
-        reach: "3.2M",
-        revenue: "5,000,000 FCFA",
-        lastUpdate: "31/07/2024",
-        link: "https://facebook.com/kheops"
-    },
-    spotify: {
-        listeners: "250K",
-        streams: "15M",
-        revenue: "8,000,000 FCFA",
-        lastUpdate: "31/07/2024",
-        link: "https://open.spotify.com/artist/example"
-    }
+
+const platformLinks = {
+    youtube: "https://youtube.com/kheops",
+    tiktok: "https://tiktok.com/@kheops",
+    facebook: "https://facebook.com/kheops",
+    spotify: "https://open.spotify.com/artist/example"
 }
 
 export type Payout = {
@@ -81,6 +59,8 @@ interface PlatformManagementProps {
 export default function PlatformManagement({ payouts, setPayouts, onAddPayout }: PlatformManagementProps) {
   const [isDialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
+  const [youtubeStats, setYoutubeStats] = useState<YouTubeStats | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleAddPayout = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -104,6 +84,42 @@ export default function PlatformManagement({ payouts, setPayouts, onAddPayout }:
     });
     setDialogOpen(false);
   };
+  
+  const handleConnectYoutube = async () => {
+    setIsLoading(true);
+    try {
+        const stats = await getYoutubeChannelStats();
+        if(stats) {
+            setYoutubeStats(stats);
+            toast({
+                title: "Connexion Réussie",
+                description: "Les statistiques de votre chaîne YouTube ont été chargées.",
+            });
+        } else {
+             toast({
+                title: "Erreur de Connexion",
+                description: "Impossible de charger les statistiques. Vérifiez vos clés API dans le fichier .env.",
+                variant: "destructive",
+            });
+        }
+    } catch (error) {
+        console.error(error);
+        toast({
+            title: "Erreur de Connexion",
+            description: "Une erreur est survenue. Vérifiez la console pour plus de détails.",
+            variant: "destructive",
+        });
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
+  const staticPlatformData = {
+      tiktok: { followers: "2.5M", views: "500M", revenue: "15,000,000 FCFA" },
+      facebook: { followers: "850K", reach: "3.2M", revenue: "5,000,000 FCFA" },
+      spotify: { listeners: "250K", streams: "15M", revenue: "8,000,000 FCFA" }
+  }
+
 
   return (
     <div className="space-y-8">
@@ -119,28 +135,41 @@ export default function PlatformManagement({ payouts, setPayouts, onAddPayout }:
                         </div>
                     </div>
                     <Button variant="ghost" size="icon" asChild>
-                        <a href={platformData.youtube.link} target="_blank" rel="noopener noreferrer">
+                        <a href={platformLinks.youtube} target="_blank" rel="noopener noreferrer">
                            <ExternalLink className="h-4 w-4" />
                         </a>
                     </Button>
                 </div>
             </CardHeader>
-            <CardContent className="grid grid-cols-3 gap-4 text-center">
-                <div className="p-3 bg-card/50 rounded-lg">
-                    <Users className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
-                    <p className="text-xl font-bold">{platformData.youtube.subscribers}</p>
-                    <p className="text-xs text-muted-foreground">Abonnés</p>
-                </div>
-                <div className="p-3 bg-card/50 rounded-lg">
-                    <Eye className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
-                    <p className="text-xl font-bold">{platformData.youtube.views}</p>
-                    <p className="text-xs text-muted-foreground">Vues</p>
-                </div>
-                <div className="p-3 bg-card/50 rounded-lg">
-                    <DollarSign className="w-6 h-6 mx-auto mb-1 text-green-500" />
-                    <p className="text-xl font-bold">{platformData.youtube.revenue}</p>
-                    <p className="text-xs text-muted-foreground">Revenu total est.</p>
-                </div>
+            <CardContent className="space-y-4">
+                {youtubeStats ? (
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                        <div className="p-3 bg-card/50 rounded-lg">
+                            <Users className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
+                            <p className="text-xl font-bold">{youtubeStats.subscriberCount}</p>
+                            <p className="text-xs text-muted-foreground">Abonnés</p>
+                        </div>
+                        <div className="p-3 bg-card/50 rounded-lg">
+                            <Eye className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
+                            <p className="text-xl font-bold">{youtubeStats.viewCount}</p>
+                            <p className="text-xs text-muted-foreground">Vues</p>
+                        </div>
+                        <div className="p-3 bg-card/50 rounded-lg">
+                            <Library className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
+                            <p className="text-xl font-bold">{youtubeStats.videoCount}</p>
+                            <p className="text-xs text-muted-foreground">Vidéos</p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="text-center p-4 bg-card/50 rounded-lg">
+                        <p className="text-muted-foreground mb-3">Connectez votre chaîne pour voir vos statistiques.</p>
+                        <Button onClick={handleConnectYoutube} disabled={isLoading}>
+                            <LinkIcon className="mr-2 h-4 w-4" />
+                            {isLoading ? 'Connexion...' : 'Connecter à YouTube'}
+                        </Button>
+                         <p className="text-xs text-muted-foreground mt-2">Nécessite la configuration de la clé API dans le fichier .env</p>
+                    </div>
+                )}
             </CardContent>
         </Card>
         <Card className="border-cyan-500/30 bg-cyan-500/5">
@@ -157,7 +186,7 @@ export default function PlatformManagement({ payouts, setPayouts, onAddPayout }:
                         </div>
                     </div>
                      <Button variant="ghost" size="icon" asChild>
-                        <a href={platformData.tiktok.link} target="_blank" rel="noopener noreferrer">
+                        <a href={platformLinks.tiktok} target="_blank" rel="noopener noreferrer">
                            <ExternalLink className="h-4 w-4" />
                         </a>
                     </Button>
@@ -166,17 +195,17 @@ export default function PlatformManagement({ payouts, setPayouts, onAddPayout }:
             <CardContent className="grid grid-cols-3 gap-4 text-center">
                 <div className="p-3 bg-card/50 rounded-lg">
                     <Users className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
-                    <p className="text-xl font-bold">{platformData.tiktok.followers}</p>
+                    <p className="text-xl font-bold">{staticPlatformData.tiktok.followers}</p>
                     <p className="text-xs text-muted-foreground">Followers</p>
                 </div>
                 <div className="p-3 bg-card/50 rounded-lg">
                     <Eye className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
-                    <p className="text-xl font-bold">{platformData.tiktok.views}</p>
+                    <p className="text-xl font-bold">{staticPlatformData.tiktok.views}</p>
                     <p className="text-xs text-muted-foreground">Vues</p>
                 </div>
                 <div className="p-3 bg-card/50 rounded-lg">
                     <DollarSign className="w-6 h-6 mx-auto mb-1 text-green-500" />
-                    <p className="text-xl font-bold">{platformData.tiktok.revenue}</p>
+                    <p className="text-xl font-bold">{staticPlatformData.tiktok.revenue}</p>
                     <p className="text-xs text-muted-foreground">Revenu total est.</p>
                 </div>
             </CardContent>
@@ -194,7 +223,7 @@ export default function PlatformManagement({ payouts, setPayouts, onAddPayout }:
                         </div>
                     </div>
                      <Button variant="ghost" size="icon" asChild>
-                        <a href={platformData.facebook.link} target="_blank" rel="noopener noreferrer">
+                        <a href={platformLinks.facebook} target="_blank" rel="noopener noreferrer">
                            <ExternalLink className="h-4 w-4" />
                         </a>
                     </Button>
@@ -203,17 +232,17 @@ export default function PlatformManagement({ payouts, setPayouts, onAddPayout }:
             <CardContent className="grid grid-cols-3 gap-4 text-center">
                 <div className="p-3 bg-card/50 rounded-lg">
                     <Users className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
-                    <p className="text-xl font-bold">{platformData.facebook.followers}</p>
+                    <p className="text-xl font-bold">{staticPlatformData.facebook.followers}</p>
                     <p className="text-xs text-muted-foreground">Followers</p>
                 </div>
                 <div className="p-3 bg-card/50 rounded-lg">
                     <Eye className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
-                    <p className="text-xl font-bold">{platformData.facebook.reach}</p>
+                    <p className="text-xl font-bold">{staticPlatformData.facebook.reach}</p>
                     <p className="text-xs text-muted-foreground">Portée</p>
                 </div>
                 <div className="p-3 bg-card/50 rounded-lg">
                     <DollarSign className="w-6 h-6 mx-auto mb-1 text-green-500" />
-                    <p className="text-xl font-bold">{platformData.facebook.revenue}</p>
+                    <p className="text-xl font-bold">{staticPlatformData.facebook.revenue}</p>
                     <p className="text-xs text-muted-foreground">Revenu total est.</p>
                 </div>
             </CardContent>
@@ -231,7 +260,7 @@ export default function PlatformManagement({ payouts, setPayouts, onAddPayout }:
                         </div>
                     </div>
                      <Button variant="ghost" size="icon" asChild>
-                        <a href={platformData.spotify.link} target="_blank" rel="noopener noreferrer">
+                        <a href={platformLinks.spotify} target="_blank" rel="noopener noreferrer">
                            <ExternalLink className="h-4 w-4" />
                         </a>
                     </Button>
@@ -240,17 +269,17 @@ export default function PlatformManagement({ payouts, setPayouts, onAddPayout }:
             <CardContent className="grid grid-cols-3 gap-4 text-center">
                 <div className="p-3 bg-card/50 rounded-lg">
                     <Headphones className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
-                    <p className="text-xl font-bold">{platformData.spotify.listeners}</p>
+                    <p className="text-xl font-bold">{staticPlatformData.spotify.listeners}</p>
                     <p className="text-xs text-muted-foreground">Auditeurs/mois</p>
                 </div>
                 <div className="p-3 bg-card/50 rounded-lg">
                     <Library className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
-                    <p className="text-xl font-bold">{platformData.spotify.streams}</p>
+                    <p className="text-xl font-bold">{staticPlatformData.spotify.streams}</p>
                     <p className="text-xs text-muted-foreground">Streams</p>
                 </div>
                 <div className="p-3 bg-card/50 rounded-lg">
                     <DollarSign className="w-6 h-6 mx-auto mb-1 text-green-500" />
-                    <p className="text-xl font-bold">{platformData.spotify.revenue}</p>
+                    <p className="text-xl font-bold">{staticPlatformData.spotify.revenue}</p>
                     <p className="text-xs text-muted-foreground">Revenu total est.</p>
                 </div>
             </CardContent>
@@ -340,5 +369,3 @@ export default function PlatformManagement({ payouts, setPayouts, onAddPayout }:
     </div>
   );
 }
-
-    
