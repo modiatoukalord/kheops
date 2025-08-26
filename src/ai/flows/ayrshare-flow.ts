@@ -41,10 +41,11 @@ async function fetchAyrshareStats(platform: 'tiktok' | 'youtube' | 'facebook'): 
                 views: profile.stats.views,
             };
         }
+        console.warn(`No ${platform} profiles found in Ayrshare response.`);
         return null;
 
     } catch (error: any) {
-        console.error(`Failed to fetch ${platform} stats from Ayrshare:`, error.response?.data || error.message);
+        console.error(`Failed to fetch ${platform} stats from Ayrshare. Status: ${error.response?.status}. Response:`, error.response?.data || error.message);
         return null;
     }
 }
