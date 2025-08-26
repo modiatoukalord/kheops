@@ -3,7 +3,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { defineFlow, run } from 'genkit';
+import { run } from 'genkit';
 import axios from 'axios';
 
 const TIKTOK_CLIENT_KEY = process.env.TIKTOK_CLIENT_KEY;
@@ -21,7 +21,7 @@ export type TiktokStats = z.infer<typeof TiktokStatsSchema>;
 // This is a mock database to store tokens. In a real app, use a proper database.
 let tokenStore: { accessToken?: string, refreshToken?: string, expires_in?: number, open_id?: string } = {};
 
-export const exchangeCodeForToken = defineFlow(
+export const exchangeCodeForToken = ai.defineFlow(
   {
     name: 'exchangeCodeForToken',
     inputSchema: z.string(),
