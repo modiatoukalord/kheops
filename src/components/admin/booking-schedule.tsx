@@ -135,23 +135,24 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking, c
   });
 
   const projectType = form.watch("projectType");
-  const artistName = form.watch("artistName");
+  const contractId = form.watch("contractId");
 
-  const availableContracts = useMemo(() => {
-    if (!artistName) return [];
-    return contracts.filter(c => c.clientName.toLowerCase() === artistName.toLowerCase() && c.status === "Signé");
-  }, [contracts, artistName]);
+  const signedContracts = useMemo(() => {
+    return (contracts || []).filter(c => c.status === "Signé");
+  }, [contracts]);
 
   useEffect(() => {
-    if (availableContracts.length === 1) {
-        const contract = availableContracts[0];
-        form.setValue('contractId', contract.id);
+    const contract = signedContracts.find(c => c.id === contractId);
+    if (contract) {
         setSelectedContract(contract);
+        form.setValue("artistName", contract.clientName);
     } else {
-        form.setValue('contractId', undefined);
         setSelectedContract(null);
+        if (!form.getValues('artistName')) { // only clear if user hasn't typed
+             form.setValue("artistName", "");
+        }
     }
-  }, [availableContracts, form]);
+  }, [contractId, signedContracts, form]);
 
 
   const handleBookingStatusChange = async (bookingId: string, newStatus: BookingStatus) => {
@@ -333,7 +334,7 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking, c
                           </DialogHeader>
                           
                           <div className="grid md:grid-cols-2 gap-4">
-                              <FormField control={form.control} name="artistName" render={({ field }) => (<FormItem><Label>Artiste</Label><FormControl><Input placeholder="Nom de l'artiste" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField control={form.control} name="artistName" render={({ field }) => (<FormItem><Label>Artiste</Label><FormControl><Input placeholder="Nom de l'artiste" {...field} disabled={!!selectedContract} /></FormControl><FormMessage /></FormItem>)} />
                               <FormField control={form.control} name="projectName" render={({ field }) => (<FormItem><Label>Projet</Label><FormControl><Input placeholder="Nom du projet" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><Label>Téléphone</Label><FormControl><Input placeholder="Numéro de téléphone" {...field} /></FormControl><FormMessage /></FormItem>)} />
                               <FormField control={form.control} name="projectType" render={({ field }) => (
@@ -356,22 +357,19 @@ export default function BookingSchedule({ bookings, setBookings, onAddBooking, c
                                     <FormItem>
                                       <Label>Contrat (Optionnel)</Label>
                                       <Select
-                                        onValueChange={(value) => {
-                                          field.onChange(value);
-                                          setSelectedContract(contracts.find(c => c.id === value) || null);
-                                        }}
+                                        onValueChange={(value) => { field.onChange(value === 'none' ? undefined : value) }}
                                         defaultValue={field.value}
-                                        disabled={availableContracts.length === 0}
                                       >
                                         <FormControl>
                                           <SelectTrigger>
-                                            <SelectValue placeholder={availableContracts.length > 0 ? "Sélectionner un contrat" : "Aucun contrat signé pour cet artiste"} />
+                                            <SelectValue placeholder="Sélectionner un contrat" />
                                           </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                          {availableContracts.map(c => (
+                                            <SelectItem value="none">Sans Contrat</SelectItem>
+                                          {signedContracts.map(c => (
                                             <SelectItem key={c.id} value={c.id}>
-                                              {c.type} - {c.id.substring(0, 5)}...
+                                              {c.clientName} - {c.type}
                                             </SelectItem>
                                           ))}
                                         </SelectContent>
