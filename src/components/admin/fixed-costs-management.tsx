@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, isValid } from "date-fns";
 import { fr } from "date-fns/locale";
 
 export type FixedCostCategory = "Loyer" | "Salaires" | "Électricité" | "Maintenance" | "Autre";
@@ -40,12 +40,6 @@ export type FixedCost = {
   frequency: "Mensuel" | "Trimestriel" | "Annuel";
 };
 
-export const initialFixedCosts: FixedCost[] = [
-  { id: "fc-001", name: "Loyer Espace KHEOPS", category: "Loyer", amount: 250000, paymentDate: new Date("2024-07-01"), frequency: "Mensuel" },
-  { id: "fc-002", name: "Salaires Équipe (Juillet)", category: "Salaires", amount: 500000, paymentDate: new Date("2024-07-25"), frequency: "Mensuel" },
-  { id: "fc-003", name: "Facture Électricité", category: "Électricité", amount: 75000, paymentDate: new Date("2024-07-15"), frequency: "Mensuel" },
-];
-
 const categoryConfig: { [key in FixedCostCategory]: { icon: React.ElementType, color: string } } = {
   "Loyer": { icon: Building, color: "bg-orange-500/20 text-orange-700 border-orange-500/30" },
   "Salaires": { icon: Users, color: "bg-blue-500/20 text-blue-700 border-blue-500/30" },
@@ -56,11 +50,12 @@ const categoryConfig: { [key in FixedCostCategory]: { icon: React.ElementType, c
 
 interface FixedCostsManagementProps {
   fixedCosts: FixedCost[];
-  setFixedCosts: React.Dispatch<React.SetStateAction<FixedCost[]>>;
   onAddFixedCost: (cost: Omit<FixedCost, 'id'>) => void;
+  onUpdateFixedCost: (id: string, cost: Partial<Omit<FixedCost, 'id'>>) => void;
+  onDeleteFixedCost: (id: string) => void;
 }
 
-export default function FixedCostsManagement({ fixedCosts, setFixedCosts, onAddFixedCost }: FixedCostsManagementProps) {
+export default function FixedCostsManagement({ fixedCosts, onAddFixedCost, onUpdateFixedCost, onDeleteFixedCost }: FixedCostsManagementProps) {
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [editingCost, setEditingCost] = useState<FixedCost | null>(null);
   const { toast } = useToast();
@@ -72,17 +67,15 @@ export default function FixedCostsManagement({ fixedCosts, setFixedCosts, onAddF
     const category = formData.get("category") as FixedCostCategory;
     const amount = Number(formData.get("amount"));
     const paymentDateStr = formData.get("paymentDate") as string;
-    const paymentDate = paymentDateStr ? parseISO(paymentDateStr) : new Date();
+    const paymentDate = paymentDateStr && isValid(parseISO(paymentDateStr)) ? parseISO(paymentDateStr) : new Date();
     const frequency = formData.get("frequency") as FixedCost['frequency'];
     
     if (editingCost) {
-        // Update logic - creates a new transaction but modifies the displayed cost
-        const updatedCost = { id: editingCost.id, name, category, amount, paymentDate, frequency };
-        onAddFixedCost({ name, category, amount, paymentDate, frequency }); // Creates a new transaction
-        setFixedCosts(prev => prev.map(c => c.id === editingCost.id ? updatedCost : c));
+        const updatedCost = { name, category, amount, paymentDate, frequency };
+        onUpdateFixedCost(editingCost.id, updatedCost);
         toast({
             title: "Charge modifiée",
-            description: `La charge "${name}" a été mise à jour et une nouvelle transaction a été enregistrée.`,
+            description: `La charge "${name}" a été mise à jour.`,
         });
     } else {
         onAddFixedCost({ name, category, amount, paymentDate, frequency });
@@ -102,12 +95,14 @@ export default function FixedCostsManagement({ fixedCosts, setFixedCosts, onAddF
   };
 
   const handleDeleteCost = (costId: string) => {
-    setFixedCosts(prev => prev.filter(cost => cost.id !== costId));
-    toast({
-      title: "Charge Supprimée",
-      description: "La charge fixe a été supprimée de cette liste (la transaction reste).",
-      variant: "destructive",
-    });
+    if (window.confirm("Êtes-vous sûr de vouloir supprimer cette charge ? Cette action est irréversible.")) {
+      onDeleteFixedCost(costId);
+      toast({
+        title: "Charge Supprimée",
+        description: "La charge fixe a été supprimée de la base de données.",
+        variant: "destructive",
+      });
+    }
   };
   
   const totalMonthlyCost = fixedCosts.reduce((acc, cost) => {
@@ -151,7 +146,7 @@ export default function FixedCostsManagement({ fixedCosts, setFixedCosts, onAddF
                   <DialogHeader>
                     <DialogTitle>{editingCost ? "Modifier la charge" : "Ajouter une nouvelle charge"}</DialogTitle>
                     <DialogDescription>
-                      Remplissez les informations pour enregistrer un paiement. Une transaction de dépense sera créée.
+                      Remplissez les informations pour enregistrer une charge. Une transaction de dépense sera créée automatiquement.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
@@ -242,7 +237,7 @@ export default function FixedCostsManagement({ fixedCosts, setFixedCosts, onAddF
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={() => handleOpenDialog(cost)}>
-                                    <Edit className="mr-2 h-4 w-4" /> Enregistrer un nouveau paiement
+                                    <Edit className="mr-2 h-4 w-4" /> Modifier la charge
                                 </DropdownMenuItem>
                                 <DropdownMenuItem className="text-red-500" onClick={() => handleDeleteCost(cost.id)}>
                                     <Trash2 className="mr-2 h-4 w-4" /> Supprimer
