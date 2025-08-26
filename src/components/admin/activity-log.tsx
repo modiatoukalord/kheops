@@ -280,15 +280,18 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
             } catch (e) { console.error("Invalid time format for duration calculation"); }
         }
         
-        const activityPayload: Omit<ClientActivity, 'id'> & { date: Date, bookingId?: string, contractId?: string } = {
+        const activityPayload: Omit<ClientActivity, 'id' | 'duration'> & { date: Date, bookingId?: string, contractId?: string, duration?: string } = {
             ...baseActivityPayload,
             description: item.description,
             category: item.category,
             totalAmount: item.amount,
-            duration: duration || undefined,
             paidAmount: paymentType === 'Échéancier' ? (paidAmount || 0) : item.amount,
             remainingAmount: paymentType === 'Échéancier' ? item.amount - (paidAmount || 0) : 0,
         };
+
+        if (duration) {
+            activityPayload.duration = duration;
+        }
 
         if (item.category === "Réservation Studio" && bookingId) {
             activityPayload.bookingId = bookingId;
@@ -1034,3 +1037,4 @@ export default ActivityLog;
 
 
     
+
