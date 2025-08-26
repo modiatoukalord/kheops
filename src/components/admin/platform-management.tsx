@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingUp, Youtube, Users, Eye, DollarSign, ExternalLink, Library, Headphones, PlusCircle, LinkIcon } from "lucide-react";
+import { TrendingUp, Youtube, Users, Eye, DollarSign, ExternalLink, Library, Headphones, PlusCircle, LinkIcon, Loader2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { getYoutubeChannelStats, YouTubeStats } from "@/ai/flows/youtube-stats-flow";
+import { getTiktokStats, TiktokStats } from "@/ai/flows/tiktok-stats-flow";
 
 
 const platformLinks = {
@@ -60,7 +61,9 @@ export default function PlatformManagement({ payouts, setPayouts, onAddPayout }:
   const [isDialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
   const [youtubeStats, setYoutubeStats] = useState<YouTubeStats | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [tiktokStats, setTiktokStats] = useState<TiktokStats | null>(null);
+  const [isLoadingYoutube, setIsLoadingYoutube] = useState(false);
+  const [isLoadingTiktok, setIsLoadingTiktok] = useState(false);
 
   const handleAddPayout = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -86,7 +89,7 @@ export default function PlatformManagement({ payouts, setPayouts, onAddPayout }:
   };
   
   const handleConnectYoutube = async () => {
-    setIsLoading(true);
+    setIsLoadingYoutube(true);
     try {
         const stats = await getYoutubeChannelStats();
         if(stats) {
@@ -110,12 +113,40 @@ export default function PlatformManagement({ payouts, setPayouts, onAddPayout }:
             variant: "destructive",
         });
     } finally {
-        setIsLoading(false);
+        setIsLoadingYoutube(false);
+    }
+  };
+  
+  const handleConnectTiktok = async () => {
+    setIsLoadingTiktok(true);
+    try {
+        const stats = await getTiktokStats();
+        if(stats) {
+            setTiktokStats(stats);
+            toast({
+                title: "Connexion Simulée Réussie",
+                description: "Les statistiques TikTok ont été chargées (données simulées).",
+            });
+        } else {
+             toast({
+                title: "Erreur de Connexion",
+                description: "Impossible de charger les statistiques TikTok simulées.",
+                variant: "destructive",
+            });
+        }
+    } catch (error) {
+        console.error(error);
+        toast({
+            title: "Erreur de Connexion",
+            description: "Une erreur est survenue lors de la simulation de connexion TikTok.",
+            variant: "destructive",
+        });
+    } finally {
+        setIsLoadingTiktok(false);
     }
   };
 
   const staticPlatformData = {
-      tiktok: { followers: "2.5M", views: "500M", revenue: "15,000,000 FCFA" },
       facebook: { followers: "850K", reach: "3.2M", revenue: "5,000,000 FCFA" },
       spotify: { listeners: "250K", streams: "15M", revenue: "8,000,000 FCFA" }
   }
@@ -163,9 +194,9 @@ export default function PlatformManagement({ payouts, setPayouts, onAddPayout }:
                 ) : (
                     <div className="text-center p-4 bg-card/50 rounded-lg">
                         <p className="text-muted-foreground mb-3">Connectez votre chaîne pour voir vos statistiques.</p>
-                        <Button onClick={handleConnectYoutube} disabled={isLoading}>
+                        <Button onClick={handleConnectYoutube} disabled={isLoadingYoutube}>
                             <LinkIcon className="mr-2 h-4 w-4" />
-                            {isLoading ? 'Connexion...' : 'Connecter à YouTube'}
+                            {isLoadingYoutube ? <><Loader2 className="animate-spin mr-2"/> Connexion...</> : 'Connecter à YouTube'}
                         </Button>
                          <p className="text-xs text-muted-foreground mt-2">Nécessite la configuration de la clé API dans le fichier .env</p>
                     </div>
@@ -192,22 +223,35 @@ export default function PlatformManagement({ payouts, setPayouts, onAddPayout }:
                     </Button>
                 </div>
             </CardHeader>
-            <CardContent className="grid grid-cols-3 gap-4 text-center">
-                <div className="p-3 bg-card/50 rounded-lg">
-                    <Users className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
-                    <p className="text-xl font-bold">{staticPlatformData.tiktok.followers}</p>
-                    <p className="text-xs text-muted-foreground">Followers</p>
-                </div>
-                <div className="p-3 bg-card/50 rounded-lg">
-                    <Eye className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
-                    <p className="text-xl font-bold">{staticPlatformData.tiktok.views}</p>
-                    <p className="text-xs text-muted-foreground">Vues</p>
-                </div>
-                <div className="p-3 bg-card/50 rounded-lg">
-                    <DollarSign className="w-6 h-6 mx-auto mb-1 text-green-500" />
-                    <p className="text-xl font-bold">{staticPlatformData.tiktok.revenue}</p>
-                    <p className="text-xs text-muted-foreground">Revenu total est.</p>
-                </div>
+             <CardContent className="space-y-4">
+                {tiktokStats ? (
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                        <div className="p-3 bg-card/50 rounded-lg">
+                            <Users className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
+                            <p className="text-xl font-bold">{tiktokStats.followerCount}</p>
+                            <p className="text-xs text-muted-foreground">Followers</p>
+                        </div>
+                        <div className="p-3 bg-card/50 rounded-lg">
+                            <Eye className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
+                            <p className="text-xl font-bold">{tiktokStats.likeCount}</p>
+                            <p className="text-xs text-muted-foreground">J'aime</p>
+                        </div>
+                        <div className="p-3 bg-card/50 rounded-lg">
+                           <Library className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
+                            <p className="text-xl font-bold">{tiktokStats.videoCount}</p>
+                            <p className="text-xs text-muted-foreground">Vidéos</p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="text-center p-4 bg-card/50 rounded-lg">
+                        <p className="text-muted-foreground mb-3">Connectez votre compte TikTok.</p>
+                        <Button onClick={handleConnectTiktok} disabled={isLoadingTiktok}>
+                            <LinkIcon className="mr-2 h-4 w-4" />
+                            {isLoadingTiktok ? <><Loader2 className="animate-spin mr-2"/> Connexion...</> : 'Connecter à TikTok'}
+                        </Button>
+                         <p className="text-xs text-muted-foreground mt-2">La connexion réelle nécessite une authentification (OAuth)</p>
+                    </div>
+                )}
             </CardContent>
         </Card>
         <Card className="border-blue-500/30 bg-blue-500/5">
