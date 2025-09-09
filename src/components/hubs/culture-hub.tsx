@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,13 +16,29 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
-type CulturalContent = Pick<Content, 'title' | 'type'> & { description: string };
+type CulturalContent = Pick<Content, 'title' | 'type'> & { description: string; imageUrl: string; hint: string };
 
-const contentDescriptions: { [key: string]: string } = {
-  "Le Labyrinthe d'Osiris": "Plongez dans un thriller mystique au cœur de l'Égypte ancienne.",
-  "Pharaoh's Legacy Vol. 1": "Une aventure épique où des lycéens réveillent un pouvoir ancestral.",
-  "Les Chroniques de Thot": "Découvrez les secrets de la sagesse et de la magie égyptienne.",
-  "L'art du Hiéroglyphe": "Une analyse approfondie de l'écriture sacrée des pharaons.",
+const contentData: { [key: string]: { description: string, imageUrl: string, hint: string } } = {
+  "Le Labyrinthe d'Osiris": {
+    description: "Plongez dans un thriller mystique au cœur de l'Égypte ancienne.",
+    imageUrl: "https://picsum.photos/400/300",
+    hint: "egyptian labyrinth"
+  },
+  "Pharaoh's Legacy Vol. 1": {
+    description: "Une aventure épique où des lycéens réveillent un pouvoir ancestral.",
+    imageUrl: "https://picsum.photos/400/300",
+    hint: "pharaoh legacy"
+  },
+  "Les Chroniques de Thot": {
+    description: "Découvrez les secrets de la sagesse et de la magie égyptienne.",
+    imageUrl: "https://picsum.photos/400/300",
+    hint: "ancient scroll"
+  },
+  "L'art du Hiéroglyphe": {
+    description: "Une analyse approfondie de l'écriture sacrée des pharaons.",
+    imageUrl: "https://picsum.photos/400/300",
+    hint: "hieroglyphics wall"
+  },
 };
 
 
@@ -47,11 +64,13 @@ export default function CultureHub({ content, events, onEventRegistration }: Cul
   const [selectedEvent, setSelectedEvent] = useState<AppEvent | null>(null);
 
   const culturalContent: CulturalContent[] = content
-    .filter(c => c.status === "Publié")
+    .filter(c => c.status === "Publié" && contentData[c.title])
     .map(c => ({
         title: c.title,
         type: c.type,
-        description: contentDescriptions[c.title] || "Description à venir."
+        description: contentData[c.title].description,
+        imageUrl: contentData[c.title].imageUrl,
+        hint: contentData[c.title].hint
     }));
     
   const upcomingEvents = events
@@ -120,22 +139,26 @@ export default function CultureHub({ content, events, onEventRegistration }: Cul
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {culturalContent.map((item) => {
-            const Icon = categoryIcons[item.type];
             return (
                 <Card key={item.title} className="bg-card border-border/50 flex flex-col justify-between overflow-hidden group transition-all duration-300 hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-1">
-                <CardHeader className="items-center justify-center flex-grow p-6">
-                    <div className="p-5 rounded-full bg-primary/10 text-primary transition-all duration-300 group-hover:scale-110 group-hover:bg-primary/20">
-                      <Icon className="w-16 h-16" />
-                    </div>
-                </CardHeader>
-                <CardContent className="p-4 space-y-2 text-center">
-                    <Badge variant="secondary" className="text-accent-foreground bg-accent/20 border-accent/50">{item.type}</Badge>
-                    <CardTitle className="text-lg font-semibold text-primary-foreground">{item.title}</CardTitle>
-                    <CardDescription className="text-muted-foreground text-sm">{item.description}</CardDescription>
-                    <Button variant="outline" className="w-full mt-2 border-primary/50 text-primary hover:bg-primary/10" onClick={() => handleDiscover(item.title)}>
-                    Découvrir
-                    </Button>
-                </CardContent>
+                  <div className="aspect-[4/3] overflow-hidden">
+                      <Image 
+                        src={item.imageUrl}
+                        alt={`Image pour ${item.title}`}
+                        width={400}
+                        height={300}
+                        data-ai-hint={item.hint}
+                        className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-110"
+                      />
+                  </div>
+                  <CardContent className="p-4 space-y-2 text-center flex flex-col flex-grow">
+                      <Badge variant="secondary" className="text-accent-foreground bg-accent/20 border-accent/50 w-fit mx-auto">{item.type}</Badge>
+                      <CardTitle className="text-lg font-semibold text-primary-foreground">{item.title}</CardTitle>
+                      <CardDescription className="text-muted-foreground text-sm flex-grow">{item.description}</CardDescription>
+                      <Button variant="outline" className="w-full mt-2 border-primary/50 text-primary hover:bg-primary/10" onClick={() => handleDiscover(item.title)}>
+                      Découvrir
+                      </Button>
+                  </CardContent>
                 </Card>
             )
           })}
