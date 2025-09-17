@@ -4,7 +4,7 @@
 import { useState, forwardRef, useImperativeHandle, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home, Wallet, Cog, DollarSign } from "lucide-react";
+import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home, Wallet, Cog, DollarSign, Clipboard, MicVocal } from "lucide-react";
 import UserManagement, { Subscriber } from "@/components/admin/user-management";
 import ContentManagement, { initialContent as iContent, Content } from "@/components/admin/content-management";
 import BookingSchedule, { Booking } from "@/components/admin/booking-schedule";
@@ -96,7 +96,9 @@ const adminCategories: AdminCategory[] = [
         title: "Ressources Humaines",
         color: "bg-orange-600/80 text-orange-50",
         sections: [
-            { title: "Personnel", icon: Briefcase, view: "hr" },
+            { title: "Administration", icon: Clipboard, view: "hr" },
+            { title: "Personnel Studio", icon: MicVocal, view: "hr" },
+            { title: "Autres Rôles", icon: Users, view: "hr" },
         ]
     }
 ];
