@@ -37,6 +37,7 @@ const clauseGenerationPrompt = ai.definePrompt({
         - 'obligationsProvider': Listez les engagements et responsabilités de KHEOPS (le prestataire).
         - 'obligationsClient': Listez les engagements et responsabilités du client.
         - 'confidentiality': Rédigez une clause de confidentialité standard mais solide, protégeant les informations des deux parties.
+        - 'paymentTerms': Décrivez les modalités de paiement. Proposez par défaut un acompte de 50% à la signature et le solde à la livraison, mais restez flexible si l'utilisateur a déjà écrit autre chose.
 
         Générez uniquement le texte final de la clause. Ne renvoyez pas de commentaires ou d'explications.
     `,

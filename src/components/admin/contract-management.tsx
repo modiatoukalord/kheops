@@ -309,37 +309,37 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
         window.print();
     };
     
+    const ClauseField = ({ name, label }: { name: "object" | "obligationsProvider" | "obligationsClient" | "confidentiality" | "paymentTerms", label: string }) => (
+        <FormField
+            control={form.control}
+            name={name}
+            render={({ field }) => (
+            <FormItem>
+                <div className="flex items-center justify-between">
+                    <FormLabel>{label}</FormLabel>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleGenerateClause(name)}
+                        disabled={!!generatingClause}
+                        className="gap-2 text-accent hover:text-accent"
+                    >
+                        {generatingClause === name ? ( <Loader2 className="h-4 w-4 animate-spin"/> ) : ( <Sparkles className="h-4 w-4" /> )}
+                        Générer avec l'IA
+                    </Button>
+                </div>
+                <FormControl>
+                    <Textarea placeholder={`Définir ${label.toLowerCase()}...`} {...field} />
+                </FormControl>
+                <FormMessage />
+            </FormItem>
+            )}
+        />
+    );
+        
     const renderContractFormFields = (isEditing: boolean) => {
         const typeValue = form.watch("type");
-        
-        const ClauseField = ({ name, label }: { name: "object" | "obligationsProvider" | "obligationsClient" | "confidentiality", label: string }) => (
-            <FormField
-                control={form.control}
-                name={name}
-                render={({ field }) => (
-                <FormItem>
-                    <div className="flex items-center justify-between">
-                        <FormLabel>{label}</FormLabel>
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleGenerateClause(name)}
-                            disabled={!!generatingClause}
-                            className="gap-2 text-accent hover:text-accent"
-                        >
-                            {generatingClause === name ? ( <Loader2 className="h-4 w-4 animate-spin"/> ) : ( <Sparkles className="h-4 w-4" /> )}
-                            Générer avec l'IA
-                        </Button>
-                    </div>
-                    <FormControl>
-                        <Textarea placeholder={`Définir ${label.toLowerCase()}...`} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                </FormItem>
-                )}
-            />
-        );
 
         return (
             <div className="grid gap-4 py-4 max-h-[80vh] overflow-y-auto pr-4">
@@ -437,20 +437,7 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
                 <ClauseField name="obligationsProvider" label="Obligations du prestataire" />
                 <ClauseField name="obligationsClient" label="Obligations du client" />
                 <ClauseField name="confidentiality" label="Clause de confidentialité" />
-                
-                <FormField
-                    control={form.control}
-                    name="paymentTerms"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Modalités de Paiement</FormLabel>
-                            <FormControl>
-                                <Textarea placeholder="Ex: Acompte de 50% à la signature, solde à la livraison..." {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
+                <ClauseField name="paymentTerms" label="Modalités de Paiement" />
 
 
                 {typeValue === "Prestation Studio" && (
@@ -662,5 +649,3 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
         </Card>
     );
 }
-
-    
