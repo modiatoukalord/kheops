@@ -6,14 +6,15 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { User, MoreHorizontal, UserPlus, Edit, Trash2 } from "lucide-react";
+import { User, MoreHorizontal, UserPlus, Edit, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { Employee, EmployeeDepartment, departmentColors } from "./human-resources-management";
 import { format, parseISO, isValid } from "date-fns";
+import { Badge } from "@/components/ui/badge";
 
 interface OrgChartProps {
     employees: Employee[];
@@ -22,7 +23,7 @@ interface OrgChartProps {
     onDeleteEmployee: (id: string) => Promise<void>;
 }
 
-const MemberCard = ({ member, onEdit, onDelete }: { member: Employee, onEdit: () => void, onDelete: () => void }) => (
+const MemberCard = ({ member, onEdit, onDelete, subordinateCount, isExpanded, onToggleExpand }: { member: Employee, onEdit: () => void, onDelete: () => void, subordinateCount: number, isExpanded: boolean, onToggleExpand: () => void }) => (
     <Card className="text-center p-4 bg-card/60 shadow-md relative group w-56">
         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
             <DropdownMenu>
@@ -40,41 +41,54 @@ const MemberCard = ({ member, onEdit, onDelete }: { member: Employee, onEdit: ()
         </Avatar>
         <p className="font-bold text-sm">{member.name}</p>
         <p className="text-xs text-muted-foreground">{member.role}</p>
+        {subordinateCount > 0 && (
+             <button onClick={onToggleExpand} className="absolute -bottom-3 left-1/2 -translate-x-1/2 flex items-center justify-center h-6 w-6 bg-secondary rounded-full border-2 border-background hover:bg-primary hover:text-primary-foreground transition-colors">
+                <Badge variant="secondary" className="px-1.5 rounded-full text-xs">{subordinateCount}</Badge>
+                {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </button>
+        )}
     </Card>
 );
 
 const MemberNode = ({ member, allEmployees, onEdit, onDelete, level = 0 }: { member: Employee, allEmployees: Employee[], onEdit: (employee: Employee) => void, onDelete: (employee: Employee) => void, level?: number }) => {
+    const [isExpanded, setExpanded] = useState(true);
     const subordinates = allEmployees.filter(e => e.reportsTo === member.id);
     const hasSubordinates = subordinates.length > 0;
 
     return (
-        <div className="relative flex flex-col items-center">
-            {/* Card for the current member */}
-            <MemberCard member={member} onEdit={() => onEdit(member)} onDelete={() => onDelete(member)} />
+        <div className="relative flex flex-col items-center pt-8">
+            <MemberCard 
+                member={member} 
+                onEdit={() => onEdit(member)} 
+                onDelete={() => onDelete(member)}
+                subordinateCount={subordinates.length}
+                isExpanded={isExpanded}
+                onToggleExpand={() => setExpanded(!isExpanded)}
+            />
 
-            {/* Connecting lines to subordinates */}
-            {hasSubordinates && (
+            {hasSubordinates && isExpanded && (
                 <>
-                    {/* Vertical line pointing down from the card */}
+                    {/* Vertical line from card to horizontal line */}
                     <div className="absolute top-full left-1/2 w-px h-8 bg-border -translate-x-1/2" />
-                    {/* Horizontal line */}
-                    {subordinates.length > 1 && (
-                        <div className="absolute top-[calc(100%_+_2rem)] left-0 w-full h-px bg-border" />
-                    )}
+                    
+                    {/* Horizontal line connecting all subordinates */}
+                     {subordinates.length > 1 && (
+                        <div className="absolute top-[calc(100%_+_2rem)] left-[calc(50%_-_(50%_/_1))] right-[calc(50%_-_(50%_/_1))] h-px bg-border" style={{
+                           left: `calc(50% - ${(subordinates.length-1)*136/2}px)`,
+                           right: `calc(50% - ${(subordinates.length-1)*136/2}px)`
+                        }} />
+                     )}
+                    
+                    <div className="mt-16 flex justify-center gap-8">
+                        {subordinates.map(sub => (
+                            <div key={sub.id} className="relative flex flex-col items-center">
+                                {/* Vertical line from horizontal line to card */}
+                                <div className="absolute bottom-full left-1/2 w-px h-8 bg-border -translate-x-1/2" />
+                                <MemberNode member={sub} allEmployees={allEmployees} onEdit={onEdit} onDelete={onDelete} level={level + 1} />
+                            </div>
+                        ))}
+                    </div>
                 </>
-            )}
-            
-            {/* Render subordinates */}
-            {hasSubordinates && (
-                 <div className="mt-16 flex justify-center gap-8">
-                    {subordinates.map(sub => (
-                        <div key={sub.id} className="relative flex flex-col items-center">
-                            {/* Vertical line pointing up to the horizontal line */}
-                            <div className="absolute bottom-full left-1/2 w-px h-8 bg-border -translate-x-1/2" />
-                            <MemberNode member={sub} allEmployees={allEmployees} onEdit={onEdit} onDelete={onDelete} level={level + 1} />
-                        </div>
-                    ))}
-                </div>
             )}
         </div>
     );
@@ -148,7 +162,7 @@ export default function OrgChart({ employees = [], onAddEmployee, onUpdateEmploy
         }
     };
 
-    const rootEmployees = employees.filter(e => !e.reportsTo);
+    const rootEmployees = employees.filter(e => !e.reportsTo || e.reportsTo === 'none');
     const possibleManagers = employees.filter(e => e.id !== editingEmployee?.id);
 
     return (
