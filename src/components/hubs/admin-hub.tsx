@@ -28,7 +28,9 @@ export type { Contract, Payout };
 
 export type AdminHubProps = {
   content: Content[];
-  setContent: React.Dispatch<React.SetStateAction<Content[]>>;
+  onAddContent: (content: Omit<Content, 'id'>) => Promise<void>;
+  onUpdateContent: (id: string, content: Partial<Omit<Content, 'id'>>) => Promise<void>;
+  onDeleteContent: (id: string) => Promise<void>;
   events: AppEvent[];
   onAddEvent: (event: Omit<AppEvent, 'id'>) => void;
   onUpdateEvent: (id: string, event: Partial<Omit<AppEvent, 'id'>>) => void;
@@ -93,7 +95,7 @@ const adminCategories: AdminCategory[] = [
 
 
 const AdminHub = forwardRef<any, AdminHubProps>(({ 
-    content, setContent, 
+    content, onAddContent, onUpdateContent, onDeleteContent,
     events, onAddEvent, onUpdateEvent, onDeleteEvent, 
     bookings, setBookings, onUpdateBookingStatus, onAddBooking,
     transactions, onAddTransaction,
@@ -213,7 +215,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
 
   const adminViews = {
     users: { component: UserManagement, title: "Gestion des Abonnements", props: { subscribers, onAddSubscriber: handleAddSubscriber, onUpdateSubscriber, onDeleteSubscriber, onValidateSubscription: handleValidateSubscription, onRenewSubscriber: handleRenewSubscriber } },
-    content: { component: ContentManagement, title: "Gestion des Contenus", props: { content, setContent } },
+    content: { component: ContentManagement, title: "Gestion des Contenus", props: { content, onAddContent, onUpdateContent, onDeleteContent } },
     bookings: { component: BookingSchedule, title: "Planning des Réservations", props: { bookings, onAddBooking, onUpdateBookingStatus, contracts } },
     settings: { component: SiteSettings, title: "Paramètres du Site", props: {} },
     events: { component: EventManagement, title: "Gestion des Événements", props: { events, onAddEvent, onUpdateEvent, onDeleteEvent } },
@@ -315,3 +317,5 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
 
 AdminHub.displayName = "AdminHub";
 export default AdminHub;
+
+    
