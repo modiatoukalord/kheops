@@ -16,13 +16,14 @@ import ActivityLog from "@/components/admin/activity-log";
 import PlatformManagement, { Payout, initialPayouts as iPayouts } from "@/components/admin/platform-management";
 import FixedCostsManagement, { FixedCost } from "@/components/admin/fixed-costs-management";
 import PricingSettings from "@/components/admin/pricing-settings";
+import HumanResourcesManagement from "@/components/admin/human-resources-management";
 import { format } from "date-fns";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, updateDoc, doc, addDoc, deleteDoc } from "firebase/firestore";
 
 
-type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities" | "platforms" | "fixed-costs" | "pricing";
+type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities" | "platforms" | "fixed-costs" | "pricing" | "hr";
 
 export type { Contract, Payout };
 
@@ -89,6 +90,13 @@ const adminCategories: AdminCategory[] = [
             { title: "Événements", icon: CalendarPlus, view: "events" },
             { title: "Paramètres", icon: Settings, view: "settings" },
             { title: "Tarifs", icon: DollarSign, view: "pricing" },
+        ]
+    },
+     {
+        title: "Ressources Humaines",
+        color: "bg-orange-600/80 text-orange-50",
+        sections: [
+            { title: "Personnel", icon: Briefcase, view: "hr" },
         ]
     }
 ];
@@ -229,6 +237,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
     platforms: { component: PlatformManagement, title: "Gestion des Plateformes", props: { payouts, setPayouts, onAddPayout: handleAddPayout } },
     "fixed-costs": { component: FixedCostsManagement, title: "Gestion des Charges Fixes", props: { fixedCosts, onAddFixedCost: handleAddFixedCost, onUpdateFixedCost: handleUpdateFixedCost, onDeleteFixedCost: handleDeleteFixedCost } },
     pricing: { component: PricingSettings, title: "Tarifs des Services", props: {} },
+    hr: { component: HumanResourcesManagement, title: "Ressources Humaines", props: {} },
   };
 
 
@@ -293,7 +302,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
       )}
 
       {activeView === 'dashboard' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {adminCategories.map((category) => (
             <div key={category.title} className={`p-6 rounded-xl shadow-lg ${category.color}`}>
               <h2 className="text-2xl font-bold font-headline mb-4 text-white">{category.title}</h2>
@@ -322,4 +331,4 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
 AdminHub.displayName = "AdminHub";
 export default AdminHub;
 
-
+    
