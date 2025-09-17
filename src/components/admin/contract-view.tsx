@@ -11,6 +11,17 @@ interface ContractViewProps {
 }
 
 export default function ContractView({ contract }: ContractViewProps) {
+    const getDurationText = () => {
+        if (contract.startDate && contract.endDate) {
+            return `Du ${format(contract.startDate, "d MMMM yyyy", { locale: fr })} au ${format(contract.endDate, "d MMMM yyyy", { locale: fr })}`;
+        }
+        if (contract.startDate) {
+            return `À partir du ${format(contract.startDate, "d MMMM yyyy", { locale: fr })}`;
+        }
+        return "Non spécifiée";
+    }
+
+
     return (
         <div className="bg-white text-black p-12 printable-area">
             <style jsx global>{`
@@ -48,6 +59,7 @@ export default function ContractView({ contract }: ContractViewProps) {
                         <p><strong>Le Prestataire :</strong> KHEOPS STUDIO</p>
                         <p><strong>Le Client :</strong> {contract.clientName}</p>
                         <p><strong>Date d'Effet :</strong> {contract.startDate ? format(contract.startDate, "d MMMM yyyy", { locale: fr }) : "N/A"}</p>
+                        <p><strong>Durée du contrat :</strong> {getDurationText()}</p>
                     </div>
                 </section>
 
