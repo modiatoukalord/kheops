@@ -15,7 +15,7 @@ import { Booking } from "@/components/admin/booking-schedule";
 import { Transaction } from "@/components/admin/financial-management";
 import { Subscriber } from "@/components/admin/user-management";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, getDocs, query, orderBy, Timestamp, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, orderBy, Timestamp, onSnapshot, doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
 
 
 type Hubs = {
@@ -43,7 +43,7 @@ function HomePageContent() {
   const searchParams = useSearchParams();
   const [activeHub, setActiveHub] = useState("culture");
   const [showMainHeader, setShowMainHeader] = useState(true);
-  const [content, setContent] = useState<Content[]>(initialContent);
+  const [content, setContent] = useState<Content[]>([]);
   const [events, setEvents] = useState<AppEvent[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -64,6 +64,22 @@ function HomePageContent() {
   }, [searchParams]);
 
   useEffect(() => {
+    // Check if content collection exists and seed if not
+    const seedContent = async () => {
+        const contentRef = collection(db, "content");
+        const snapshot = await getDocs(contentRef);
+        if (snapshot.empty) {
+            console.log("Seeding initial content...");
+            const batch = writeBatch(db);
+            initialContent.forEach((c) => {
+                const docRef = doc(contentRef);
+                batch.set(docRef, c);
+            });
+            await batch.commit();
+        }
+    };
+    seedContent();
+
     const fetchBookings = onSnapshot(query(collection(db, "bookings"), orderBy("date", "desc")), (snapshot) => {
         const bookingsData = snapshot.docs.map(doc => {
             const data = doc.data();
@@ -98,6 +114,19 @@ function HomePageContent() {
         setEvents(eventsData);
     }, (error) => {
         console.error("Error fetching events: ", error);
+    });
+    
+    const fetchContent = onSnapshot(query(collection(db, "content"), orderBy("lastUpdated", "desc")), (snapshot) => {
+        const contentData = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+            } as Content;
+        });
+        setContent(contentData);
+    }, (error) => {
+        console.error("Error fetching content: ", error);
     });
 
     const fetchTransactions = onSnapshot(query(collection(db, "transactions"), orderBy("date", "desc")), (snapshot) => {
@@ -143,6 +172,7 @@ function HomePageContent() {
     return () => {
         fetchBookings();
         fetchEvents();
+        fetchContent();
         fetchTransactions();
         fetchSubscribers();
         fetchRegistrations();
@@ -206,6 +236,31 @@ function HomePageContent() {
       }
   };
   
+  const handleAddContent = async (newContentData: Omit<Content, 'id'>) => {
+    try {
+        await addDoc(collection(db, "content"), newContentData);
+    } catch (error) {
+        console.error("Error adding content: ", error);
+    }
+  };
+  
+  const handleUpdateContent = async (contentId: string, updatedContentData: Partial<Omit<Content, 'id'>>) => {
+      try {
+          const contentRef = doc(db, "content", contentId);
+          await updateDoc(contentRef, updatedContentData);
+      } catch (error) {
+          console.error("Error updating content: ", error);
+      }
+  };
+
+  const handleDeleteContent = async (contentId: string) => {
+      try {
+          await deleteDoc(doc(db, "content", contentId));
+      } catch (error) {
+          console.error("Error deleting content: ", error);
+      }
+  };
+
   const handleEventRegistration = async (registrationData: Omit<EventRegistration, 'id' | 'registrationDate'>) => {
     try {
       await addDoc(collection(db, "registrations"), {
@@ -267,7 +322,7 @@ function HomePageContent() {
     culture: { content, events, onEventRegistration: handleEventRegistration },
     studio: { bookings, onAddBooking: handleAddBooking, content },
     admin: { 
-        content, setContent, 
+        content, onAddContent: handleAddContent, onUpdateContent: handleUpdateContent, onDeleteContent: handleDeleteContent,
         events, onAddEvent: handleAddEvent, onUpdateEvent: handleUpdateEvent, onDeleteEvent: handleDeleteEvent,
         bookings, onAddBooking: handleAddBooking, onUpdateBookingStatus: handleUpdateBookingStatus,
         transactions, onAddTransaction: handleAddTransaction,
@@ -297,3 +352,5 @@ export default function Home() {
     </Suspense>
   )
 }
+
+    

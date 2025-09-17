@@ -14,12 +14,12 @@ import FinancialManagement, { Transaction } from "@/components/admin/financial-m
 import ContractManagement, { Contract } from "@/components/admin/contract-management";
 import ActivityLog from "@/components/admin/activity-log";
 import PlatformManagement, { Payout, initialPayouts as iPayouts } from "@/components/admin/platform-management";
-import FixedCostsManagement, { FixedCost, initialFixedCosts as iFixedCosts } from "@/components/admin/fixed-costs-management";
+import FixedCostsManagement, { FixedCost } from "@/components/admin/fixed-costs-management";
 import PricingSettings from "@/components/admin/pricing-settings";
 import { format } from "date-fns";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query } from "firebase/firestore";
+import { collection, onSnapshot, query, updateDoc, doc, addDoc, deleteDoc } from "firebase/firestore";
 
 
 type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities" | "platforms" | "fixed-costs" | "pricing";
@@ -28,7 +28,9 @@ export type { Contract, Payout };
 
 export type AdminHubProps = {
   content: Content[];
-  setContent: React.Dispatch<React.SetStateAction<Content[]>>;
+  onAddContent: (content: Omit<Content, 'id'>) => Promise<void>;
+  onUpdateContent: (id: string, content: Partial<Omit<Content, 'id'>>) => Promise<void>;
+  onDeleteContent: (id: string) => Promise<void>;
   events: AppEvent[];
   onAddEvent: (event: Omit<AppEvent, 'id'>) => void;
   onUpdateEvent: (id: string, event: Partial<Omit<AppEvent, 'id'>>) => void;
@@ -93,7 +95,7 @@ const adminCategories: AdminCategory[] = [
 
 
 const AdminHub = forwardRef<any, AdminHubProps>(({ 
-    content, setContent, 
+    content, onAddContent, onUpdateContent, onDeleteContent,
     events, onAddEvent, onUpdateEvent, onDeleteEvent, 
     bookings, setBookings, onUpdateBookingStatus, onAddBooking,
     transactions, onAddTransaction,
@@ -104,6 +106,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
   const [activeView, setActiveView] = useState<AdminView>("dashboard");
   const [contractToPay, setContractToPay] = useState<Contract | null>(null);
   const [contracts, setContracts] = useState<Contract[]>([]);
+  const [fixedCosts, setFixedCosts] = useState<FixedCost[]>([]);
   const activityLogRef = useRef<{ openDialog: (data: any) => void }>(null);
 
   useImperativeHandle(ref, () => ({
@@ -111,14 +114,30 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
   }));
 
   const [payouts, setPayouts] = useState<Payout[]>(iPayouts);
-  const [fixedCosts, setFixedCosts] = useState<FixedCost[]>(iFixedCosts);
 
   useEffect(() => {
-    const q = query(collection(db, "contracts"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const qContracts = query(collection(db, "contracts"));
+    const unsubContracts = onSnapshot(qContracts, (snapshot) => {
         setContracts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Contract)));
     });
-    return () => unsubscribe();
+    
+    const qFixedCosts = query(collection(db, "fixedCosts"));
+    const unsubFixedCosts = onSnapshot(qFixedCosts, (snapshot) => {
+        const costsData = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                paymentDate: data.paymentDate.toDate(),
+            } as FixedCost;
+        });
+        setFixedCosts(costsData);
+    });
+
+    return () => {
+      unsubContracts();
+      unsubFixedCosts();
+    };
   }, []);
 
   
@@ -159,43 +178,52 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
     onAddTransaction(newTransaction);
   };
   
-  const handleAddFixedCost = (newCost: Omit<FixedCost, 'id'>) => {
-    const fullCost = { ...newCost, id: `fc-${Date.now()}` };
-    setFixedCosts(prev => [fullCost, ...prev]);
-
+  const handleAddFixedCost = async (newCost: Omit<FixedCost, 'id'>) => {
+    await addDoc(collection(db, "fixedCosts"), newCost);
     const newTransaction: Omit<Transaction, 'id'> = {
-        date: format(fullCost.paymentDate, "yyyy-MM-dd"),
-        description: `Charge Fixe: ${fullCost.name}`,
+        date: format(newCost.paymentDate, "yyyy-MM-dd"),
+        description: `Charge Fixe: ${newCost.name}`,
         type: "Dépense",
-        category: fullCost.category,
-        amount: -fullCost.amount,
+        category: newCost.category,
+        amount: -newCost.amount,
         status: "Complété"
     };
     onAddTransaction(newTransaction);
   };
+
+  const handleUpdateFixedCost = async (id: string, updatedCost: Partial<Omit<FixedCost, 'id'>>) => {
+      const costRef = doc(db, "fixedCosts", id);
+      await updateDoc(costRef, updatedCost);
+  };
+
+  const handleDeleteFixedCost = async (id: string) => {
+      await deleteDoc(doc(db, "fixedCosts", id));
+  };
+
 
   const handleRequestContractPayment = (contract: Contract) => {
     setContractToPay(contract);
     setActiveView("activities");
   };
   
-  const onContractPaid = (contractId: string) => {
-    onUpdateContract(contractId, { paymentStatus: 'Payé' });
+  const onContractPaid = async (contractId: string) => {
+    const contractRef = doc(db, "contracts", contractId);
+    await updateDoc(contractRef, { paymentStatus: 'Payé' });
     setContractToPay(null);
     setActiveView('contracts'); // Go back to contracts view
   };
 
   const adminViews = {
     users: { component: UserManagement, title: "Gestion des Abonnements", props: { subscribers, onAddSubscriber: handleAddSubscriber, onUpdateSubscriber, onDeleteSubscriber, onValidateSubscription: handleValidateSubscription, onRenewSubscriber: handleRenewSubscriber } },
-    content: { component: ContentManagement, title: "Gestion des Contenus", props: { content, setContent } },
-    bookings: { component: BookingSchedule, title: "Planning des Réservations", props: { bookings, setBookings, onAddBooking, onUpdateBookingStatus, contracts } },
+    content: { component: ContentManagement, title: "Gestion des Contenus", props: { content, onAddContent, onUpdateContent, onDeleteContent } },
+    bookings: { component: BookingSchedule, title: "Planning des Réservations", props: { bookings, onAddBooking, onUpdateBookingStatus, contracts } },
     settings: { component: SiteSettings, title: "Paramètres du Site", props: {} },
     events: { component: EventManagement, title: "Gestion des Événements", props: { events, onAddEvent, onUpdateEvent, onDeleteEvent } },
     financial: { component: FinancialManagement, title: "Rapport Financier", props: { transactions, onAddTransaction } },
     contracts: { component: ContractManagement, title: "Gestion des Contrats", props: { onUpdateContract, onCollectPayment: handleRequestContractPayment } },
     activities: { component: ActivityLog, title: "Journal d'Activité", props: { bookings, contracts, onAddTransaction, onUpdateBookingStatus, ref: activityLogRef, contractToPay, onContractPaid } },
     platforms: { component: PlatformManagement, title: "Gestion des Plateformes", props: { payouts, setPayouts, onAddPayout: handleAddPayout } },
-    "fixed-costs": { component: FixedCostsManagement, title: "Gestion des Charges Fixes", props: { fixedCosts, setFixedCosts, onAddFixedCost: handleAddFixedCost } },
+    "fixed-costs": { component: FixedCostsManagement, title: "Gestion des Charges Fixes", props: { fixedCosts, onAddFixedCost: handleAddFixedCost, onUpdateFixedCost: handleUpdateFixedCost, onDeleteFixedCost: handleDeleteFixedCost } },
     pricing: { component: PricingSettings, title: "Tarifs des Services", props: {} },
   };
 
@@ -289,3 +317,5 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
 
 AdminHub.displayName = "AdminHub";
 export default AdminHub;
+
+    

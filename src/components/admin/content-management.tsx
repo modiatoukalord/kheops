@@ -153,25 +153,26 @@ const typeConfig: { [key in ContentType]: { icon: React.ElementType, label: stri
 
 interface ContentManagementProps {
   content: Content[];
-  setContent: React.Dispatch<React.SetStateAction<Content[]>>;
+  onAddContent: (content: Omit<Content, 'id'>) => Promise<void>;
+  onUpdateContent: (id: string, content: Partial<Omit<Content, 'id'>>) => Promise<void>;
+  onDeleteContent: (id: string) => Promise<void>;
 }
 
 
-export default function ContentManagement({ content, setContent }: ContentManagementProps) {
+export default function ContentManagement({ content, onAddContent, onUpdateContent, onDeleteContent }: ContentManagementProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
   const [typeFilters, setTypeFilters] = useState<ContentType[]>([]);
   const [statusFilters, setStatusFilters] = useState<ContentStatus[]>([]);
 
-  const handleAddContent = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleAddContent = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const title = formData.get("title") as string;
     const type = formData.get("type") as Content["type"];
 
-    const newContent: Content = {
-      id: `cont-${Date.now()}`,
+    const newContent: Omit<Content, 'id'> = {
       title,
       type,
       author: formData.get("author") as string,
@@ -179,7 +180,7 @@ export default function ContentManagement({ content, setContent }: ContentManage
       lastUpdated: new Date().toISOString().split("T")[0],
     };
 
-    setContent((prev) => [newContent, ...prev]);
+    await onAddContent(newContent);
     toast({
       title: "Contenu Ajouté",
       description: `Le contenu "${title}" a été ajouté comme brouillon.`,
@@ -187,19 +188,23 @@ export default function ContentManagement({ content, setContent }: ContentManage
     setDialogOpen(false);
   };
 
-  const handleStatusChange = (id: string, status: ContentStatus) => {
-    setContent(
-      content.map((c) =>
-        c.id === id
-          ? { ...c, status, lastUpdated: new Date().toISOString().split("T")[0] }
-          : c
-      )
-    );
+  const handleStatusChange = async (id: string, status: ContentStatus) => {
+    await onUpdateContent(id, { status, lastUpdated: new Date().toISOString().split("T")[0] });
     toast({
         title: "Statut mis à jour",
         description: `Le contenu a été marqué comme ${status.toLowerCase()}.`
     })
   };
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce contenu ?")) {
+      await onDeleteContent(id);
+      toast({
+        title: "Contenu Supprimé",
+        variant: "destructive"
+      });
+    }
+  }
 
   const filteredContent = content.filter((item) => {
     const matchesSearch =
@@ -405,7 +410,7 @@ export default function ContentManagement({ content, setContent }: ContentManage
                               <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
                               Publier
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-red-500">
+                            <DropdownMenuItem className="text-red-500" onClick={() => handleDelete(item.id)}>
                               <Trash2 className="mr-2 h-4 w-4" />
                               Supprimer
                             </DropdownMenuItem>
@@ -429,3 +434,5 @@ export default function ContentManagement({ content, setContent }: ContentManage
     </Card>
   );
 }
+
+    
