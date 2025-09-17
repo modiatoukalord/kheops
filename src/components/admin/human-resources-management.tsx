@@ -13,11 +13,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { MoreHorizontal, PlusCircle, Trash2, Edit, Users, Briefcase, DollarSign, User, Phone, Mail, UserPlus } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, isValid } from "date-fns";
 import { fr } from "date-fns/locale";
 
-type EmployeeStatus = "Actif" | "En congé" | "Parti";
-type EmployeeDepartment = "Administration" | "Studio" | "Marketing" | "Ventes" | "Culture" | "Wear" | "Autre";
+export type EmployeeStatus = "Actif" | "En congé" | "Parti";
+export type EmployeeDepartment = "Direction" | "Administration" | "Studio" | "Marketing" | "Ventes" | "Culture" | "Wear" | "Autre";
 
 export type Employee = {
     id: string;
@@ -31,12 +31,12 @@ export type Employee = {
     email: string;
 };
 
-const initialEmployees: Employee[] = [
-    { id: "emp-001", name: "Fatou Diop", role: "Manager du Hub", department: "Administration", status: "Actif", startDate: new Date("2023-01-15"), salary: 450000, phone: "06 111 2233", email: "fatou.diop@kheops.dev" },
-    { id: "emp-002", name: "Moussa Traoré", role: "Ingénieur du Son Principal", department: "Studio", status: "Actif", startDate: new Date("2023-02-01"), salary: 350000, phone: "06 222 3344", email: "moussa.traore@kheops.dev" },
-    { id: "emp-003", name: "Aïcha Diallo", role: "Responsable Contenu", department: "Culture", status: "Actif", startDate: new Date("2023-03-10"), salary: 250000, phone: "06 333 4455", email: "aicha.diallo@kheops.dev" },
-    { id: "emp-004", name: "Issa Cissokho", role: "Chef de Produit", department: "Wear", status: "Actif", startDate: new Date("2023-04-01"), salary: 300000, phone: "06 444 5566", email: "issa.cissokho@kheops.dev" },
-];
+interface HumanResourcesManagementProps {
+    employees: Employee[];
+    onAddEmployee: (employeeData: Omit<Employee, 'id'>) => Promise<void>;
+    onUpdateEmployee: (id: string, employeeData: Partial<Omit<Employee, 'id'>>) => Promise<void>;
+    onDeleteEmployee: (id: string) => Promise<void>;
+}
 
 const statusConfig: { [key in EmployeeStatus]: { variant: "default" | "secondary" | "outline", color: string } } = {
     "Actif": { variant: "default", color: "bg-green-500/80 text-white" },
@@ -44,7 +44,8 @@ const statusConfig: { [key in EmployeeStatus]: { variant: "default" | "secondary
     "Parti": { variant: "secondary", color: "bg-muted text-muted-foreground" },
 };
 
-const departmentColors: { [key in EmployeeDepartment]: string } = {
+export const departmentColors: { [key in EmployeeDepartment]: string } = {
+    "Direction": "bg-primary/20 text-primary border-primary/30",
     "Administration": "bg-blue-500/20 text-blue-700 border-blue-500/30",
     "Studio": "bg-purple-500/20 text-purple-700 border-purple-500/30",
     "Culture": "bg-orange-500/20 text-orange-700 border-orange-500/30",
@@ -55,44 +56,49 @@ const departmentColors: { [key in EmployeeDepartment]: string } = {
 };
 
 
-export default function HumanResourcesManagement() {
-    const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
+export default function HumanResourcesManagement({ employees, onAddEmployee, onUpdateEmployee, onDeleteEmployee }: HumanResourcesManagementProps) {
     const [isDialogOpen, setDialogOpen] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
     const { toast } = useToast();
 
-    const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
         
+        const startDateValue = formData.get("startDate") as string;
+        const startDate = isValid(parseISO(startDateValue)) ? parseISO(startDateValue) : new Date();
+
         const employeeData = {
             name: formData.get("name") as string,
             role: formData.get("role") as string,
             department: formData.get("department") as EmployeeDepartment,
-            status: "Actif" as EmployeeStatus,
-            startDate: parseISO(formData.get("startDate") as string),
+            status: (formData.get("status") as EmployeeStatus) || "Actif",
+            startDate: startDate,
             salary: Number(formData.get("salary")),
             phone: formData.get("phone") as string,
             email: formData.get("email") as string,
         };
 
-        if (editingEmployee) {
-            const updatedEmployee = { ...editingEmployee, ...employeeData };
-            setEmployees(employees.map(e => e.id === editingEmployee.id ? updatedEmployee : e));
-            toast({
-                title: "Employé Modifié",
-                description: `Les informations de ${updatedEmployee.name} ont été mises à jour.`,
-            });
-        } else {
-            const newEmployee = { id: `emp-${Date.now()}`, ...employeeData };
-            setEmployees([...employees, newEmployee]);
-            toast({
-                title: "Employé Ajouté",
-                description: `${newEmployee.name} a été ajouté à l'équipe.`,
-            });
+        try {
+            if (editingEmployee) {
+                await onUpdateEmployee(editingEmployee.id, employeeData);
+                toast({
+                    title: "Employé Modifié",
+                    description: `Les informations de ${employeeData.name} ont été mises à jour.`,
+                });
+            } else {
+                await onAddEmployee(employeeData);
+                toast({
+                    title: "Employé Ajouté",
+                    description: `${employeeData.name} a été ajouté à l'équipe.`,
+                });
+            }
+            setDialogOpen(false);
+            setEditingEmployee(null);
+        } catch (error) {
+            console.error("Error saving employee: ", error);
+            toast({ title: "Erreur", description: "Impossible de sauvegarder l'employé.", variant: "destructive" });
         }
-        setDialogOpen(false);
-        setEditingEmployee(null);
     };
 
     const handleOpenDialog = (employee: Employee | null) => {
@@ -100,13 +106,19 @@ export default function HumanResourcesManagement() {
         setDialogOpen(true);
     };
 
-    const handleDeleteEmployee = (employeeId: string) => {
-        if (window.confirm("Êtes-vous sûr de vouloir archiver cet employé ?")) {
-            setEmployees(employees.map(e => e.id === employeeId ? { ...e, status: "Parti" } : e));
-            toast({
-                title: "Employé Archivé",
-                variant: "destructive",
-            });
+    const handleDelete = async (employee: Employee) => {
+        if (window.confirm(`Êtes-vous sûr de vouloir supprimer ${employee.name} ? Cette action est irréversible.`)) {
+            try {
+                await onDeleteEmployee(employee.id);
+                 toast({
+                    title: "Employé Supprimé",
+                    description: `${employee.name} a été supprimé de la base de données.`,
+                    variant: "destructive"
+                });
+            } catch (error) {
+                 console.error("Error deleting employee: ", error);
+                 toast({ title: "Erreur", description: "Impossible de supprimer l'employé.", variant: "destructive" });
+            }
         }
     };
 
@@ -115,10 +127,10 @@ export default function HumanResourcesManagement() {
 
     return (
         <div className="space-y-6">
-            <section className="grid gap-4 md:grid-cols-3">
+            <section className="grid gap-4 md:grid-cols-2">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Nombre d'Employés Actifs</CardTitle>
+                        <CardTitle className="text-sm font-medium">Employés Actifs</CardTitle>
                         <Users className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
@@ -134,16 +146,6 @@ export default function HumanResourcesManagement() {
                     <CardContent>
                         <div className="text-2xl font-bold">{monthlyPayroll.toLocaleString('fr-FR')} FCFA</div>
                         <p className="text-xs text-muted-foreground">Estimation des salaires mensuels</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Postes Ouverts</CardTitle>
-                        <Briefcase className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">2</div>
-                        <p className="text-xs text-muted-foreground">Ingénieur Son, Stagiaire Marketing</p>
                     </CardContent>
                 </Card>
             </section>
@@ -203,9 +205,22 @@ export default function HumanResourcesManagement() {
                                                 <Input id="email" name="email" type="email" defaultValue={editingEmployee?.email} required />
                                             </div>
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="startDate">Date d'embauche</Label>
-                                            <Input id="startDate" name="startDate" type="date" defaultValue={editingEmployee ? format(editingEmployee.startDate, 'yyyy-MM-dd') : ''} required />
+                                        <div className="grid md:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="startDate">Date d'embauche</Label>
+                                                <Input id="startDate" name="startDate" type="date" defaultValue={editingEmployee ? format(editingEmployee.startDate, 'yyyy-MM-dd') : ''} required />
+                                            </div>
+                                             {editingEmployee && (
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="status">Statut</Label>
+                                                     <Select name="status" defaultValue={editingEmployee?.status} required>
+                                                        <SelectTrigger><SelectValue/></SelectTrigger>
+                                                        <SelectContent>
+                                                            {Object.keys(statusConfig).map(st => <SelectItem key={st} value={st}>{st}</SelectItem>)}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                             )}
                                         </div>
                                     </div>
                                     <DialogFooter className="pt-4 border-t">
@@ -256,8 +271,8 @@ export default function HumanResourcesManagement() {
                                                 <DropdownMenuItem onClick={() => handleOpenDialog(employee)}>
                                                     <Edit className="mr-2 h-4 w-4" /> Modifier
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem className="text-red-500" onClick={() => handleDeleteEmployee(employee.id)}>
-                                                    <Trash2 className="mr-2 h-4 w-4" /> Archiver
+                                                <DropdownMenuItem className="text-red-500" onClick={() => handleDelete(employee)}>
+                                                    <Trash2 className="mr-2 h-4 w-4" /> Supprimer
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>

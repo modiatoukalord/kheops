@@ -4,7 +4,7 @@
 import { useState, forwardRef, useImperativeHandle, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home, Wallet, Cog, DollarSign } from "lucide-react";
+import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home, Wallet, Cog, DollarSign, Clipboard, MicVocal, GanttChart } from "lucide-react";
 import UserManagement, { Subscriber } from "@/components/admin/user-management";
 import ContentManagement, { initialContent as iContent, Content } from "@/components/admin/content-management";
 import BookingSchedule, { Booking } from "@/components/admin/booking-schedule";
@@ -16,13 +16,15 @@ import ActivityLog from "@/components/admin/activity-log";
 import PlatformManagement, { Payout, initialPayouts as iPayouts } from "@/components/admin/platform-management";
 import FixedCostsManagement, { FixedCost } from "@/components/admin/fixed-costs-management";
 import PricingSettings from "@/components/admin/pricing-settings";
-import { format } from "date-fns";
+import HumanResourcesManagement, { Employee } from "@/components/admin/human-resources-management";
+import OrgChart from "@/components/admin/org-chart";
+import { format, parseISO } from "date-fns";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, updateDoc, doc, addDoc, deleteDoc } from "firebase/firestore";
 
 
-type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities" | "platforms" | "fixed-costs" | "pricing";
+type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities" | "platforms" | "fixed-costs" | "pricing" | "hr" | "org-chart";
 
 export type { Contract, Payout };
 
@@ -69,6 +71,7 @@ const adminCategories: AdminCategory[] = [
             { title: "Abonnements", icon: Users, view: "users" },
             { title: "Réservations", icon: CalendarCheck, view: "bookings" },
             { title: "Contrats", icon: FileSignature, view: "contracts" },
+            { title: "Personnel", icon: Briefcase, view: "hr" },
         ]
     },
     {
@@ -87,7 +90,14 @@ const adminCategories: AdminCategory[] = [
         sections: [
             { title: "Contenus", icon: FileText, view: "content" },
             { title: "Événements", icon: CalendarPlus, view: "events" },
+            { title: "Organigramme", icon: GanttChart, view: "org-chart" },
             { title: "Paramètres", icon: Settings, view: "settings" },
+        ]
+    },
+     {
+        title: "Configuration",
+        color: "bg-orange-600/80 text-orange-50",
+        sections: [
             { title: "Tarifs", icon: DollarSign, view: "pricing" },
         ]
     }
@@ -107,6 +117,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
   const [contractToPay, setContractToPay] = useState<Contract | null>(null);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [fixedCosts, setFixedCosts] = useState<FixedCost[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const activityLogRef = useRef<{ openDialog: (data: any) => void }>(null);
 
   useImperativeHandle(ref, () => ({
@@ -115,6 +126,10 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
 
   const [payouts, setPayouts] = useState<Payout[]>(iPayouts);
 
+  useEffect(() => {
+    setShowMainHeader(activeView === 'dashboard');
+  }, [activeView, setShowMainHeader]);
+  
   useEffect(() => {
     const qContracts = query(collection(db, "contracts"));
     const unsubContracts = onSnapshot(qContracts, (snapshot) => {
@@ -134,9 +149,24 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
         setFixedCosts(costsData);
     });
 
+    const qEmployees = query(collection(db, "employees"));
+    const unsubEmployees = onSnapshot(qEmployees, (snapshot) => {
+        const employeesData = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                startDate: (data.startDate as Timestamp).toDate(),
+            } as Employee;
+        });
+        setEmployees(employeesData);
+    });
+
+
     return () => {
       unsubContracts();
       unsubFixedCosts();
+      unsubEmployees();
     };
   }, []);
 
@@ -213,6 +243,19 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
     setActiveView('contracts'); // Go back to contracts view
   };
 
+  const handleAddEmployee = async (employeeData: Omit<Employee, 'id'>) => {
+    await addDoc(collection(db, "employees"), employeeData);
+  };
+
+  const handleUpdateEmployee = async (id: string, employeeData: Partial<Omit<Employee, 'id'>>) => {
+    await updateDoc(doc(db, "employees", id), employeeData);
+  };
+
+  const handleDeleteEmployee = async (id: string) => {
+    await deleteDoc(doc(db, "employees", id));
+  };
+
+
   const adminViews = {
     users: { component: UserManagement, title: "Gestion des Abonnements", props: { subscribers, onAddSubscriber: handleAddSubscriber, onUpdateSubscriber, onDeleteSubscriber, onValidateSubscription: handleValidateSubscription, onRenewSubscriber: handleRenewSubscriber } },
     content: { component: ContentManagement, title: "Gestion des Contenus", props: { content, onAddContent, onUpdateContent, onDeleteContent } },
@@ -225,6 +268,8 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
     platforms: { component: PlatformManagement, title: "Gestion des Plateformes", props: { payouts, setPayouts, onAddPayout: handleAddPayout } },
     "fixed-costs": { component: FixedCostsManagement, title: "Gestion des Charges Fixes", props: { fixedCosts, onAddFixedCost: handleAddFixedCost, onUpdateFixedCost: handleUpdateFixedCost, onDeleteFixedCost: handleDeleteFixedCost } },
     pricing: { component: PricingSettings, title: "Tarifs des Services", props: {} },
+    hr: { component: HumanResourcesManagement, title: "Gestion du Personnel", props: { employees, onAddEmployee: handleAddEmployee, onUpdateEmployee: handleUpdateEmployee, onDeleteEmployee: handleDeleteEmployee } },
+    "org-chart": { component: OrgChart, title: "Organigramme", props: { employees, onAddEmployee: handleAddEmployee, onUpdateEmployee: handleUpdateEmployee, onDeleteEmployee: handleDeleteEmployee } },
   };
 
 
@@ -266,7 +311,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
                     <nav className="flex items-center gap-2">
                         <TooltipProvider>
                          {currentCategory.sections.map(section => (
-                            <Tooltip key={section.view}>
+                            <Tooltip key={`${section.view}-${section.title}`}>
                                 <TooltipTrigger asChild>
                                     <Button 
                                         variant={activeView === section.view ? "secondary" : "ghost"} 
@@ -289,14 +334,14 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
       )}
 
       {activeView === 'dashboard' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {adminCategories.map((category) => (
             <div key={category.title} className={`p-6 rounded-xl shadow-lg ${category.color}`}>
               <h2 className="text-2xl font-bold font-headline mb-4 text-white">{category.title}</h2>
               <div className="grid grid-cols-2 gap-4">
                 {category.sections.map((section) => (
                     <button
-                        key={section.view}
+                        key={`${section.view}-${section.title}`}
                         onClick={() => handleAction(section.view)}
                         className="flex flex-col items-center justify-center p-4 bg-black/20 rounded-lg text-center text-white/90 hover:bg-black/40 transition-colors duration-200"
                     >
@@ -317,5 +362,3 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
 
 AdminHub.displayName = "AdminHub";
 export default AdminHub;
-
-    
