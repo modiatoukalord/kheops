@@ -53,17 +53,16 @@ export default function ContractView({ contract }: ContractViewProps) {
 
                 <section className="mb-8">
                     <h3 className="text-xl font-semibold border-b pb-2 mb-4">1. Objet du Contrat</h3>
-                    <p className="text-sm text-gray-700">
-                        Le présent contrat a pour objet de définir les conditions dans lesquelles KHEOPS STUDIO (le "Prestataire") fournira des services de production musicale et d'enregistrement au Client.
-                        Les services incluent, sans s'y limiter, la réservation de sessions de studio, la prise de voix, le mixage, le mastering et l'accompagnement artistique, conformément aux prestations détaillées en annexe ou convenues entre les parties.
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                        {contract.object || "Le présent contrat a pour objet de définir les conditions dans lesquelles KHEOPS STUDIO (le \"Prestataire\") fournira des services de production musicale et d'enregistrement au Client. Les services incluent, sans s'y limiter, la réservation de sessions de studio, la prise de voix, le mixage, le mastering et l'accompagnement artistique, conformément aux prestations détaillées en annexe ou convenues entre les parties."}
                     </p>
                 </section>
 
                  <section className="mb-8">
                     <h3 className="text-xl font-semibold border-b pb-2 mb-4">2. Obligations des Parties</h3>
                      <div className="text-sm text-gray-700 space-y-2">
-                        <p><strong>2.1. Obligations du Prestataire :</strong> KHEOPS STUDIO s'engage à fournir les services avec diligence et professionnalisme, à mettre à disposition des équipements fonctionnels et un environnement de travail adéquat.</p>
-                        <p><strong>2.2. Obligations du Client :</strong> Le Client s'engage à respecter les horaires de réservation, à utiliser le matériel de manière appropriée et à effectuer les paiements selon les modalités convenues.</p>
+                        <p><strong>2.1. Obligations du Prestataire :</strong> <span className="whitespace-pre-wrap">{contract.obligationsProvider || "KHEOPS STUDIO s'engage à fournir les services avec diligence et professionnalisme, à mettre à disposition des équipements fonctionnels et un environnement de travail adéquat."}</span></p>
+                        <p><strong>2.2. Obligations du Client :</strong> <span className="whitespace-pre-wrap">{contract.obligationsClient || "Le Client s'engage à respecter les horaires de réservation, à utiliser le matériel de manière appropriée et à effectuer les paiements selon les modalités convenues."}</span></p>
                     </div>
                 </section>
 
@@ -90,8 +89,8 @@ export default function ContractView({ contract }: ContractViewProps) {
                 
                 <section className="mb-8">
                     <h3 className="text-xl font-semibold border-b pb-2 mb-4">4. Confidentialité</h3>
-                     <p className="text-sm text-gray-700">
-                        Chaque partie s'engage à ne pas divulguer les informations confidentielles de l'autre partie, qu'il s'agisse d'informations techniques, commerciales ou financières, sans l'accord écrit préalable de cette dernière. Cette obligation de confidentialité survivra à l'expiration ou à la résiliation du présent contrat.
+                     <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                        {contract.confidentiality || "Chaque partie s'engage à ne pas divulguer les informations confidentielles de l'autre partie, qu'il s'agisse d'informations techniques, commerciales ou financières, sans l'accord écrit préalable de cette dernière. Cette obligation de confidentialité survivra à l'expiration ou à la résiliation du présent contrat."}
                     </p>
                 </section>
 

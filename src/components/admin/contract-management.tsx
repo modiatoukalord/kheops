@@ -25,6 +25,7 @@ import { collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, order
 import { Booking } from "@/components/admin/booking-schedule";
 import { servicesWithPrices } from "@/lib/pricing";
 import ContractView from "./contract-view";
+import { Textarea } from "@/components/ui/textarea";
 
 
 const contractStatusConfig = {
@@ -62,6 +63,10 @@ export type Contract = {
     startDate?: Date;
     endDate?: Date;
     customPrices?: { [key: string]: number };
+    object?: string;
+    obligationsProvider?: string;
+    obligationsClient?: string;
+    confidentiality?: string;
 };
 
 interface ContractManagementProps {
@@ -176,6 +181,10 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
             startDate: dateRange?.from,
             endDate: dateRange?.to,
             customPrices: Object.keys(customPrices).length > 0 ? customPrices : undefined,
+            object: formData.get("object") as string,
+            obligationsProvider: formData.get("obligationsProvider") as string,
+            obligationsClient: formData.get("obligationsClient") as string,
+            confidentiality: formData.get("confidentiality") as string,
         };
 
         if (bookingId) {
@@ -225,6 +234,10 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
             startDate: dateRange?.from,
             endDate: dateRange?.to,
             customPrices: Object.keys(customPrices).length > 0 ? customPrices : undefined,
+            object: formData.get("object") as string,
+            obligationsProvider: formData.get("obligationsProvider") as string,
+            obligationsClient: formData.get("obligationsClient") as string,
+            confidentiality: formData.get("confidentiality") as string,
         };
 
         try {
@@ -346,6 +359,23 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
                 </div>
             </div>
             
+            <div className="space-y-2">
+                <Label htmlFor="object">Objet du contrat</Label>
+                <Textarea id="object" name="object" defaultValue={contract?.object} placeholder="Définir l'objet principal du contrat..." />
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="obligationsProvider">Obligations du prestataire</Label>
+                <Textarea id="obligationsProvider" name="obligationsProvider" defaultValue={contract?.obligationsProvider} placeholder="Lister les engagements de KHEOPS..." />
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="obligationsClient">Obligations du client</Label>
+                <Textarea id="obligationsClient" name="obligationsClient" defaultValue={contract?.obligationsClient} placeholder="Lister les engagements du client..." />
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="confidentiality">Clause de confidentialité</Label>
+                <Textarea id="confidentiality" name="confidentiality" defaultValue={contract?.confidentiality} placeholder="Définir les termes de confidentialité..." />
+            </div>
+
             <div className="space-y-4 pt-4 border-t">
                  <Label className="flex items-center gap-2">
                     <Info className="h-4 w-4 text-muted-foreground" />
@@ -529,10 +559,10 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
             <Dialog open={isViewDialogOpen} onOpenChange={setViewDialogOpen}>
                 <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0">
                     <DialogHeader className="p-4 pb-0 sr-only">
-                        <DialogTitle>Vue du contrat</DialogTitle>
+                        <DialogTitle>Vue du contrat pour {viewingContract?.clientName}</DialogTitle>
                         <DialogDescription>Aperçu du contrat pour {viewingContract?.clientName}</DialogDescription>
                     </DialogHeader>
-                    <div className="flex-grow overflow-y-auto">
+                     <div className="flex-grow overflow-y-auto">
                         {viewingContract && <ContractView contract={viewingContract} />}
                     </div>
                     <DialogFooter className="p-4 border-t sm:justify-between bg-background/80 backdrop-blur-sm no-print">
