@@ -1,7 +1,9 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +30,7 @@ import ContractView from "./contract-view";
 import { Textarea } from "@/components/ui/textarea";
 import { generateContractClause } from "@/ai/flows/contract-clause-flow";
 import type { GenerateContractClauseInput } from "@/ai/types/contract-clause";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 
 const contractStatusConfig = {
@@ -76,6 +79,22 @@ interface ContractManagementProps {
   onCollectPayment: (contract: Contract) => void;
 }
 
+const contractFormSchema = z.object({
+  bookingId: z.string().optional(),
+  clientName: z.string().min(1, "Client requis"),
+  startDate: z.date().optional(),
+  endDate: z.date().optional(),
+  type: z.string().min(1, "Type requis"),
+  paymentStatus: z.string().min(1, "Statut de paiement requis"),
+  value: z.coerce.number().min(0),
+  object: z.string().optional(),
+  obligationsProvider: z.string().optional(),
+  obligationsClient: z.string().optional(),
+  confidentiality: z.string().optional(),
+  customPrices: z.record(z.coerce.number()).optional(),
+});
+type ContractFormValues = z.infer<typeof contractFormSchema>;
+
 
 export default function ContractManagement({ onUpdateContract, onCollectPayment }: ContractManagementProps) {
     const [contracts, setContracts] = useState<Contract[]>([]);
@@ -85,15 +104,19 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
     const [isViewDialogOpen, setViewDialogOpen]  = useState(false);
     const [editingContract, setEditingContract] = useState<Contract | null>(null);
     const [viewingContract, setViewingContract] = useState<Contract | null>(null);
-    const [pdfFile, setPdfFile] = useState<File | null>(null);
     const [dateRange, setDateRange] = useState<DateRange | undefined>();
     const { toast } = useToast();
     const [generatingClause, setGeneratingClause] = useState<string | null>(null);
 
-    const objectRef = React.useRef<HTMLTextAreaElement>(null);
-    const obligationsProviderRef = React.useRef<HTMLTextAreaElement>(null);
-    const obligationsClientRef = React.useRef<HTMLTextAreaElement>(null);
-    const confidentialityRef = React.useRef<HTMLTextAreaElement>(null);
+    const form = useForm<ContractFormValues>({
+      resolver: zodResolver(contractFormSchema),
+      defaultValues: {
+        clientName: "",
+        type: "Prestation Studio",
+        paymentStatus: "En attente",
+        value: 0,
+      }
+    });
 
     useEffect(() => {
       const q = query(collection(db, "contracts"), orderBy("lastUpdate", "desc"));
@@ -132,18 +155,7 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
         setGeneratingClause(clauseType);
         try {
             const clauseText = await generateContractClause({ contractType, clauseType });
-            
-            let targetRef: React.RefObject<HTMLTextAreaElement> | null = null;
-            switch(clauseType) {
-                case 'object': targetRef = objectRef; break;
-                case 'obligationsProvider': targetRef = obligationsProviderRef; break;
-                case 'obligationsClient': targetRef = obligationsClientRef; break;
-                case 'confidentiality': targetRef = confidentialityRef; break;
-            }
-
-            if (targetRef?.current) {
-                targetRef.current.value = clauseText;
-            }
+            form.setValue(clauseType, clauseText);
 
             toast({
                 title: "Clause Générée",
@@ -171,123 +183,67 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
         }
     };
     
-    const handleAddContract = async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        
-        const formData = new FormData(event.currentTarget);
-        const bookingIdOrClientName = formData.get("bookingId") as string;
+    const handleAddContract = async (data: ContractFormValues) => {
+        const bookingIdOrClientName = data.clientName;
         
         if (!bookingIdOrClientName) {
-             toast({
-                title: "Erreur",
-                description: "Veuillez saisir un ID de réservation ou un nom de client.",
-                variant: "destructive"
-            });
+             toast({ title: "Erreur", description: "Veuillez saisir un nom de client.", variant: "destructive" });
             return;
         }
 
         const booking = bookings.find(b => b.id === bookingIdOrClientName);
-        
         let clientName = booking ? booking.artistName : bookingIdOrClientName;
         let bookingId = booking ? booking.id : undefined;
 
         if (bookingId && contracts.some(c => c.bookingId === bookingId)) {
-             toast({
-                title: "Erreur",
-                description: "Un contrat existe déjà pour cette réservation.",
-                variant: "destructive"
-            });
+             toast({ title: "Erreur", description: "Un contrat existe déjà pour cette réservation.", variant: "destructive" });
             return;
         }
-        
-        const customPrices: { [key: string]: number } = {};
-        Object.keys(servicesWithPrices).forEach(service => {
-            const price = formData.get(`price-${service}`) as string;
-            if (price) {
-                customPrices[service] = Number(price);
-            }
-        });
-
 
         const newContractData: Omit<Contract, 'id' | 'bookingId'> & {bookingId?: string} = {
-            clientName: clientName,
+            ...data,
+            clientName,
             status: "En attente",
             lastUpdate: format(new Date(), 'yyyy-MM-dd'),
-            value: Number(formData.get("value")) || 0,
-            paymentStatus: (formData.get("paymentStatus") as PaymentStatus) || 'N/A',
-            type: formData.get("type") as ContractType,
             startDate: dateRange?.from,
             endDate: dateRange?.to,
-            customPrices: Object.keys(customPrices).length > 0 ? customPrices : undefined,
-            object: formData.get("object") as string,
-            obligationsProvider: formData.get("obligationsProvider") as string,
-            obligationsClient: formData.get("obligationsClient") as string,
-            confidentiality: formData.get("confidentiality") as string,
+            paymentStatus: data.paymentStatus as PaymentStatus,
+            type: data.type as ContractType,
         };
-
-        if (bookingId) {
-            newContractData.bookingId = bookingId;
-        }
+        if (bookingId) newContractData.bookingId = bookingId;
 
 
         try {
             await addDoc(collection(db, "contracts"), newContractData);
-            toast({
-                title: "Contrat Ajouté",
-                description: `Le contrat pour ${clientName} a été créé.`,
-            });
+            toast({ title: "Contrat Ajouté", description: `Le contrat pour ${clientName} a été créé.` });
             setAddDialogOpen(false);
-            setPdfFile(null);
             setDateRange(undefined);
+            form.reset();
         } catch (error) {
              console.error("Error adding contract: ", error);
              toast({ title: "Erreur", description: "Impossible d'ajouter le contrat.", variant: "destructive"});
         }
     };
 
-    const handleEditContract = async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
+    const handleEditContract = async (data: ContractFormValues) => {
         if (!editingContract) return;
 
-        const formData = new FormData(event.currentTarget);
-        const clientName = formData.get("clientName") as string;
-        const value = Number(formData.get("value")) || 0;
-        const paymentStatus = (formData.get("paymentStatus") as PaymentStatus) || 'N/A';
-        const type = formData.get("type") as ContractType;
-
-        const customPrices: { [key: string]: number } = {};
-        Object.keys(servicesWithPrices).forEach(service => {
-            const price = formData.get(`price-${service}`) as string;
-            if (price) {
-                customPrices[service] = Number(price);
-            }
-        });
-
         const updatedData: Partial<Contract> = {
-            clientName, 
-            value, 
-            paymentStatus, 
-            type, 
+            ...data,
             lastUpdate: format(new Date(), 'yyyy-MM-dd'),
             startDate: dateRange?.from,
             endDate: dateRange?.to,
-            customPrices: Object.keys(customPrices).length > 0 ? customPrices : undefined,
-            object: formData.get("object") as string,
-            obligationsProvider: formData.get("obligationsProvider") as string,
-            obligationsClient: formData.get("obligationsClient") as string,
-            confidentiality: formData.get("confidentiality") as string,
+            paymentStatus: data.paymentStatus as PaymentStatus,
+            type: data.type as ContractType,
         };
 
         try {
             await updateDoc(doc(db, "contracts", editingContract.id), updatedData as any);
-             toast({
-                title: "Contrat mis à jour",
-                description: `Le contrat pour ${editingContract.clientName} a été mis à jour.`,
-            });
+             toast({ title: "Contrat mis à jour", description: `Le contrat pour ${editingContract.clientName} a été mis à jour.` });
             setEditDialogOpen(false);
             setEditingContract(null);
-            setPdfFile(null);
             setDateRange(undefined);
+            form.reset();
         } catch (error) {
             console.error("Error updating contract: ", error);
             toast({ title: "Erreur", description: "Impossible de modifier le contrat.", variant: "destructive"});
@@ -297,6 +253,18 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
     const handleOpenEditDialog = (contract: Contract) => {
         setEditingContract(contract);
         setDateRange({ from: contract.startDate, to: contract.endDate });
+        form.reset({
+          clientName: contract.clientName,
+          bookingId: contract.bookingId,
+          type: contract.type,
+          paymentStatus: contract.paymentStatus,
+          value: contract.value,
+          object: contract.object,
+          obligationsProvider: contract.obligationsProvider,
+          obligationsClient: contract.obligationsClient,
+          confidentiality: contract.confidentiality,
+          customPrices: contract.customPrices,
+        });
         setEditDialogOpen(true);
     };
 
@@ -309,11 +277,7 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
         if (!window.confirm("Êtes-vous sûr de vouloir supprimer ce contrat?")) return;
         try {
             await deleteDoc(doc(db, "contracts", contractId));
-            toast({
-                title: "Contrat Supprimé",
-                description: `Le contrat ${contractId} a été supprimé.`,
-                variant: "destructive"
-            });
+            toast({ title: "Contrat Supprimé", description: `Le contrat ${contractId} a été supprimé.`, variant: "destructive" });
         } catch (error) {
             console.error("Error deleting contract: ", error);
             toast({ title: "Erreur", description: "Impossible de supprimer le contrat.", variant: "destructive" });
@@ -324,39 +288,54 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
         window.print();
     };
     
-    const renderContractFormFields = (contract?: Contract | null) => {
-        const typeValue = (document.querySelector('[name="type"]') as HTMLSelectElement)?.value || contract?.type || "Prestation Studio";
+    const renderContractFormFields = (isEditing: boolean) => {
+        const typeValue = form.watch("type") || "Prestation Studio";
         
-        const ClauseField = ({ name, label, reference, defaultValue }: { name: GenerateContractClauseInput['clauseType'], label: string, reference: React.RefObject<HTMLTextAreaElement>, defaultValue?: string }) => (
-            <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                    <Label htmlFor={name}>{label}</Label>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleGenerateClause(name, typeValue)}
-                        disabled={!!generatingClause}
-                        className="gap-2 text-accent hover:text-accent"
-                    >
-                        {generatingClause === name ? (
-                            <Loader2 className="h-4 w-4 animate-spin"/>
-                        ) : (
-                            <Sparkles className="h-4 w-4" />
-                        )}
-                        Générer avec l'IA
-                    </Button>
-                </div>
-                <Textarea id={name} name={name} ref={reference} defaultValue={defaultValue} placeholder={`Définir ${label.toLowerCase()}...`} />
-            </div>
+        const ClauseField = ({ name, label }: { name: "object" | "obligationsProvider" | "obligationsClient" | "confidentiality", label: string }) => (
+            <FormField
+                control={form.control}
+                name={name}
+                render={({ field }) => (
+                <FormItem>
+                    <div className="flex items-center justify-between">
+                        <FormLabel>{label}</FormLabel>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleGenerateClause(name, typeValue)}
+                            disabled={!!generatingClause}
+                            className="gap-2 text-accent hover:text-accent"
+                        >
+                            {generatingClause === name ? ( <Loader2 className="h-4 w-4 animate-spin"/> ) : ( <Sparkles className="h-4 w-4" /> )}
+                            Générer avec l'IA
+                        </Button>
+                    </div>
+                    <FormControl>
+                        <Textarea placeholder={`Définir ${label.toLowerCase()}...`} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+                )}
+            />
         );
 
         return (
             <div className="grid gap-4 py-4 max-h-[80vh] overflow-y-auto pr-4">
-                <div className="space-y-2">
-                    <Label htmlFor="bookingId">Client ou Réservation ID</Label>
-                    <Input id="bookingId" name="bookingId" placeholder="Ex: res-001 ou Nom du Client" required defaultValue={contract?.bookingId || contract?.clientName} disabled={!!contract} />
-                </div>
+                <FormField
+                    control={form.control}
+                    name="clientName"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Client ou Réservation ID</FormLabel>
+                        <FormControl>
+                        <Input placeholder="Ex: res-001 ou Nom du Client" {...field} required disabled={isEditing}/>
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+
                 <div className="space-y-2">
                     <Label>Durée du contrat (Début - Fin)</Label>
                     <Popover>
@@ -364,10 +343,7 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
                         <Button
                             id="date"
                             variant={"outline"}
-                            className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !dateRange && "text-muted-foreground"
-                            )}
+                            className={cn("w-full justify-start text-left font-normal", !dateRange && "text-muted-foreground")}
                         >
                             <CalendarIcon className="mr-2 h-4 w-4" />
                             {dateRange?.from ? (
@@ -384,50 +360,49 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
                         </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                            initialFocus
-                            mode="range"
-                            defaultMonth={dateRange?.from}
-                            selected={dateRange}
-                            onSelect={setDateRange}
-                            numberOfMonths={2}
-                            locale={fr}
-                        />
+                        <Calendar initialFocus mode="range" defaultMonth={dateRange?.from} selected={dateRange} onSelect={setDateRange} numberOfMonths={2} locale={fr} />
                         </PopoverContent>
                     </Popover>
                 </div>
+
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="type">Type de contrat</Label>
-                        <Select name="type" defaultValue={contract?.type || "Prestation Studio"} required>
-                            <SelectTrigger id="type">
-                                <SelectValue placeholder="Type..." />
-                            </SelectTrigger>
-                            <SelectContent>{contractTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="paymentStatus">Statut Paiement</Label>
-                        <Select name="paymentStatus" defaultValue={contract?.paymentStatus || "En attente"}>
-                            <SelectTrigger id="paymentStatus">
-                                <SelectValue placeholder="Statut..." />
-                            </SelectTrigger>
-                            <SelectContent>{Object.keys(paymentStatusConfig).map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent>
-                        </Select>
-                    </div>
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="value">Valeur Globale du Contrat (FCFA)</Label>
-                    <div className="relative">
-                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input id="value" name="value" type="number" placeholder="Ex: 150000" className="pl-10" defaultValue={contract?.value}/>
-                    </div>
+                  <FormField control={form.control} name="type" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Type de contrat</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value} required>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Type..." /></SelectTrigger></FormControl>
+                        <SelectContent>{contractTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="paymentStatus" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Statut Paiement</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value} required>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Statut..." /></SelectTrigger></FormControl>
+                        <SelectContent>{Object.keys(paymentStatusConfig).map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
                 </div>
                 
-                <ClauseField name="object" label="Objet du contrat" reference={objectRef} defaultValue={contract?.object} />
-                <ClauseField name="obligationsProvider" label="Obligations du prestataire" reference={obligationsProviderRef} defaultValue={contract?.obligationsProvider} />
-                <ClauseField name="obligationsClient" label="Obligations du client" reference={obligationsClientRef} defaultValue={contract?.obligationsClient} />
-                <ClauseField name="confidentiality" label="Clause de confidentialité" reference={confidentialityRef} defaultValue={contract?.confidentiality} />
+                <FormField control={form.control} name="value" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Valeur Globale du Contrat (FCFA)</FormLabel>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <FormControl><Input type="number" placeholder="Ex: 150000" className="pl-10" {...field} /></FormControl>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                
+                <ClauseField name="object" label="Objet du contrat" />
+                <ClauseField name="obligationsProvider" label="Obligations du prestataire" />
+                <ClauseField name="obligationsClient" label="Obligations du client" />
+                <ClauseField name="confidentiality" label="Clause de confidentialité" />
 
                 <div className="space-y-4 pt-4 border-t">
                     <Label className="flex items-center gap-2">
@@ -436,16 +411,20 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
                     </Label>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {Object.keys(servicesWithPrices).map(service => (
-                            <div className="space-y-1" key={service}>
-                                <Label htmlFor={`price-${service}`} className="text-xs">{service}</Label>
+                          <FormField key={service} control={form.control} name={`customPrices.${service}`} render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">{service}</FormLabel>
+                              <FormControl>
                                 <Input
-                                    id={`price-${service}`}
-                                    name={`price-${service}`}
-                                    type="number"
-                                    placeholder={servicesWithPrices[service as keyof typeof servicesWithPrices].toLocaleString('fr-FR')}
-                                    defaultValue={contract?.customPrices?.[service]}
+                                  type="number"
+                                  placeholder={servicesWithPrices[service as keyof typeof servicesWithPrices].toLocaleString('fr-FR')}
+                                  {...field}
+                                  onChange={e => field.onChange(e.target.value === '' ? undefined : e.target.value)}
+                                  value={field.value ?? ''}
                                 />
-                            </div>
+                              </FormControl>
+                            </FormItem>
+                          )} />
                         ))}
                     </div>
                 </div>
@@ -553,7 +532,7 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
                     <CardTitle>Gestion des Contrats</CardTitle>
                     <CardDescription>Suivez et mettez à jour le statut des contrats de réservation.</CardDescription>
                 </div>
-                 <Dialog open={isAddDialogOpen} onOpenChange={(isOpen) => { setAddDialogOpen(isOpen); if (!isOpen) setDateRange(undefined); }}>
+                 <Dialog open={isAddDialogOpen} onOpenChange={(isOpen) => { setAddDialogOpen(isOpen); if (!isOpen) { setDateRange(undefined); form.reset(); } }}>
                     <DialogTrigger asChild>
                         <Button>
                             <PlusCircle className="mr-2 h-4 w-4" />
@@ -561,17 +540,19 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
                         </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-2xl">
-                        <form onSubmit={handleAddContract}>
-                            <DialogHeader>
-                                <DialogTitle>Créer un nouveau contrat</DialogTitle>
-                                <DialogDescription>Saisissez l'ID de réservation ou le nom du client et remplissez les détails pour générer un nouveau contrat.</DialogDescription>
-                            </DialogHeader>
-                            {renderContractFormFields(null)}
-                            <DialogFooter className="pt-4 border-t">
-                                <Button onClick={() => setAddDialogOpen(false)} variant="ghost" type="button">Annuler</Button>
-                                <Button type="submit">Créer le contrat</Button>
-                            </DialogFooter>
-                        </form>
+                        <Form {...form}>
+                          <form onSubmit={form.handleSubmit(handleAddContract)}>
+                              <DialogHeader>
+                                  <DialogTitle>Créer un nouveau contrat</DialogTitle>
+                                  <DialogDescription>Saisissez le nom du client et remplissez les détails pour générer un nouveau contrat.</DialogDescription>
+                              </DialogHeader>
+                              {renderContractFormFields(false)}
+                              <DialogFooter className="pt-4 border-t">
+                                  <Button onClick={() => setAddDialogOpen(false)} variant="ghost" type="button">Annuler</Button>
+                                  <Button type="submit">Créer le contrat</Button>
+                              </DialogFooter>
+                          </form>
+                        </Form>
                     </DialogContent>
                 </Dialog>
             </CardHeader>
@@ -594,19 +575,21 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
                     <p className="text-sm text-muted-foreground">Cliquez sur "Ajouter un contrat" pour commencer.</p>
                 </CardFooter>
             )}
-             <Dialog open={isEditDialogOpen} onOpenChange={(isOpen) => { setEditDialogOpen(isOpen); if (!isOpen) setDateRange(undefined); }}>
+             <Dialog open={isEditDialogOpen} onOpenChange={(isOpen) => { setEditDialogOpen(isOpen); if (!isOpen) { setDateRange(undefined); form.reset(); } }}>
                 <DialogContent className="sm:max-w-2xl">
-                    <form onSubmit={handleEditContract}>
-                        <DialogHeader>
-                            <DialogTitle>Modifier le contrat</DialogTitle>
-                            <DialogDescription>Mettez à jour les informations pour le contrat de {editingContract?.clientName}.</DialogDescription>
-                        </DialogHeader>
-                        {renderContractFormFields(editingContract)}
-                        <DialogFooter className="pt-4 border-t">
-                            <Button onClick={() => setEditDialogOpen(false)} variant="ghost" type="button">Annuler</Button>
-                            <Button type="submit">Enregistrer les modifications</Button>
-                        </DialogFooter>
-                    </form>
+                    <Form {...form}>
+                      <form onSubmit={form.handleSubmit(handleEditContract)}>
+                          <DialogHeader>
+                              <DialogTitle>Modifier le contrat</DialogTitle>
+                              <DialogDescription>Mettez à jour les informations pour le contrat de {editingContract?.clientName}.</DialogDescription>
+                          </DialogHeader>
+                          {renderContractFormFields(true)}
+                          <DialogFooter className="pt-4 border-t">
+                              <Button onClick={() => setEditDialogOpen(false)} variant="ghost" type="button">Annuler</Button>
+                              <Button type="submit">Enregistrer les modifications</Button>
+                          </DialogFooter>
+                      </form>
+                    </Form>
                 </DialogContent>
             </Dialog>
 
@@ -628,5 +611,3 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
         </Card>
     );
 }
-
-    
