@@ -21,12 +21,13 @@ import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { db } from "@/lib/firebase";
-import { collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, Timestamp } from "firestore";
+import { collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, Timestamp } from "firebase/firestore";
 import { Booking } from "@/components/admin/booking-schedule";
 import { servicesWithPrices } from "@/lib/pricing";
 import ContractView from "./contract-view";
 import { Textarea } from "@/components/ui/textarea";
-import { generateContractClause, GenerateContractClauseInput } from "@/ai/flows/contract-clause-flow";
+import { generateContractClause } from "@/ai/flows/contract-clause-flow";
+import type { GenerateContractClauseInput } from "@/ai/types/contract-clause";
 
 
 const contractStatusConfig = {
@@ -81,7 +82,7 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [isAddDialogOpen, setAddDialogOpen] = useState(false);
     const [isEditDialogOpen, setEditDialogOpen] = useState(false);
-    const [isViewDialogOpen, setViewDialogOpen] = useState(false);
+    const [isViewDialogOpen, setViewDialogOpen]  = useState(false);
     const [editingContract, setEditingContract] = useState<Contract | null>(null);
     const [viewingContract, setViewingContract] = useState<Contract | null>(null);
     const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -627,5 +628,3 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
         </Card>
     );
 }
-
-    

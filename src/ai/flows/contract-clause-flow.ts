@@ -4,17 +4,12 @@
  * @fileOverview An AI agent for generating contract clauses.
  *
  * - generateContractClause - A function that generates a contract clause based on type.
- * - GenerateContractClauseInput - The input type for the generateContractClause function.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
+import { GenerateContractClauseInputSchema, type GenerateContractClauseInput } from '@/ai/types/contract-clause';
 
-export const GenerateContractClauseInputSchema = z.object({
-  contractType: z.string().describe('The type of the contract (e.g., "Prestation Studio", "Licence Musique").'),
-  clauseType: z.enum(['object', 'obligationsProvider', 'obligationsClient', 'confidentiality']).describe('The type of clause to generate.'),
-});
-export type GenerateContractClauseInput = z.infer<typeof GenerateContractClauseInputSchema>;
 
 const ClauseOutputSchema = z.object({
   clauseText: z.string().describe('The generated text for the contract clause.'),
@@ -58,4 +53,3 @@ export async function generateContractClause(input: GenerateContractClauseInput)
     const result = await generateContractClauseFlow(input);
     return result.clauseText;
 }
-
