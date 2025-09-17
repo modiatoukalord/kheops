@@ -16,6 +16,7 @@ import { Transaction } from "@/components/admin/financial-management";
 import { Subscriber } from "@/components/admin/user-management";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, getDocs, query, orderBy, Timestamp, onSnapshot, doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
+import { Employee } from "@/components/admin/human-resources-management";
 
 
 type Hubs = {
@@ -49,6 +50,7 @@ function HomePageContent() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const adminHubRef = useRef<{ setActiveView: (view: any) => void }>(null);
 
@@ -168,6 +170,20 @@ function HomePageContent() {
     }, (error) => {
         console.error("Error fetching registrations: ", error);
     });
+    
+    const fetchEmployees = onSnapshot(query(collection(db, "employees"), orderBy("name", "asc")), (snapshot) => {
+        const employeesData = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                startDate: (data.startDate as Timestamp).toDate(),
+            } as Employee;
+        });
+        setEmployees(employeesData);
+    }, (error) => {
+        console.error("Error fetching employees: ", error);
+    });
 
     return () => {
         fetchBookings();
@@ -176,6 +192,7 @@ function HomePageContent() {
         fetchTransactions();
         fetchSubscribers();
         fetchRegistrations();
+        fetchEmployees();
     };
   }, []);
 
@@ -315,6 +332,30 @@ function HomePageContent() {
       }
   }
 
+  const handleAddEmployee = async (employeeData: Omit<Employee, 'id'>) => {
+    try {
+        await addDoc(collection(db, "employees"), employeeData);
+    } catch (error) {
+        console.error("Error adding employee: ", error);
+    }
+  };
+
+  const handleUpdateEmployee = async (id: string, employeeData: Partial<Omit<Employee, 'id'>>) => {
+    try {
+        await updateDoc(doc(db, "employees", id), employeeData);
+    } catch (error) {
+        console.error("Error updating employee: ", error);
+    }
+  };
+
+  const handleDeleteEmployee = async (id: string) => {
+    try {
+        await deleteDoc(doc(db, "employees", id));
+    } catch (error) {
+        console.error("Error deleting employee: ", error);
+    }
+  };
+
 
   const ActiveComponent = hubComponents[activeHub];
 
@@ -327,6 +368,7 @@ function HomePageContent() {
         bookings, onAddBooking: handleAddBooking, onUpdateBookingStatus: handleUpdateBookingStatus,
         transactions, onAddTransaction: handleAddTransaction,
         subscribers, onAddSubscriber: handleAddSubscriber, onUpdateSubscriber: handleUpdateSubscriber, onDeleteSubscriber: handleDeleteSubscriber,
+        employees, onAddEmployee: handleAddEmployee, onUpdateEmployee: handleUpdateEmployee, onDeleteEmployee: handleDeleteEmployee,
         onUpdateContract: handleUpdateContract,
         setShowMainHeader, ref: adminHubRef 
     },

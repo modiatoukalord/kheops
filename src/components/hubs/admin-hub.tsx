@@ -16,12 +16,12 @@ import ActivityLog from "@/components/admin/activity-log";
 import PlatformManagement, { Payout, initialPayouts as iPayouts } from "@/components/admin/platform-management";
 import FixedCostsManagement, { FixedCost } from "@/components/admin/fixed-costs-management";
 import PricingSettings from "@/components/admin/pricing-settings";
-import HumanResourcesManagement from "@/components/admin/human-resources-management";
+import HumanResourcesManagement, { Employee } from "@/components/admin/human-resources-management";
 import OrgChart from "@/components/admin/org-chart";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, updateDoc, doc, addDoc, deleteDoc } from "firebase/firestore";
+import { collection, onSnapshot, query, updateDoc, doc, addDoc, deleteDoc, Timestamp } from "firebase/firestore";
 
 
 type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities" | "platforms" | "fixed-costs" | "pricing" | "hr" | "org-chart";
@@ -47,6 +47,10 @@ export type AdminHubProps = {
   onAddSubscriber: (subscriber: Omit<Subscriber, 'id'>) => Promise<void>;
   onUpdateSubscriber: (id: string, subscriber: Partial<Omit<Subscriber, 'id'>>) => Promise<void>;
   onDeleteSubscriber: (id: string) => Promise<void>;
+  employees: Employee[];
+  onAddEmployee: (employeeData: Omit<Employee, 'id'>) => Promise<void>;
+  onUpdateEmployee: (id: string, employeeData: Partial<Omit<Employee, 'id'>>) => Promise<void>;
+  onDeleteEmployee: (id: string) => Promise<void>;
   onUpdateContract: (id: string, data: Partial<Omit<Contract, 'id'>>) => Promise<void>;
   setShowMainHeader: (show: boolean) => void;
 }
@@ -110,6 +114,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
     bookings, setBookings, onUpdateBookingStatus, onAddBooking,
     transactions, onAddTransaction,
     subscribers, onAddSubscriber, onUpdateSubscriber, onDeleteSubscriber,
+    employees, onAddEmployee, onUpdateEmployee, onDeleteEmployee,
     onUpdateContract,
     setShowMainHeader 
 }, ref) => {
@@ -239,8 +244,8 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
     platforms: { component: PlatformManagement, title: "Gestion des Plateformes", props: { payouts, setPayouts, onAddPayout: handleAddPayout } },
     "fixed-costs": { component: FixedCostsManagement, title: "Gestion des Charges Fixes", props: { fixedCosts, onAddFixedCost: handleAddFixedCost, onUpdateFixedCost: handleUpdateFixedCost, onDeleteFixedCost: handleDeleteFixedCost } },
     pricing: { component: PricingSettings, title: "Tarifs des Services", props: {} },
-    hr: { component: HumanResourcesManagement, title: "Gestion du Personnel", props: {} },
-    "org-chart": { component: OrgChart, title: "Organigramme", props: {} },
+    hr: { component: HumanResourcesManagement, title: "Gestion du Personnel", props: { employees, onAddEmployee, onUpdateEmployee, onDeleteEmployee } },
+    "org-chart": { component: OrgChart, title: "Organigramme", props: { employees, onAddEmployee, onUpdateEmployee, onDeleteEmployee } },
   };
 
 
