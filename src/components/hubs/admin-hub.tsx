@@ -116,6 +116,10 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
   const [payouts, setPayouts] = useState<Payout[]>(iPayouts);
 
   useEffect(() => {
+    setShowMainHeader(activeView === 'dashboard');
+  }, [activeView, setShowMainHeader]);
+  
+  useEffect(() => {
     const qContracts = query(collection(db, "contracts"));
     const unsubContracts = onSnapshot(qContracts, (snapshot) => {
         setContracts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Contract)));
@@ -317,5 +321,6 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
 
 AdminHub.displayName = "AdminHub";
 export default AdminHub;
+
 
     
