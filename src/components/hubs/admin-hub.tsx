@@ -4,7 +4,7 @@
 import { useState, forwardRef, useImperativeHandle, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home, Wallet, Cog, DollarSign, Clipboard, MicVocal } from "lucide-react";
+import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home, Wallet, Cog, DollarSign, Clipboard, MicVocal, GanttChart } from "lucide-react";
 import UserManagement, { Subscriber } from "@/components/admin/user-management";
 import ContentManagement, { initialContent as iContent, Content } from "@/components/admin/content-management";
 import BookingSchedule, { Booking } from "@/components/admin/booking-schedule";
@@ -17,13 +17,14 @@ import PlatformManagement, { Payout, initialPayouts as iPayouts } from "@/compon
 import FixedCostsManagement, { FixedCost } from "@/components/admin/fixed-costs-management";
 import PricingSettings from "@/components/admin/pricing-settings";
 import HumanResourcesManagement from "@/components/admin/human-resources-management";
+import OrgChart from "@/components/admin/org-chart";
 import { format } from "date-fns";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, updateDoc, doc, addDoc, deleteDoc } from "firebase/firestore";
 
 
-type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities" | "platforms" | "fixed-costs" | "pricing" | "hr";
+type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities" | "platforms" | "fixed-costs" | "pricing" | "hr" | "org-chart";
 
 export type { Contract, Payout };
 
@@ -70,6 +71,7 @@ const adminCategories: AdminCategory[] = [
             { title: "Abonnements", icon: Users, view: "users" },
             { title: "Réservations", icon: CalendarCheck, view: "bookings" },
             { title: "Contrats", icon: FileSignature, view: "contracts" },
+            { title: "Personnel", icon: Briefcase, view: "hr" },
         ]
     },
     {
@@ -88,17 +90,15 @@ const adminCategories: AdminCategory[] = [
         sections: [
             { title: "Contenus", icon: FileText, view: "content" },
             { title: "Événements", icon: CalendarPlus, view: "events" },
+            { title: "Organigramme", icon: GanttChart, view: "org-chart" },
             { title: "Paramètres", icon: Settings, view: "settings" },
-            { title: "Tarifs", icon: DollarSign, view: "pricing" },
         ]
     },
      {
-        title: "Ressources Humaines",
+        title: "Configuration",
         color: "bg-orange-600/80 text-orange-50",
         sections: [
-            { title: "Administration", icon: Clipboard, view: "hr" },
-            { title: "Personnel Studio", icon: MicVocal, view: "hr" },
-            { title: "Autres Rôles", icon: Users, view: "hr" },
+            { title: "Tarifs", icon: DollarSign, view: "pricing" },
         ]
     }
 ];
@@ -239,7 +239,8 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
     platforms: { component: PlatformManagement, title: "Gestion des Plateformes", props: { payouts, setPayouts, onAddPayout: handleAddPayout } },
     "fixed-costs": { component: FixedCostsManagement, title: "Gestion des Charges Fixes", props: { fixedCosts, onAddFixedCost: handleAddFixedCost, onUpdateFixedCost: handleUpdateFixedCost, onDeleteFixedCost: handleDeleteFixedCost } },
     pricing: { component: PricingSettings, title: "Tarifs des Services", props: {} },
-    hr: { component: HumanResourcesManagement, title: "Ressources Humaines", props: {} },
+    hr: { component: HumanResourcesManagement, title: "Gestion du Personnel", props: {} },
+    "org-chart": { component: OrgChart, title: "Organigramme", props: {} },
   };
 
 

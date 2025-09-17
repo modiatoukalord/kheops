@@ -17,7 +17,7 @@ import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 
 type EmployeeStatus = "Actif" | "En congé" | "Parti";
-type EmployeeDepartment = "Administration" | "Studio" | "Marketing" | "Ventes" | "Autre";
+type EmployeeDepartment = "Administration" | "Studio" | "Marketing" | "Ventes" | "Culture" | "Wear" | "Autre";
 
 export type Employee = {
     id: string;
@@ -34,7 +34,8 @@ export type Employee = {
 const initialEmployees: Employee[] = [
     { id: "emp-001", name: "Fatou Diop", role: "Manager du Hub", department: "Administration", status: "Actif", startDate: new Date("2023-01-15"), salary: 450000, phone: "06 111 2233", email: "fatou.diop@kheops.dev" },
     { id: "emp-002", name: "Moussa Traoré", role: "Ingénieur du Son Principal", department: "Studio", status: "Actif", startDate: new Date("2023-02-01"), salary: 350000, phone: "06 222 3344", email: "moussa.traore@kheops.dev" },
-    { id: "emp-003", name: "Aïcha Diallo", role: "Community Manager", department: "Marketing", status: "En congé", startDate: new Date("2023-03-10"), salary: 250000, phone: "06 333 4455", email: "aicha.diallo@kheops.dev" },
+    { id: "emp-003", name: "Aïcha Diallo", role: "Responsable Contenu", department: "Culture", status: "Actif", startDate: new Date("2023-03-10"), salary: 250000, phone: "06 333 4455", email: "aicha.diallo@kheops.dev" },
+    { id: "emp-004", name: "Issa Cissokho", role: "Chef de Produit", department: "Wear", status: "Actif", startDate: new Date("2023-04-01"), salary: 300000, phone: "06 444 5566", email: "issa.cissokho@kheops.dev" },
 ];
 
 const statusConfig: { [key in EmployeeStatus]: { variant: "default" | "secondary" | "outline", color: string } } = {
@@ -46,6 +47,8 @@ const statusConfig: { [key in EmployeeStatus]: { variant: "default" | "secondary
 const departmentColors: { [key in EmployeeDepartment]: string } = {
     "Administration": "bg-blue-500/20 text-blue-700 border-blue-500/30",
     "Studio": "bg-purple-500/20 text-purple-700 border-purple-500/30",
+    "Culture": "bg-orange-500/20 text-orange-700 border-orange-500/30",
+    "Wear": "bg-teal-500/20 text-teal-700 border-teal-500/30",
     "Marketing": "bg-pink-500/20 text-pink-700 border-pink-500/30",
     "Ventes": "bg-green-500/20 text-green-700 border-green-500/30",
     "Autre": "bg-gray-500/20 text-gray-700 border-gray-500/30",
@@ -268,5 +271,3 @@ export default function HumanResourcesManagement() {
         </div>
     );
 }
-
-    
