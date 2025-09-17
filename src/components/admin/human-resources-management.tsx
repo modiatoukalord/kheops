@@ -78,7 +78,7 @@ export default function HumanResourcesManagement({ employees, onAddEmployee, onU
             salary: Number(formData.get("salary")),
             phone: formData.get("phone") as string,
             email: formData.get("email") as string,
-            reportsTo: formData.get("reportsTo") as string || undefined,
+            reportsTo: formData.get("reportsTo") as string,
         };
 
         try {
@@ -230,7 +230,7 @@ export default function HumanResourcesManagement({ employees, onAddEmployee, onU
                                             <Select name="reportsTo" defaultValue={editingEmployee?.reportsTo}>
                                                 <SelectTrigger><SelectValue placeholder="Aucun manager direct" /></SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="">Aucun</SelectItem>
+                                                    <SelectItem value="none">Aucun</SelectItem>
                                                     {possibleManagers.map(manager => (
                                                         <SelectItem key={manager.id} value={manager.id}>{manager.name} ({manager.role})</SelectItem>
                                                     ))}

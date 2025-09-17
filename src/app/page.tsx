@@ -333,16 +333,18 @@ function HomePageContent() {
   }
 
   const handleAddEmployee = async (employeeData: Omit<Employee, 'id'>) => {
+    const reportsTo = employeeData.reportsTo === 'none' || employeeData.reportsTo === '' ? undefined : employeeData.reportsTo;
     try {
-        await addDoc(collection(db, "employees"), employeeData);
+        await addDoc(collection(db, "employees"), { ...employeeData, reportsTo });
     } catch (error) {
         console.error("Error adding employee: ", error);
     }
   };
 
   const handleUpdateEmployee = async (id: string, employeeData: Partial<Omit<Employee, 'id'>>) => {
+    const reportsTo = employeeData.reportsTo === 'none' || employeeData.reportsTo === '' ? undefined : employeeData.reportsTo;
     try {
-        await updateDoc(doc(db, "employees", id), employeeData);
+        await updateDoc(doc(db, "employees", id), { ...employeeData, reportsTo });
     } catch (error) {
         console.error("Error updating employee: ", error);
     }
@@ -394,5 +396,3 @@ export default function Home() {
     </Suspense>
   )
 }
-
-    

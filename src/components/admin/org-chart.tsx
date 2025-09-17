@@ -58,15 +58,15 @@ const MemberNode = ({ member, allEmployees, onEdit, onDelete, level = 0 }: { mem
                     {/* Vertical line pointing down from the card */}
                     <div className="absolute top-full left-1/2 w-px h-8 bg-border -translate-x-1/2" />
                     {/* Horizontal line */}
-                    <div className="absolute top-[calc(100%_+_2rem)] left-1/2 w-full h-px -translate-x-1/2 flex justify-center">
-                        <div className="w-[calc(100%_-_14rem)] h-full bg-border" style={{ visibility: subordinates.length > 1 ? 'visible' : 'hidden' }}/>
-                    </div>
+                    {subordinates.length > 1 && (
+                        <div className="absolute top-[calc(100%_+_2rem)] left-0 w-full h-px bg-border" />
+                    )}
                 </>
             )}
-
+            
             {/* Render subordinates */}
             {hasSubordinates && (
-                <div className="mt-16 flex justify-center gap-8">
+                 <div className="mt-16 flex justify-center gap-8">
                     {subordinates.map(sub => (
                         <div key={sub.id} className="relative flex flex-col items-center">
                             {/* Vertical line pointing up to the horizontal line */}
@@ -123,7 +123,7 @@ export default function OrgChart({ employees = [], onAddEmployee, onUpdateEmploy
             salary: Number(formData.get("salary")),
             phone: formData.get("phone") as string,
             email: formData.get("email") as string,
-            reportsTo: formData.get("reportsTo") as string || undefined,
+            reportsTo: formData.get("reportsTo") as string,
         };
 
         try {
@@ -218,7 +218,7 @@ export default function OrgChart({ employees = [], onAddEmployee, onUpdateEmploy
                                             <Select name="reportsTo" defaultValue={editingEmployee?.reportsTo}>
                                                 <SelectTrigger><SelectValue placeholder="Aucun manager direct" /></SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="">Aucun</SelectItem>
+                                                    <SelectItem value="none">Aucun</SelectItem>
                                                     {possibleManagers.map(manager => (
                                                         <SelectItem key={manager.id} value={manager.id}>{manager.name} ({manager.role})</SelectItem>
                                                     ))}
