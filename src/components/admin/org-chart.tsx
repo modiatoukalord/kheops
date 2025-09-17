@@ -11,25 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { User, Building, MicVocal, Palette, ShoppingBag, MoreHorizontal, UserPlus, Edit, Trash2 } from "lucide-react";
+import { User, MoreHorizontal, UserPlus, Edit, Trash2 } from "lucide-react";
 import { Employee, EmployeeDepartment, departmentColors } from "./human-resources-management";
 import { format, parseISO, isValid } from "date-fns";
-
-type OrgMember = {
-    id: string;
-    name: string;
-    role: string;
-    avatar?: string;
-    department: EmployeeDepartment;
-};
-
-const departmentIcons: { [key in EmployeeDepartment]?: React.ElementType } = {
-    "Direction": User,
-    "Administration": Building,
-    "Studio": MicVocal,
-    "Culture": Palette,
-    "Wear": ShoppingBag,
-};
 
 interface OrgChartProps {
     employees: Employee[];
@@ -38,13 +22,8 @@ interface OrgChartProps {
     onDeleteEmployee: (id: string) => Promise<void>;
 }
 
-const MemberCard = ({ member, onEdit, onDelete }: { member: OrgMember, onEdit: () => void, onDelete: () => void }) => (
-    <Card className="text-center p-4 bg-card/60 shadow-md relative group">
-        <Avatar className="mx-auto h-16 w-16 mb-2 border-2 border-primary">
-            <AvatarFallback className="bg-primary/20 text-primary">{member.name.charAt(0)}</AvatarFallback>
-        </Avatar>
-        <p className="font-bold text-sm">{member.name}</p>
-        <p className="text-xs text-muted-foreground">{member.role}</p>
+const MemberCard = ({ member, onEdit, onDelete }: { member: Employee, onEdit: () => void, onDelete: () => void }) => (
+    <Card className="text-center p-4 bg-card/60 shadow-md relative group w-56">
         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -56,8 +35,51 @@ const MemberCard = ({ member, onEdit, onDelete }: { member: OrgMember, onEdit: (
                 </DropdownMenuContent>
             </DropdownMenu>
         </div>
+        <Avatar className="mx-auto h-16 w-16 mb-2 border-2 border-primary">
+            <AvatarFallback className="bg-primary/20 text-primary">{member.name.charAt(0)}</AvatarFallback>
+        </Avatar>
+        <p className="font-bold text-sm">{member.name}</p>
+        <p className="text-xs text-muted-foreground">{member.role}</p>
     </Card>
 );
+
+const MemberNode = ({ member, allEmployees, onEdit, onDelete, level = 0 }: { member: Employee, allEmployees: Employee[], onEdit: (employee: Employee) => void, onDelete: (employee: Employee) => void, level?: number }) => {
+    const subordinates = allEmployees.filter(e => e.reportsTo === member.id);
+    const hasSubordinates = subordinates.length > 0;
+
+    return (
+        <div className="relative flex flex-col items-center">
+            {/* Card for the current member */}
+            <MemberCard member={member} onEdit={() => onEdit(member)} onDelete={() => onDelete(member)} />
+
+            {/* Connecting lines to subordinates */}
+            {hasSubordinates && (
+                <>
+                    {/* Vertical line pointing down from the card */}
+                    <div className="absolute top-full left-1/2 w-px h-8 bg-border -translate-x-1/2" />
+                    {/* Horizontal line */}
+                    <div className="absolute top-[calc(100%_+_2rem)] left-1/2 w-full h-px -translate-x-1/2 flex justify-center">
+                        <div className="w-[calc(100%_-_14rem)] h-full bg-border" style={{ visibility: subordinates.length > 1 ? 'visible' : 'hidden' }}/>
+                    </div>
+                </>
+            )}
+
+            {/* Render subordinates */}
+            {hasSubordinates && (
+                <div className="mt-16 flex justify-center gap-8">
+                    {subordinates.map(sub => (
+                        <div key={sub.id} className="relative flex flex-col items-center">
+                            {/* Vertical line pointing up to the horizontal line */}
+                            <div className="absolute bottom-full left-1/2 w-px h-8 bg-border -translate-x-1/2" />
+                            <MemberNode member={sub} allEmployees={allEmployees} onEdit={onEdit} onDelete={onDelete} level={level + 1} />
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 
 export default function OrgChart({ employees = [], onAddEmployee, onUpdateEmployee, onDeleteEmployee }: OrgChartProps) {
     const [isDialogOpen, setDialogOpen] = useState(false);
@@ -101,6 +123,7 @@ export default function OrgChart({ employees = [], onAddEmployee, onUpdateEmploy
             salary: Number(formData.get("salary")),
             phone: formData.get("phone") as string,
             email: formData.get("email") as string,
+            reportsTo: formData.get("reportsTo") as string || undefined,
         };
 
         try {
@@ -111,7 +134,7 @@ export default function OrgChart({ employees = [], onAddEmployee, onUpdateEmploy
                     description: `Les informations de ${employeeData.name} ont été mises à jour.`,
                 });
             } else {
-                await onAddEmployee(employeeData);
+                await onAddEmployee(employeeData as Omit<Employee, 'id'>);
                 toast({
                     title: "Employé Ajouté",
                     description: `${employeeData.name} a été ajouté à l'équipe.`,
@@ -125,21 +148,11 @@ export default function OrgChart({ employees = [], onAddEmployee, onUpdateEmploy
         }
     };
 
-
-    const orgData = {
-        direction: employees.find(e => e.department === "Direction"),
-        departments: (Object.keys(departmentIcons) as EmployeeDepartment[])
-            .filter(dep => dep !== "Direction")
-            .map(dep => ({
-                name: dep,
-                icon: departmentIcons[dep] || User,
-                lead: employees.find(e => e.department === dep && e.role.toLowerCase().includes("lead") || e.role.toLowerCase().includes("principal") || e.role.toLowerCase().includes("manager")),
-                members: employees.filter(e => e.department === dep && !(e.role.toLowerCase().includes("lead") || e.role.toLowerCase().includes("principal") || e.role.toLowerCase().includes("manager")))
-            }))
-    };
+    const rootEmployees = employees.filter(e => !e.reportsTo);
+    const possibleManagers = employees.filter(e => e.id !== editingEmployee?.id);
 
     return (
-        <div className="space-y-12">
+        <div className="space-y-8">
             <Card>
                 <CardHeader className="flex flex-row justify-between items-center">
                     <div>
@@ -158,7 +171,7 @@ export default function OrgChart({ employees = [], onAddEmployee, onUpdateEmploy
                                 <DialogHeader>
                                     <DialogTitle>{editingEmployee ? "Modifier l'employé" : "Ajouter un nouvel employé"}</DialogTitle>
                                 </DialogHeader>
-                                <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
+                                 <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
                                         <div className="grid md:grid-cols-2 gap-4">
                                             <div className="space-y-2">
                                                 <Label htmlFor="name">Nom Complet</Label>
@@ -194,9 +207,23 @@ export default function OrgChart({ employees = [], onAddEmployee, onUpdateEmploy
                                                 <Input id="email" name="email" type="email" defaultValue={editingEmployee?.email} required />
                                             </div>
                                         </div>
+                                        <div className="grid md:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="startDate">Date d'embauche</Label>
+                                                <Input id="startDate" name="startDate" type="date" defaultValue={editingEmployee ? format(editingEmployee.startDate, 'yyyy-MM-dd') : ''} required />
+                                            </div>
+                                        </div>
                                         <div className="space-y-2">
-                                            <Label htmlFor="startDate">Date d'embauche</Label>
-                                            <Input id="startDate" name="startDate" type="date" defaultValue={editingEmployee ? format(editingEmployee.startDate, 'yyyy-MM-dd') : ''} required />
+                                            <Label htmlFor="reportsTo">Rend compte à (Manager)</Label>
+                                            <Select name="reportsTo" defaultValue={editingEmployee?.reportsTo}>
+                                                <SelectTrigger><SelectValue placeholder="Aucun manager direct" /></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="">Aucun</SelectItem>
+                                                    {possibleManagers.map(manager => (
+                                                        <SelectItem key={manager.id} value={manager.id}>{manager.name} ({manager.role})</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
                                     </div>
                                 <DialogFooter className="pt-4 border-t">
@@ -206,49 +233,16 @@ export default function OrgChart({ employees = [], onAddEmployee, onUpdateEmploy
                         </DialogContent>
                     </Dialog>
                 </CardHeader>
-            </Card>
-
-            <div className="flex flex-col items-center">
-                {/* Direction */}
-                {orgData.direction && (
-                     <div className="relative">
-                        <MemberCard member={orgData.direction} onEdit={() => handleOpenDialog(orgData.direction!)} onDelete={() => handleDelete(orgData.direction!)} />
-                        <div className="absolute top-full left-1/2 w-0.5 h-8 bg-border -translate-x-1/2" />
-                    </div>
-                )}
-                
-                {/* Connecting Line to Departments */}
-                <div className="w-4/5 h-0.5 bg-border mt-8" />
-
-                {/* Departments */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 w-full mt-[-1px] relative">
-                    {orgData.departments.map((dept) => (
-                        <div key={dept.name} className="flex flex-col items-center p-4">
-                            {/* Vertical line connecting to the main horizontal line */}
-                            <div className="w-0.5 h-8 bg-border" />
-                            
-                            {/* Department Head */}
-                            <div className="flex items-center gap-2 mb-4 text-lg font-semibold">
-                                <dept.icon className="h-5 w-5 text-accent"/>
-                                <h3>{dept.name}</h3>
-                            </div>
-                            {dept.lead ? (
-                                <MemberCard member={dept.lead} onEdit={() => handleOpenDialog(dept.lead!)} onDelete={() => handleDelete(dept.lead!)} />
-                            ) : <div className="h-32"/>}
-
-                             {/* Vertical line connecting to members */}
-                            {dept.members.length > 0 && <div className="w-0.5 h-8 bg-border mt-4" />}
-
-                            {/* Department Members */}
-                            <div className="space-y-4 mt-4">
-                                {dept.members.map((member) => (
-                                    <MemberCard key={member.id} member={member} onEdit={() => handleOpenDialog(member)} onDelete={() => handleDelete(member)} />
-                                ))}
-                            </div>
+                <CardContent className="p-8 overflow-x-auto">
+                   <div className="flex justify-center">
+                        <div className="inline-flex flex-col items-center gap-8">
+                            {rootEmployees.map(root => (
+                                <MemberNode key={root.id} member={root} allEmployees={employees} onEdit={handleOpenDialog} onDelete={handleDelete} />
+                            ))}
                         </div>
-                    ))}
-                </div>
-            </div>
+                   </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }

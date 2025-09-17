@@ -29,6 +29,7 @@ export type Employee = {
     salary: number;
     phone: string;
     email: string;
+    reportsTo?: string;
 };
 
 interface HumanResourcesManagementProps {
@@ -77,6 +78,7 @@ export default function HumanResourcesManagement({ employees, onAddEmployee, onU
             salary: Number(formData.get("salary")),
             phone: formData.get("phone") as string,
             email: formData.get("email") as string,
+            reportsTo: formData.get("reportsTo") as string || undefined,
         };
 
         try {
@@ -87,7 +89,7 @@ export default function HumanResourcesManagement({ employees, onAddEmployee, onU
                     description: `Les informations de ${employeeData.name} ont été mises à jour.`,
                 });
             } else {
-                await onAddEmployee(employeeData);
+                await onAddEmployee(employeeData as Omit<Employee, 'id'>);
                 toast({
                     title: "Employé Ajouté",
                     description: `${employeeData.name} a été ajouté à l'équipe.`,
@@ -124,6 +126,7 @@ export default function HumanResourcesManagement({ employees, onAddEmployee, onU
 
     const totalEmployees = employees.filter(e => e.status === 'Actif').length;
     const monthlyPayroll = employees.filter(e => e.status === 'Actif').reduce((sum, e) => sum + e.salary, 0);
+    const possibleManagers = employees.filter(e => e.id !== editingEmployee?.id);
 
     return (
         <div className="space-y-6">
@@ -221,6 +224,18 @@ export default function HumanResourcesManagement({ employees, onAddEmployee, onU
                                                     </Select>
                                                 </div>
                                              )}
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="reportsTo">Rend compte à (Manager)</Label>
+                                            <Select name="reportsTo" defaultValue={editingEmployee?.reportsTo}>
+                                                <SelectTrigger><SelectValue placeholder="Aucun manager direct" /></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="">Aucun</SelectItem>
+                                                    {possibleManagers.map(manager => (
+                                                        <SelectItem key={manager.id} value={manager.id}>{manager.name} ({manager.role})</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
                                     </div>
                                     <DialogFooter className="pt-4 border-t">
