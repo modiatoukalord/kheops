@@ -311,7 +311,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
               <div className="grid grid-cols-2 gap-4">
                 {category.sections.map((section) => (
                     <button
-                        key={section.view}
+                        key={`${section.view}-${section.title}`}
                         onClick={() => handleAction(section.view)}
                         className="flex flex-col items-center justify-center p-4 bg-black/20 rounded-lg text-center text-white/90 hover:bg-black/40 transition-colors duration-200"
                     >
