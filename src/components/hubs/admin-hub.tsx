@@ -281,7 +281,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
                     <nav className="flex items-center gap-2">
                         <TooltipProvider>
                          {currentCategory.sections.map(section => (
-                            <Tooltip key={section.view}>
+                            <Tooltip key={`${section.view}-${section.title}`}>
                                 <TooltipTrigger asChild>
                                     <Button 
                                         variant={activeView === section.view ? "secondary" : "ghost"} 
@@ -332,5 +332,3 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
 
 AdminHub.displayName = "AdminHub";
 export default AdminHub;
-
-    
