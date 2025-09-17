@@ -429,5 +429,3 @@ export default function ContentManagement({ content, setContent }: ContentManage
     </Card>
   );
 }
-
-    
