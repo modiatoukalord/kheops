@@ -39,7 +39,7 @@ export default function ContractView({ contract }: ContractViewProps) {
                         <Pyramid className="h-8 w-8 text-yellow-600" />
                         <h1 className="text-2xl font-bold tracking-wider">KHEOPS STUDIO</h1>
                     </div>
-                    <h2 className="text-3xl font-bold tracking-wide">Contrat de Prestation</h2>
+                    <h2 className="text-3xl font-bold tracking-wide">Contrat de {contract.type}</h2>
                 </header>
 
                 <section className="mb-8">
