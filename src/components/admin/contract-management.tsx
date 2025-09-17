@@ -10,7 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, Send, PenSquare, Download, Clock, CheckCircle2, FileText, PlusCircle, Trash2, FileUp, Edit, DollarSign, Calendar as CalendarIcon, HandCoins, Info } from "lucide-react";
+import { MoreHorizontal, Send, PenSquare, Download, Clock, CheckCircle2, FileText, PlusCircle, Trash2, FileUp, Edit, DollarSign, Calendar as CalendarIcon, HandCoins, Info, Eye, Printer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -24,6 +24,8 @@ import { db } from "@/lib/firebase";
 import { collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, Timestamp } from "firebase/firestore";
 import { Booking } from "@/components/admin/booking-schedule";
 import { servicesWithPrices } from "@/lib/pricing";
+import ContractView from "./contract-view";
+
 
 const contractStatusConfig = {
     "En attente": { variant: "secondary", icon: Clock },
@@ -73,7 +75,9 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [isAddDialogOpen, setAddDialogOpen] = useState(false);
     const [isEditDialogOpen, setEditDialogOpen] = useState(false);
+    const [isViewDialogOpen, setViewDialogOpen] = useState(false);
     const [editingContract, setEditingContract] = useState<Contract | null>(null);
+    const [viewingContract, setViewingContract] = useState<Contract | null>(null);
     const [pdfFile, setPdfFile] = useState<File | null>(null);
     const [dateRange, setDateRange] = useState<DateRange | undefined>();
     const { toast } = useToast();
@@ -244,6 +248,11 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
         setDateRange({ from: contract.startDate, to: contract.endDate });
         setEditDialogOpen(true);
     };
+
+    const handleOpenViewDialog = (contract: Contract) => {
+        setViewingContract(contract);
+        setViewDialogOpen(true);
+    };
     
      const handleDeleteContract = async (contractId: string) => {
         if (!window.confirm("Êtes-vous sûr de vouloir supprimer ce contrat?")) return;
@@ -260,21 +269,8 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
         }
     };
 
-    const handleViewPdf = (file: File) => {
-        const url = URL.createObjectURL(file);
-        window.open(url, '_blank');
-        URL.revokeObjectURL(url);
-    };
-    
-    const handleDownloadPdf = (file: File) => {
-        const url = URL.createObjectURL(file);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = file.name;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+    const handlePrintContract = () => {
+        window.print();
     };
     
     const renderContractFormFields = (contract?: Contract | null) => (
@@ -370,21 +366,6 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
                     ))}
                  </div>
             </div>
-
-             <div className="space-y-2">
-                <Label htmlFor="pdf-upload">PDF du Contrat (Optionnel)</Label>
-                <div className="flex items-center gap-2">
-                    <FileUp className="h-5 w-5 text-muted-foreground" />
-                    <Input 
-                        id="pdf-upload" 
-                        type="file" 
-                        accept="application/pdf"
-                        onChange={(e) => setPdfFile(e.target.files ? e.target.files[0] : null)}
-                        className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
-                    />
-                </div>
-                {pdfFile && <p className="text-sm text-muted-foreground mt-1">Nouveau: {pdfFile.name}</p>}
-            </div>
         </div>
     );
 
@@ -442,6 +423,10 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
                                         <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => handleOpenViewDialog(contract)}>
+                                            <Eye className="mr-2 h-4 w-4" />
+                                            Voir le contrat
+                                        </DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => handleOpenEditDialog(contract)}>
                                             <Edit className="mr-2 h-4 w-4" />
                                             Modifier
@@ -455,10 +440,6 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
                                         <DropdownMenuSeparator />
                                         <DropdownMenuItem onClick={() => handleContractStatusChange(contract.id, "Envoyé")}><Send className="mr-2 h-4 w-4" />Marquer comme Envoyé</DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => handleContractStatusChange(contract.id, "Signé")}><PenSquare className="mr-2 h-4 w-4" />Marquer comme Signé</DropdownMenuItem>
-                                        <DropdownMenuItem disabled={!contract.pdfFile} onClick={() => contract.pdfFile && handleViewPdf(contract.pdfFile)}>
-                                            <FileText className="mr-2 h-4 w-4" />
-                                            Voir PDF
-                                        </DropdownMenuItem>
                                         <DropdownMenuItem className="text-red-500" onClick={() => handleDeleteContract(contract.id)}>
                                             <Trash2 className="mr-2 h-4 w-4" />
                                             Supprimer
@@ -542,6 +523,16 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
                             <Button type="submit">Enregistrer les modifications</Button>
                         </DialogFooter>
                     </form>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isViewDialogOpen} onOpenChange={setViewDialogOpen}>
+                <DialogContent className="max-w-4xl p-0">
+                    {viewingContract && <ContractView contract={viewingContract} />}
+                    <DialogFooter className="p-4 border-t sm:justify-between absolute bottom-0 w-full bg-background/80 backdrop-blur-sm no-print">
+                        <Button variant="outline" onClick={() => setViewDialogOpen(false)}>Fermer</Button>
+                        <Button onClick={handlePrintContract}><Printer className="mr-2 h-4 w-4" /> Imprimer</Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </Card>
