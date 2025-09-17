@@ -61,6 +61,7 @@ import {
   Film,
   Puzzle,
   BookCopy,
+  DiscAlbum,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -68,7 +69,7 @@ export const initialContent = [
   {
     id: "cont-001",
     title: "Le Labyrinthe d'Osiris",
-    type: "Livre" as "Livre" | "Article" | "Manga" | "Film" | "Jeu de société",
+    type: "Livre" as "Livre" | "Article" | "Manga" | "Film" | "Jeu de société" | "Projet Studio",
     author: "KHEOPS Publishing",
     status: "Publié" as "Publié" | "Brouillon",
     lastUpdated: "2024-07-15",
@@ -76,7 +77,7 @@ export const initialContent = [
   {
     id: "cont-002",
     title: "Pharaoh's Legacy Vol. 1",
-    type: "Manga" as "Livre" | "Article" | "Manga" | "Film" | "Jeu de société",
+    type: "Manga" as "Livre" | "Article" | "Manga" | "Film" | "Jeu de société" | "Projet Studio",
     author: "KHEOPS Manga",
     status: "Publié" as "Publié" | "Brouillon",
     lastUpdated: "2024-07-20",
@@ -84,7 +85,7 @@ export const initialContent = [
   {
     id: "cont-003",
     title: "L'art du Hiéroglyphe",
-    type: "Article" as "Livre" | "Article" | "Manga" | "Film" | "Jeu de société",
+    type: "Article" as "Livre" | "Article" | "Manga" | "Film" | "Jeu de société" | "Projet Studio",
     author: "Dr. A. Diop",
     status: "Brouillon" as "Publié" | "Brouillon",
     lastUpdated: "2024-08-01",
@@ -92,10 +93,42 @@ export const initialContent = [
   {
     id: "cont-004",
     title: "Les Chroniques de Thot",
-    type: "Livre" as "Livre" | "Article" | "Manga" | "Film" | "Jeu de société",
+    type: "Livre" as "Livre" | "Article" | "Manga" | "Film" | "Jeu de société" | "Projet Studio",
     author: "KHEOPS Publishing",
     status: "Brouillon" as "Publié" | "Brouillon",
     lastUpdated: "2024-08-05",
+  },
+  {
+    id: "proj-001",
+    title: "Chroniques de l'Aube",
+    type: "Projet Studio" as "Livre" | "Article" | "Manga" | "Film" | "Jeu de société" | "Projet Studio",
+    author: "KHEOPS Collective",
+    status: "Publié" as "Publié" | "Brouillon",
+    lastUpdated: "2024-07-28",
+  },
+  {
+    id: "proj-002",
+    title: "Single 'Mirage'",
+    type: "Projet Studio" as "Livre" | "Article" | "Manga" | "Film" | "Jeu de société" | "Projet Studio",
+    author: "L'Artiste Anonyme",
+    status: "Publié" as "Publié" | "Brouillon",
+    lastUpdated: "2024-07-25",
+  },
+    {
+    id: "proj-003",
+    title: "Projet 'Nouvelle Vague'",
+    type: "Projet Studio" as "Livre" | "Article" | "Manga" | "Film" | "Jeu de société" | "Projet Studio",
+    author: "Mc Solaar",
+    status: "Publié" as "Publié" | "Brouillon",
+    lastUpdated: "2024-07-22",
+  },
+    {
+    id: "proj-004",
+    title: "Maquette 'Djadja 2'",
+    type: "Projet Studio" as "Livre" | "Article" | "Manga" | "Film" | "Jeu de société" | "Projet Studio",
+    author: "Aya Nakamura",
+    status: "Publié" as "Publié" | "Brouillon",
+    lastUpdated: "2024-07-19",
   },
 ];
 
@@ -115,6 +148,7 @@ const typeConfig: { [key in ContentType]: { icon: React.ElementType, label: stri
   Manga: { icon: BookCopy, label: "Manga" },
   Film: { icon: Film, label: "Film" },
   "Jeu de société": { icon: Puzzle, label: "Jeu de société" },
+  "Projet Studio": { icon: DiscAlbum, label: "Projet Studio" },
 };
 
 interface ContentManagementProps {

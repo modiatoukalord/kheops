@@ -8,33 +8,7 @@ import { Music, Headphones, DiscAlbum, MessageSquare, Send } from "lucide-react"
 import Image from 'next/image';
 import BookingChat from '@/components/hubs/booking-chat';
 import { Booking } from '@/components/admin/booking-schedule';
-
-const recentProjects = [
-  {
-    title: "Chroniques de l'Aube",
-    artist: "KHEOPS Collective",
-    coverUrl: "https://placehold.co/600x600.png",
-    hint: "album cover"
-  },
-  {
-    title: "Single 'Mirage'",
-    artist: "L'Artiste Anonyme",
-    coverUrl: "https://placehold.co/600x600.png",
-    hint: "desert mirage"
-  },
-  {
-    title: "Projet 'Nouvelle Vague'",
-    artist: "Mc Solaar",
-    coverUrl: "https://placehold.co/600x600.png",
-    hint: "ocean wave"
-  },
-  {
-    title: "Maquette 'Djadja 2'",
-    artist: "Aya Nakamura",
-    coverUrl: "https://placehold.co/600x600.png",
-    hint: "pop music"
-  },
-];
+import type { Content } from '@/components/admin/content-management';
 
 const services = [
     { name: "Prise de voix", description: "Enregistrement vocal de haute qualité.", icon: Music },
@@ -42,13 +16,30 @@ const services = [
     { name: "Production complète", description: "De la composition à la piste finale.", icon: DiscAlbum },
 ];
 
+const projectHints: { [key: string]: string } = {
+  "Chroniques de l'Aube": "album cover",
+  "Single 'Mirage'": "desert mirage",
+  "Projet 'Nouvelle Vague'": "ocean wave",
+  "Maquette 'Djadja 2'": "pop music",
+};
+
 interface StudioHubProps {
   bookings: Booking[];
   onAddBooking: (booking: Omit<Booking, 'id' | 'status'>) => void;
+  content: Content[];
 }
 
-export default function StudioHub({ bookings, onAddBooking }: StudioHubProps) {
+export default function StudioHub({ bookings, onAddBooking, content }: StudioHubProps) {
   const [isChatOpen, setChatOpen] = useState(false);
+  
+  const recentProjects = content
+    .filter(c => c.type === 'Projet Studio' && c.status === 'Publié')
+    .map((c, i) => ({
+      title: c.title,
+      artist: c.author,
+      coverUrl: `https://picsum.photos/seed/studio${i+1}/600/600`,
+      hint: projectHints[c.title] || 'music album',
+    }));
     
   return (
     <div className="space-y-16">
