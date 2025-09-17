@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -75,6 +76,7 @@ export type Contract = {
     confidentiality?: string;
     signatoryId?: string;
     signatoryName?: string;
+    paymentTerms?: string;
 };
 
 interface ContractManagementProps {
@@ -95,6 +97,7 @@ const contractFormSchema = z.object({
   obligationsProvider: z.string().optional(),
   obligationsClient: z.string().optional(),
   confidentiality: z.string().optional(),
+  paymentTerms: z.string().optional(),
   customPrices: z.record(z.coerce.number().optional()).optional(),
   signatoryId: z.string().optional(),
 });
@@ -279,6 +282,7 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
           obligationsProvider: contract.obligationsProvider,
           obligationsClient: contract.obligationsClient,
           confidentiality: contract.confidentiality,
+          paymentTerms: contract.paymentTerms,
           customPrices: contract.customPrices,
           signatoryId: contract.signatoryId,
         });
@@ -433,6 +437,21 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
                 <ClauseField name="obligationsProvider" label="Obligations du prestataire" />
                 <ClauseField name="obligationsClient" label="Obligations du client" />
                 <ClauseField name="confidentiality" label="Clause de confidentialité" />
+                
+                <FormField
+                    control={form.control}
+                    name="paymentTerms"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Modalités de Paiement</FormLabel>
+                            <FormControl>
+                                <Textarea placeholder="Ex: Acompte de 50% à la signature, solde à la livraison..." {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
 
                 {typeValue === "Prestation Studio" && (
                     <div className="space-y-4 pt-4 border-t">
@@ -643,3 +662,5 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
         </Card>
     );
 }
+
+    

@@ -88,14 +88,14 @@ export default function ContractView({ contract }: ContractViewProps) {
                                     <td className="py-2 text-right font-bold text-lg">{contract.value.toLocaleString('fr-FR')} FCFA</td>
                                 </tr>
                                 <tr>
-                                    <td className="py-2 pr-4 font-semibold">Modalités de Paiement</td>
+                                    <td className="py-2 pr-4 font-semibold">Statut du Paiement</td>
                                     <td className="py-2 text-right">{contract.paymentStatus}</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-                     <p className="text-xs text-gray-500 mt-2">
-                        Sauf accord contraire, un acompte de 50% est requis à la signature du contrat. Le solde est dû à la livraison finale des masters. Tout retard de paiement pourra entraîner la suspension des services.
+                     <p className="text-xs text-gray-500 mt-2 whitespace-pre-wrap">
+                        {contract.paymentTerms || "Sauf accord contraire, un acompte de 50% est requis à la signature du contrat. Le solde est dû à la livraison finale des masters. Tout retard de paiement pourra entraîner la suspension des services."}
                     </p>
                 </section>
                 
@@ -127,3 +127,5 @@ export default function ContractView({ contract }: ContractViewProps) {
         </div>
     );
 }
+
+    
