@@ -334,7 +334,7 @@ function HomePageContent() {
 
   const handleAddEmployee = async (employeeData: Omit<Employee, 'id'>) => {
     const payload: Partial<Omit<Employee, 'id'>> = { ...employeeData };
-    if (payload.reportsTo === 'none' || payload.reportsTo === '') {
+    if (payload.reportsTo === 'none' || !payload.reportsTo) {
         delete payload.reportsTo;
     }
     try {
@@ -346,13 +346,16 @@ function HomePageContent() {
 
   const handleUpdateEmployee = async (id: string, employeeData: Partial<Omit<Employee, 'id'>>) => {
     const payload: Partial<Omit<Employee, 'id'>> = { ...employeeData };
-     if (payload.reportsTo === 'none' || payload.reportsTo === '') {
-        delete payload.reportsTo;
-    }
-    try {
-        await updateDoc(doc(db, "employees", id), payload);
-    } catch (error) {
-        console.error("Error updating employee: ", error);
+     if (payload.reportsTo === 'none' || !payload.reportsTo) {
+        delete (payload as any).reportsTo;
+        const { reportsTo, ...rest } = payload;
+        await updateDoc(doc(db, "employees", id), { ...rest, reportsTo: deleteField() } as any);
+    } else {
+        try {
+            await updateDoc(doc(db, "employees", id), payload);
+        } catch (error) {
+            console.error("Error updating employee: ", error);
+        }
     }
   };
 
@@ -402,5 +405,7 @@ export default function Home() {
     </Suspense>
   )
 }
+
+    
 
     

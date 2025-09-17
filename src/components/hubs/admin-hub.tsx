@@ -38,7 +38,6 @@ export type AdminHubProps = {
   onUpdateEvent: (id: string, event: Partial<Omit<AppEvent, 'id'>>) => void;
   onDeleteEvent: (id: string) => void;
   bookings: Booking[];
-  setBookings: React.Dispatch<React.SetStateAction<Booking[]>>;
   onUpdateBookingStatus: (bookingId: string, newStatus: Booking['status']) => void;
   onAddBooking: (booking: Omit<Booking, 'id' | 'status'>) => void;
   transactions: Transaction[];
@@ -111,7 +110,7 @@ const adminCategories: AdminCategory[] = [
 const AdminHub = forwardRef<any, AdminHubProps>(({ 
     content, onAddContent, onUpdateContent, onDeleteContent,
     events, onAddEvent, onUpdateEvent, onDeleteEvent, 
-    bookings, setBookings, onUpdateBookingStatus, onAddBooking,
+    bookings, onUpdateBookingStatus, onAddBooking,
     transactions, onAddTransaction,
     subscribers, onAddSubscriber, onUpdateSubscriber, onDeleteSubscriber,
     employees, onAddEmployee, onUpdateEmployee, onDeleteEmployee,
@@ -338,3 +337,5 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
 
 AdminHub.displayName = "AdminHub";
 export default AdminHub;
+
+    
