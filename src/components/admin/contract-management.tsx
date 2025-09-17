@@ -95,7 +95,7 @@ const contractFormSchema = z.object({
   obligationsProvider: z.string().optional(),
   obligationsClient: z.string().optional(),
   confidentiality: z.string().optional(),
-  customPrices: z.record(z.coerce.number()).optional(),
+  customPrices: z.record(z.coerce.number().optional()).optional(),
   signatoryId: z.string().optional(),
 });
 type ContractFormValues = z.infer<typeof contractFormSchema>;
@@ -223,7 +223,7 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
 
 
         try {
-            await addDoc(collection(db, "contracts"), newContractData);
+            await addDoc(collection(db, "contracts"), newContractData as any);
             toast({ title: "Contrat Ajouté", description: `Le contrat pour ${clientName} a été créé.` });
             setAddDialogOpen(false);
             setDateRange(undefined);
@@ -303,7 +303,7 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
     };
     
     const renderContractFormFields = (isEditing: boolean) => {
-        const typeValue = form.watch("type") || "Prestation Studio";
+        const typeValue = form.watch("type");
         
         const ClauseField = ({ name, label }: { name: "object" | "obligationsProvider" | "obligationsClient" | "confidentiality", label: string }) => (
             <FormField
@@ -431,30 +431,32 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
                 <ClauseField name="obligationsClient" label="Obligations du client" />
                 <ClauseField name="confidentiality" label="Clause de confidentialité" />
 
-                <div className="space-y-4 pt-4 border-t">
-                    <Label className="flex items-center gap-2">
-                        <Info className="h-4 w-4 text-muted-foreground" />
-                        Tarifs de Prestation Personnalisés (Optionnel)
-                    </Label>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {Object.keys(servicesWithPrices).map(service => (
-                          <FormField key={service} control={form.control} name={`customPrices.${service}`} render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">{service}</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  placeholder={servicesWithPrices[service as keyof typeof servicesWithPrices].toLocaleString('fr-FR')}
-                                  {...field}
-                                  onChange={e => field.onChange(e.target.value === '' ? undefined : e.target.value)}
-                                  value={field.value ?? ''}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )} />
-                        ))}
+                {typeValue === "Prestation Studio" && (
+                    <div className="space-y-4 pt-4 border-t">
+                        <Label className="flex items-center gap-2">
+                            <Info className="h-4 w-4 text-muted-foreground" />
+                            Tarifs de Prestation Personnalisés (Optionnel)
+                        </Label>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {Object.keys(servicesWithPrices).map(service => (
+                              <FormField key={service} control={form.control} name={`customPrices.${service}`} render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-xs">{service}</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      placeholder={servicesWithPrices[service as keyof typeof servicesWithPrices].toLocaleString('fr-FR')}
+                                      {...field}
+                                      onChange={e => field.onChange(e.target.value === '' ? undefined : e.target.valueAsNumber)}
+                                      value={field.value ?? ''}
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )} />
+                            ))}
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
         )
     };
@@ -638,3 +640,5 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
         </Card>
     );
 }
+
+    
