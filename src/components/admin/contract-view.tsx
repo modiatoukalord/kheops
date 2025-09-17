@@ -19,15 +19,17 @@ export default function ContractView({ contract }: ContractViewProps) {
                         background-color: white !important;
                     }
                     .printable-area {
-                        padding: 0;
-                        margin: 0;
+                        padding: 0 !important;
+                        margin: 0 !important;
                         width: 100%;
                         max-width: 100%;
                         box-shadow: none;
                         border: none;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
                     }
                     .no-print {
-                        display: none;
+                        display: none !important;
                     }
                 }
             `}</style>
@@ -114,3 +116,5 @@ export default function ContractView({ contract }: ContractViewProps) {
         </div>
     );
 }
+
+    

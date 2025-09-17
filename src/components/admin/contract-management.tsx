@@ -527,13 +527,15 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
             </Dialog>
 
             <Dialog open={isViewDialogOpen} onOpenChange={setViewDialogOpen}>
-                <DialogContent className="max-w-4xl p-0">
-                    <DialogHeader className="sr-only">
+                <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0">
+                    <DialogHeader className="p-4 pb-0 sr-only">
                         <DialogTitle>Vue du contrat</DialogTitle>
                         <DialogDescription>Aperçu du contrat pour {viewingContract?.clientName}</DialogDescription>
                     </DialogHeader>
-                    {viewingContract && <ContractView contract={viewingContract} />}
-                    <DialogFooter className="p-4 border-t sm:justify-between absolute bottom-0 w-full bg-background/80 backdrop-blur-sm no-print">
+                    <div className="flex-grow overflow-y-auto">
+                        {viewingContract && <ContractView contract={viewingContract} />}
+                    </div>
+                    <DialogFooter className="p-4 border-t sm:justify-between bg-background/80 backdrop-blur-sm no-print">
                         <Button variant="outline" onClick={() => setViewDialogOpen(false)}>Fermer</Button>
                         <Button onClick={handlePrintContract}><Printer className="mr-2 h-4 w-4" /> Imprimer</Button>
                     </DialogFooter>
@@ -542,3 +544,5 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
         </Card>
     );
 }
+
+    
