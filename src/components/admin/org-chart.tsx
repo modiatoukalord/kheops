@@ -59,7 +59,7 @@ const MemberCard = ({ member, onEdit, onDelete }: { member: OrgMember, onEdit: (
     </Card>
 );
 
-export default function OrgChart({ employees, onAddEmployee, onUpdateEmployee, onDeleteEmployee }: OrgChartProps) {
+export default function OrgChart({ employees = [], onAddEmployee, onUpdateEmployee, onDeleteEmployee }: OrgChartProps) {
     const [isDialogOpen, setDialogOpen] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
     const { toast } = useToast();
