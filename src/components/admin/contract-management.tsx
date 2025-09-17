@@ -156,15 +156,18 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
        return () => unsubscribe();
     }, []);
     
-    const handleGenerateClause = async (clauseType: GenerateContractClauseInput['clauseType'], contractType: string) => {
+    const handleGenerateClause = async (clauseType: GenerateContractClauseInput['clauseType']) => {
         setGeneratingClause(clauseType);
+        const contractType = form.getValues("type");
+        const currentText = form.getValues(clauseType);
+
         try {
-            const clauseText = await generateContractClause({ contractType, clauseType });
+            const clauseText = await generateContractClause({ contractType, clauseType, currentText });
             form.setValue(clauseType, clauseText);
 
             toast({
-                title: "Clause Générée",
-                description: `La clause "${clauseType}" a été générée par l'IA.`,
+                title: "Clause Améliorée",
+                description: `La clause "${clauseType}" a été mise à jour par l'IA.`,
             });
         } catch (error) {
             console.error("Error generating clause: ", error);
@@ -317,7 +320,7 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
                             type="button"
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleGenerateClause(name, typeValue)}
+                            onClick={() => handleGenerateClause(name)}
                             disabled={!!generatingClause}
                             className="gap-2 text-accent hover:text-accent"
                         >
@@ -640,5 +643,3 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
         </Card>
     );
 }
-
-    

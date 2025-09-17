@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview An AI agent for generating contract clauses.
@@ -21,18 +20,25 @@ const clauseGenerationPrompt = ai.definePrompt({
     output: { schema: ClauseOutputSchema },
     prompt: `
         Vous êtes un assistant juridique spécialisé dans la rédaction de contrats pour une startup créative nommée KHEOPS.
-        Votre tâche est de générer une clause de contrat en français, claire et professionnelle, basée sur le type de contrat et le type de clause demandés.
+        Votre tâche est d'améliorer, reformuler ou compléter le texte fourni par l'utilisateur pour une clause de contrat spécifique.
+        Si le texte fourni est vide, générez une clause appropriée à partir de zéro.
 
         Type de Contrat : {{{contractType}}}
-        Type de Clause à générer : {{{clauseType}}}
+        Type de Clause à améliorer/générer : {{{clauseType}}}
+        Texte actuel de l'utilisateur (à améliorer) :
+        \'\'\'
+        {{{currentText}}}
+        \'\'\'
 
-        Instructions pour chaque type de clause :
+        Instructions :
+        - Analysez le texte de l'utilisateur. S'il est pertinent, améliorez-le pour le rendre plus clair, plus professionnel et juridiquement solide.
+        - S'il est vide, générez une clause complète en suivant les instructions ci-dessous pour chaque type.
         - 'object': Décrivez l'objet principal du contrat. Soyez précis et concis.
         - 'obligationsProvider': Listez les engagements et responsabilités de KHEOPS (le prestataire).
         - 'obligationsClient': Listez les engagements et responsabilités du client.
         - 'confidentiality': Rédigez une clause de confidentialité standard mais solide, protégeant les informations des deux parties.
 
-        Générez uniquement le texte de la clause demandé.
+        Générez uniquement le texte final de la clause. Ne renvoyez pas de commentaires ou d'explications.
     `,
 });
 
