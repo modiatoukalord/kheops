@@ -31,6 +31,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { generateContractClause } from "@/ai/flows/contract-clause-flow";
 import type { GenerateContractClauseInput } from "@/ai/types/contract-clause";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Employee } from "./human-resources-management";
 
 
 const contractStatusConfig = {
@@ -72,9 +73,12 @@ export type Contract = {
     obligationsProvider?: string;
     obligationsClient?: string;
     confidentiality?: string;
+    signatoryId?: string;
+    signatoryName?: string;
 };
 
 interface ContractManagementProps {
+  employees: Employee[];
   onUpdateContract: (id: string, data: Partial<Omit<Contract, 'id'>>) => Promise<void>;
   onCollectPayment: (contract: Contract) => void;
 }
@@ -92,11 +96,12 @@ const contractFormSchema = z.object({
   obligationsClient: z.string().optional(),
   confidentiality: z.string().optional(),
   customPrices: z.record(z.coerce.number()).optional(),
+  signatoryId: z.string().optional(),
 });
 type ContractFormValues = z.infer<typeof contractFormSchema>;
 
 
-export default function ContractManagement({ onUpdateContract, onCollectPayment }: ContractManagementProps) {
+export default function ContractManagement({ employees, onUpdateContract, onCollectPayment }: ContractManagementProps) {
     const [contracts, setContracts] = useState<Contract[]>([]);
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [isAddDialogOpen, setAddDialogOpen] = useState(false);
@@ -199,6 +204,8 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
              toast({ title: "Erreur", description: "Un contrat existe déjà pour cette réservation.", variant: "destructive" });
             return;
         }
+        
+        const signatory = employees.find(e => e.id === data.signatoryId);
 
         const newContractData: Omit<Contract, 'id' | 'bookingId'> & {bookingId?: string} = {
             ...data,
@@ -209,6 +216,8 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
             endDate: dateRange?.to,
             paymentStatus: data.paymentStatus as PaymentStatus,
             type: data.type as ContractType,
+            signatoryId: data.signatoryId,
+            signatoryName: signatory ? signatory.name : undefined,
         };
         if (bookingId) newContractData.bookingId = bookingId;
 
@@ -228,6 +237,8 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
     const handleEditContract = async (data: ContractFormValues) => {
         if (!editingContract) return;
 
+        const signatory = employees.find(e => e.id === data.signatoryId);
+
         const updatedData: Partial<Contract> = {
             ...data,
             lastUpdate: format(new Date(), 'yyyy-MM-dd'),
@@ -235,6 +246,8 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
             endDate: dateRange?.to,
             paymentStatus: data.paymentStatus as PaymentStatus,
             type: data.type as ContractType,
+            signatoryId: data.signatoryId,
+            signatoryName: signatory ? signatory.name : undefined,
         };
 
         try {
@@ -264,6 +277,7 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
           obligationsClient: contract.obligationsClient,
           confidentiality: contract.confidentiality,
           customPrices: contract.customPrices,
+          signatoryId: contract.signatoryId,
         });
         setEditDialogOpen(true);
     };
@@ -387,17 +401,30 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
                     </FormItem>
                   )} />
                 </div>
-                
-                <FormField control={form.control} name="value" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Valeur Globale du Contrat (FCFA)</FormLabel>
-                    <div className="relative">
-                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <FormControl><Input type="number" placeholder="Ex: 150000" className="pl-10" {...field} /></FormControl>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )} />
+                 <div className="grid grid-cols-2 gap-4">
+                    <FormField control={form.control} name="value" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Valeur (FCFA)</FormLabel>
+                        <div className="relative">
+                          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <FormControl><Input type="number" placeholder="Ex: 150000" className="pl-10" {...field} /></FormControl>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                     <FormField control={form.control} name="signatoryId" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Signataire (KHEOPS)</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl><SelectTrigger><SelectValue placeholder="Choisir un signataire..."/></SelectTrigger></FormControl>
+                                <SelectContent>
+                                    {employees.map(e => <SelectItem key={e.id} value={e.id}>{e.name} ({e.role})</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                             <FormMessage />
+                        </FormItem>
+                    )} />
+                </div>
                 
                 <ClauseField name="object" label="Objet du contrat" />
                 <ClauseField name="obligationsProvider" label="Obligations du prestataire" />

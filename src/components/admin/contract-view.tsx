@@ -111,7 +111,7 @@ export default function ContractView({ contract }: ContractViewProps) {
                         <div className="text-center">
                             <div className="border-t pt-2">
                                 <p className="font-semibold">Pour KHEOPS STUDIO</p>
-                                <p className="text-sm text-gray-600">[Nom, Fonction]</p>
+                                <p className="text-sm text-gray-600">{contract.signatoryName || "[Signature]"}</p>
                             </div>
                         </div>
                         <div className="text-center">
@@ -127,5 +127,3 @@ export default function ContractView({ contract }: ContractViewProps) {
         </div>
     );
 }
-
-    
