@@ -10,7 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, Send, PenSquare, Download, Clock, CheckCircle2, FileText, PlusCircle, Trash2, FileUp, Edit, DollarSign, Calendar as CalendarIcon, HandCoins, Info, Eye, Printer } from "lucide-react";
+import { MoreHorizontal, Send, PenSquare, Download, Clock, CheckCircle2, FileText, PlusCircle, Trash2, FileUp, Edit, DollarSign, Calendar as CalendarIcon, HandCoins, Info, Eye, Printer, Sparkles, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -21,11 +21,12 @@ import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { db } from "@/lib/firebase";
-import { collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, Timestamp } from "firebase/firestore";
+import { collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, Timestamp } from "firestore";
 import { Booking } from "@/components/admin/booking-schedule";
 import { servicesWithPrices } from "@/lib/pricing";
 import ContractView from "./contract-view";
 import { Textarea } from "@/components/ui/textarea";
+import { generateContractClause, GenerateContractClauseInput } from "@/ai/flows/contract-clause-flow";
 
 
 const contractStatusConfig = {
@@ -86,6 +87,12 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
     const [pdfFile, setPdfFile] = useState<File | null>(null);
     const [dateRange, setDateRange] = useState<DateRange | undefined>();
     const { toast } = useToast();
+    const [generatingClause, setGeneratingClause] = useState<string | null>(null);
+
+    const objectRef = React.useRef<HTMLTextAreaElement>(null);
+    const obligationsProviderRef = React.useRef<HTMLTextAreaElement>(null);
+    const obligationsClientRef = React.useRef<HTMLTextAreaElement>(null);
+    const confidentialityRef = React.useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
       const q = query(collection(db, "contracts"), orderBy("lastUpdate", "desc"));
@@ -119,6 +126,36 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
       });
        return () => unsubscribe();
     }, []);
+    
+    const handleGenerateClause = async (clauseType: GenerateContractClauseInput['clauseType'], contractType: string) => {
+        setGeneratingClause(clauseType);
+        try {
+            const clauseText = await generateContractClause({ contractType, clauseType });
+            
+            let targetRef: React.RefObject<HTMLTextAreaElement> | null = null;
+            switch(clauseType) {
+                case 'object': targetRef = objectRef; break;
+                case 'obligationsProvider': targetRef = obligationsProviderRef; break;
+                case 'obligationsClient': targetRef = obligationsClientRef; break;
+                case 'confidentiality': targetRef = confidentialityRef; break;
+            }
+
+            if (targetRef?.current) {
+                targetRef.current.value = clauseText;
+            }
+
+            toast({
+                title: "Clause Générée",
+                description: `La clause "${clauseType}" a été générée par l'IA.`,
+            });
+        } catch (error) {
+            console.error("Error generating clause: ", error);
+            toast({ title: "Erreur de Génération", description: "Impossible de générer la clause.", variant: "destructive" });
+        } finally {
+            setGeneratingClause(null);
+        }
+    };
+
 
     const handleContractStatusChange = async (contractId: string, newStatus: ContractStatus) => {
         try {
@@ -286,118 +323,134 @@ export default function ContractManagement({ onUpdateContract, onCollectPayment 
         window.print();
     };
     
-    const renderContractFormFields = (contract?: Contract | null) => (
-         <div className="grid gap-4 py-4 max-h-[80vh] overflow-y-auto pr-4">
+    const renderContractFormFields = (contract?: Contract | null) => {
+        const typeValue = (document.querySelector('[name="type"]') as HTMLSelectElement)?.value || contract?.type || "Prestation Studio";
+        
+        const ClauseField = ({ name, label, reference, defaultValue }: { name: GenerateContractClauseInput['clauseType'], label: string, reference: React.RefObject<HTMLTextAreaElement>, defaultValue?: string }) => (
             <div className="space-y-2">
-                <Label htmlFor="bookingId">Client ou Réservation ID</Label>
-                <Input id="bookingId" name="bookingId" placeholder="Ex: res-001 ou Nom du Client" required defaultValue={contract?.bookingId || contract?.clientName} disabled={!!contract} />
-            </div>
-             <div className="space-y-2">
-                 <Label>Durée du contrat (Début - Fin)</Label>
-                 <Popover>
-                    <PopoverTrigger asChild>
+                <div className="flex items-center justify-between">
+                    <Label htmlFor={name}>{label}</Label>
                     <Button
-                        id="date"
-                        variant={"outline"}
-                        className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !dateRange && "text-muted-foreground"
-                        )}
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleGenerateClause(name, typeValue)}
+                        disabled={!!generatingClause}
+                        className="gap-2 text-accent hover:text-accent"
                     >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dateRange?.from ? (
-                            dateRange.to ? (
-                                <>
-                                    {format(dateRange.from, "d MMM y", { locale: fr })} - {format(dateRange.to, "d MMM y", { locale: fr })}
-                                </>
-                            ) : (
-                                format(dateRange.from, "d MMM y", { locale: fr })
-                            )
+                        {generatingClause === name ? (
+                            <Loader2 className="h-4 w-4 animate-spin"/>
                         ) : (
-                            <span>Choisir les dates</span>
+                            <Sparkles className="h-4 w-4" />
                         )}
+                        Générer avec l'IA
                     </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                        initialFocus
-                        mode="range"
-                        defaultMonth={dateRange?.from}
-                        selected={dateRange}
-                        onSelect={setDateRange}
-                        numberOfMonths={2}
-                        locale={fr}
-                    />
-                    </PopoverContent>
-                </Popover>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="type">Type de contrat</Label>
-                    <Select name="type" defaultValue={contract?.type || "Prestation Studio"} required>
-                        <SelectTrigger id="type">
-                            <SelectValue placeholder="Type..." />
-                        </SelectTrigger>
-                        <SelectContent>{contractTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent>
-                    </Select>
                 </div>
-                <div className="space-y-2">
-                    <Label htmlFor="paymentStatus">Statut Paiement</Label>
-                    <Select name="paymentStatus" defaultValue={contract?.paymentStatus || "En attente"}>
-                        <SelectTrigger id="paymentStatus">
-                            <SelectValue placeholder="Statut..." />
-                        </SelectTrigger>
-                        <SelectContent>{Object.keys(paymentStatusConfig).map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent>
-                    </Select>
-                </div>
+                <Textarea id={name} name={name} ref={reference} defaultValue={defaultValue} placeholder={`Définir ${label.toLowerCase()}...`} />
             </div>
-            <div className="space-y-2">
-                <Label htmlFor="value">Valeur Globale du Contrat (FCFA)</Label>
-                <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="value" name="value" type="number" placeholder="Ex: 150000" className="pl-10" defaultValue={contract?.value}/>
-                </div>
-            </div>
-            
-            <div className="space-y-2">
-                <Label htmlFor="object">Objet du contrat</Label>
-                <Textarea id="object" name="object" defaultValue={contract?.object} placeholder="Définir l'objet principal du contrat..." />
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="obligationsProvider">Obligations du prestataire</Label>
-                <Textarea id="obligationsProvider" name="obligationsProvider" defaultValue={contract?.obligationsProvider} placeholder="Lister les engagements de KHEOPS..." />
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="obligationsClient">Obligations du client</Label>
-                <Textarea id="obligationsClient" name="obligationsClient" defaultValue={contract?.obligationsClient} placeholder="Lister les engagements du client..." />
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="confidentiality">Clause de confidentialité</Label>
-                <Textarea id="confidentiality" name="confidentiality" defaultValue={contract?.confidentiality} placeholder="Définir les termes de confidentialité..." />
-            </div>
+        );
 
-            <div className="space-y-4 pt-4 border-t">
-                 <Label className="flex items-center gap-2">
-                    <Info className="h-4 w-4 text-muted-foreground" />
-                    Tarifs de Prestation Personnalisés (Optionnel)
-                </Label>
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {Object.keys(servicesWithPrices).map(service => (
-                         <div className="space-y-1" key={service}>
-                            <Label htmlFor={`price-${service}`} className="text-xs">{service}</Label>
-                            <Input
-                                id={`price-${service}`}
-                                name={`price-${service}`}
-                                type="number"
-                                placeholder={servicesWithPrices[service as keyof typeof servicesWithPrices].toLocaleString('fr-FR')}
-                                defaultValue={contract?.customPrices?.[service]}
-                            />
-                        </div>
-                    ))}
-                 </div>
+        return (
+            <div className="grid gap-4 py-4 max-h-[80vh] overflow-y-auto pr-4">
+                <div className="space-y-2">
+                    <Label htmlFor="bookingId">Client ou Réservation ID</Label>
+                    <Input id="bookingId" name="bookingId" placeholder="Ex: res-001 ou Nom du Client" required defaultValue={contract?.bookingId || contract?.clientName} disabled={!!contract} />
+                </div>
+                <div className="space-y-2">
+                    <Label>Durée du contrat (Début - Fin)</Label>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                        <Button
+                            id="date"
+                            variant={"outline"}
+                            className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !dateRange && "text-muted-foreground"
+                            )}
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {dateRange?.from ? (
+                                dateRange.to ? (
+                                    <>
+                                        {format(dateRange.from, "d MMM y", { locale: fr })} - {format(dateRange.to, "d MMM y", { locale: fr })}
+                                    </>
+                                ) : (
+                                    format(dateRange.from, "d MMM y", { locale: fr })
+                                )
+                            ) : (
+                                <span>Choisir les dates</span>
+                            )}
+                        </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                            initialFocus
+                            mode="range"
+                            defaultMonth={dateRange?.from}
+                            selected={dateRange}
+                            onSelect={setDateRange}
+                            numberOfMonths={2}
+                            locale={fr}
+                        />
+                        </PopoverContent>
+                    </Popover>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="type">Type de contrat</Label>
+                        <Select name="type" defaultValue={contract?.type || "Prestation Studio"} required>
+                            <SelectTrigger id="type">
+                                <SelectValue placeholder="Type..." />
+                            </SelectTrigger>
+                            <SelectContent>{contractTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="paymentStatus">Statut Paiement</Label>
+                        <Select name="paymentStatus" defaultValue={contract?.paymentStatus || "En attente"}>
+                            <SelectTrigger id="paymentStatus">
+                                <SelectValue placeholder="Statut..." />
+                            </SelectTrigger>
+                            <SelectContent>{Object.keys(paymentStatusConfig).map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="value">Valeur Globale du Contrat (FCFA)</Label>
+                    <div className="relative">
+                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input id="value" name="value" type="number" placeholder="Ex: 150000" className="pl-10" defaultValue={contract?.value}/>
+                    </div>
+                </div>
+                
+                <ClauseField name="object" label="Objet du contrat" reference={objectRef} defaultValue={contract?.object} />
+                <ClauseField name="obligationsProvider" label="Obligations du prestataire" reference={obligationsProviderRef} defaultValue={contract?.obligationsProvider} />
+                <ClauseField name="obligationsClient" label="Obligations du client" reference={obligationsClientRef} defaultValue={contract?.obligationsClient} />
+                <ClauseField name="confidentiality" label="Clause de confidentialité" reference={confidentialityRef} defaultValue={contract?.confidentiality} />
+
+                <div className="space-y-4 pt-4 border-t">
+                    <Label className="flex items-center gap-2">
+                        <Info className="h-4 w-4 text-muted-foreground" />
+                        Tarifs de Prestation Personnalisés (Optionnel)
+                    </Label>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {Object.keys(servicesWithPrices).map(service => (
+                            <div className="space-y-1" key={service}>
+                                <Label htmlFor={`price-${service}`} className="text-xs">{service}</Label>
+                                <Input
+                                    id={`price-${service}`}
+                                    name={`price-${service}`}
+                                    type="number"
+                                    placeholder={servicesWithPrices[service as keyof typeof servicesWithPrices].toLocaleString('fr-FR')}
+                                    defaultValue={contract?.customPrices?.[service]}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </div>
-        </div>
-    );
+        )
+    };
 
     const renderContractTable = (contractList: Contract[]) => (
         <Table>
