@@ -62,6 +62,7 @@ import {
   Puzzle,
   BookCopy,
   DiscAlbum,
+  UploadCloud,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -132,7 +133,7 @@ export const initialContent = [
   },
 ];
 
-export type Content = (typeof initialContent)[0];
+export type Content = (typeof initialContent)[0] & { imageUrl?: string };
 type ContentStatus = Content["status"];
 type ContentType = Content["type"];
 
@@ -165,6 +166,7 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
   const { toast } = useToast();
   const [typeFilters, setTypeFilters] = useState<ContentType[]>([]);
   const [statusFilters, setStatusFilters] = useState<ContentStatus[]>([]);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const handleAddContent = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -178,6 +180,7 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
       author: formData.get("author") as string,
       status: "Brouillon",
       lastUpdated: new Date().toISOString().split("T")[0],
+      imageUrl: previewImage || undefined,
     };
 
     await onAddContent(newContent);
@@ -186,6 +189,18 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
       description: `Le contenu "${title}" a été ajouté comme brouillon.`,
     });
     setDialogOpen(false);
+    setPreviewImage(null);
+  };
+  
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleStatusChange = async (id: string, status: ContentStatus) => {
@@ -281,7 +296,7 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setPreviewImage(null); setDialogOpen(isOpen); }}>
               <DialogTrigger asChild>
                 <Button>
                   <PlusCircle className="mr-2 h-4 w-4" />
@@ -329,6 +344,19 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
                             </SelectContent>
                         </Select>
                         </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="image">Image de couverture</Label>
+                      <div className="flex items-center gap-4">
+                         <div className="w-full">
+                           <Input id="image" name="image" type="file" onChange={handleImageChange} accept="image/*" />
+                           <p className="text-xs text-muted-foreground mt-1">Téléversez l'image pour le contenu.</p>
+                         </div>
+                         {previewImage && (
+                             // eslint-disable-next-line @next/next/no-img-element
+                             <img src={previewImage} alt="Aperçu" className="h-16 w-16 object-cover rounded-md border" />
+                         )}
+                      </div>
                     </div>
                      <div className="space-y-2">
                       <Label htmlFor="summary">Résumé (Optionnel)</Label>
@@ -434,5 +462,3 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
     </Card>
   );
 }
-
-    
