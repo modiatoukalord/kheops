@@ -354,7 +354,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
     await addDoc(collection(db, "rewards"), newReward);
   };
   
-  const handleUpdateClient = async (clientId: string, clientData: Partial<Omit<Client, 'id'>>) => {
+  const onUpdateClient = async (clientId: string, clientData: Partial<Omit<Client, 'id'>>) => {
      try {
         const clientRef = doc(db, "clients", clientId);
         await updateDoc(clientRef, clientData);
