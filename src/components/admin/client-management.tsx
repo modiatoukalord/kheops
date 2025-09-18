@@ -59,6 +59,7 @@ interface ClientManagementProps {
   subscribers: Subscriber[];
   activities: ClientActivity[];
   rewards: Reward[];
+  clients: Client[];
   onGrantReward: (reward: Omit<Reward, 'id' | 'grantedAt' | 'status'>) => Promise<void>;
   onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
   // Re-use subscriber functions
@@ -74,6 +75,7 @@ export default function ClientManagement({
     subscribers = [], 
     activities = [],
     rewards = [],
+    clients = [],
     onGrantReward,
     onAddTransaction,
     ...userManagementProps
@@ -85,96 +87,6 @@ export default function ClientManagement({
   const [clientForReduction, setClientForReduction] = useState<Client | null>(null);
   const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
   const [reductionAmount, setReductionAmount] = useState(0);
-   const [loyaltyTiers, setLoyaltyTiers] = useState({
-    Argent: 5,
-    Or: 10,
-    Platine: 25,
-    Diamant: 50,
-  });
-
-  const clients = useMemo<Client[]>(() => {
-    const clientMap = new Map<string, Client>();
-
-    // Process subscribers first
-    subscribers.forEach(sub => {
-        const startDate = parse(sub.startDate, 'dd-MM-yyyy', new Date());
-        const endDate = parse(sub.endDate, 'dd-MM-yyyy', new Date());
-
-        const client: Client = {
-            id: sub.id,
-            name: sub.name,
-            phone: sub.phone,
-            type: "Abonné",
-            firstSeen: isValid(startDate) ? startDate : new Date(),
-            lastSeen: isValid(endDate) ? endDate : new Date(),
-            totalSpent: parseFloat(sub.amount.replace(/[^\d,]/g, '').replace(',', '.')),
-            activityCount: 1, // At least one activity (the subscription itself)
-            loyaltyPoints: 0,
-            loyaltyTier: "Bronze",
-            subscriberInfo: sub,
-            rewards: [],
-        };
-        clientMap.set(sub.phone, client); // Use phone as a key for merging
-    });
-
-    // Process activities and merge with existing clients or create new ones
-    activities.forEach(act => {
-        const phoneKey = act.phone || act.clientName; // Use phone, fallback to name
-        if (!phoneKey) return;
-
-        const totalAmount = act.paymentType === 'Direct' ? act.totalAmount : (act.paidAmount || 0);
-
-        if (clientMap.has(phoneKey)) {
-            const existingClient = clientMap.get(phoneKey)!;
-            existingClient.totalSpent += totalAmount;
-            existingClient.activityCount++;
-            if (isAfter(act.date, existingClient.lastSeen)) {
-                existingClient.lastSeen = act.date;
-            }
-        } else {
-            const newClient: Client = {
-                id: act.id, // This might not be unique if a client has multiple activities
-                name: act.clientName,
-                phone: act.phone || 'N/A',
-                type: "Client Ponctuel",
-                firstSeen: act.date,
-                lastSeen: act.date,
-                totalSpent: totalAmount,
-                activityCount: 1,
-                loyaltyPoints: 0,
-                loyaltyTier: "Bronze",
-                rewards: [],
-            };
-            clientMap.set(phoneKey, newClient);
-        }
-    });
-
-    const allClients = Array.from(clientMap.values());
-    
-    // Calculate loyalty
-    allClients.forEach(client => {
-        client.loyaltyPoints = client.activityCount;
-
-        if (client.loyaltyPoints > loyaltyTiers.Diamant) {
-            client.loyaltyTier = "Diamant";
-        } else if (client.loyaltyPoints > loyaltyTiers.Platine) {
-            client.loyaltyTier = "Platine";
-        } else if (client.loyaltyPoints > loyaltyTiers.Or) {
-            client.loyaltyTier = "Or";
-        } else if (client.loyaltyPoints > loyaltyTiers.Argent) {
-            client.loyaltyTier = "Argent";
-        } else {
-            client.loyaltyTier = "Bronze";
-        }
-        
-        // Associate rewards
-        client.rewards = rewards.filter(r => r.clientId === client.id);
-    });
-    
-    return allClients.sort((a,b) => b.lastSeen.getTime() - a.lastSeen.getTime());
-
-  }, [subscribers, activities, rewards, loyaltyTiers]);
-
 
   const filteredClients = clients.filter(client => {
     return client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -442,5 +354,7 @@ export default function ClientManagement({
     </Tabs>
   );
 }
+
+    
 
     

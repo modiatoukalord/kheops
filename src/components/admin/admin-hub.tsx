@@ -18,7 +18,7 @@ import FixedCostsManagement, { FixedCost } from "@/components/admin/fixed-costs-
 import PricingSettings from "@/components/admin/pricing-settings";
 import HumanResourcesManagement, { Employee } from "@/components/admin/human-resources-management";
 import OrgChart from "@/components/admin/org-chart";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, isAfter } from "date-fns";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, updateDoc, doc, addDoc, deleteDoc, Timestamp, orderBy } from "firebase/firestore";
@@ -52,7 +52,7 @@ export type AdminHubProps = {
   onUpdateEmployee: (id: string, employeeData: Partial<Omit<Employee, 'id'>>) => Promise<void>;
   onDeleteEmployee: (id: string) => Promise<void>;
   onUpdateContract: (id: string, data: Partial<Omit<Contract, 'id'>>) => Promise<void>;
-  setShowMainHeader: (show: boolean) => void;
+  setShowMainHeader: (show: boolean) => setShowMainHeader(show: boolean): void;
 }
 
 type AdminSection = {
@@ -125,6 +125,8 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
   const [fixedCosts, setFixedCosts] = useState<FixedCost[]>([]);
   const [activities, setActivities] = useState<ClientActivity[]>([]);
   const [rewards, setRewards] = useState<Reward[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+
   const activityLogRef = useRef<{ openDialog: (data: any) => void }>(null);
 
   useImperativeHandle(ref, () => ({
@@ -132,6 +134,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
   }));
 
   const [payouts, setPayouts] = useState<Payout[]>(iPayouts);
+  const [loyaltyTiers, setLoyaltyTiers] = useState({ Argent: 5, Or: 10, Platine: 25, Diamant: 50 });
 
   useEffect(() => {
     setShowMainHeader(activeView === 'dashboard');
@@ -176,16 +179,101 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
         });
         setRewards(rewardsData);
     });
+    
+     const qClients = query(collection(db, "clients"));
+     const unsubClients = onSnapshot(qClients, (snapshot) => {
+         const clientData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
+         const mergedClients = mergeClientData(clientData, subscribers, activities, rewards);
+         setClients(mergedClients);
+     });
 
 
     return () => {
       unsubFixedCosts();
       unsubActivities();
       unsubRewards();
+      unsubClients();
     };
-  }, []);
-
+  }, [subscribers, activities, rewards]);
   
+   const mergeClientData = (
+        dbClients: Client[], 
+        subscribers: Subscriber[], 
+        activities: ClientActivity[], 
+        rewards: Reward[]
+    ): Client[] => {
+        const clientMap = new Map<string, Client>();
+
+        // Process subscribers first
+        subscribers.forEach(sub => {
+            const client: Client = {
+                id: sub.id,
+                name: sub.name,
+                phone: sub.phone,
+                type: "Abonné",
+                firstSeen: parseISO(sub.startDate),
+                lastSeen: parseISO(sub.endDate),
+                totalSpent: parseFloat(sub.amount.replace(/[^\d,]/g, '').replace(',', '.')),
+                activityCount: 1, // At least one activity (the subscription itself)
+                loyaltyPoints: 0,
+                loyaltyTier: "Bronze",
+                subscriberInfo: sub,
+                rewards: [],
+            };
+            clientMap.set(sub.phone, client); // Use phone as a key for merging
+        });
+
+        // Process activities and merge with existing clients or create new ones
+        activities.forEach(act => {
+            const phoneKey = act.phone || act.clientName; // Use phone, fallback to name
+            if (!phoneKey) return;
+
+            const totalAmount = act.paymentType === 'Direct' ? act.totalAmount : (act.paidAmount || 0);
+
+            if (clientMap.has(phoneKey)) {
+                const existingClient = clientMap.get(phoneKey)!;
+                existingClient.totalSpent += totalAmount;
+                existingClient.activityCount++;
+                if (isAfter(act.date, existingClient.lastSeen)) {
+                    existingClient.lastSeen = act.date;
+                }
+            } else {
+                const newClient: Client = {
+                    id: act.id, // This might not be unique if a client has multiple activities
+                    name: act.clientName,
+                    phone: act.phone || 'N/A',
+                    type: "Client Ponctuel",
+                    firstSeen: act.date,
+                    lastSeen: act.date,
+                    totalSpent: totalAmount,
+                    activityCount: 1,
+                    loyaltyPoints: 0,
+                    loyaltyTier: "Bronze",
+                    rewards: [],
+                };
+                clientMap.set(phoneKey, newClient);
+            }
+        });
+
+        const allClients = Array.from(clientMap.values());
+        
+        allClients.forEach(client => {
+            const dbClient = dbClients.find(c => c.phone === client.phone);
+            client.loyaltyPoints = dbClient?.loyaltyPoints || client.activityCount;
+
+            if (client.loyaltyPoints > loyaltyTiers.Diamant) client.loyaltyTier = "Diamant";
+            else if (client.loyaltyPoints > loyaltyTiers.Platine) client.loyaltyTier = "Platine";
+            else if (client.loyaltyPoints > loyaltyTiers.Or) client.loyaltyTier = "Or";
+            else if (client.loyaltyPoints > loyaltyTiers.Argent) client.loyaltyTier = "Argent";
+            else client.loyaltyTier = "Bronze";
+            
+            client.rewards = rewards.filter(r => r.clientId === client.id);
+        });
+        
+        return allClients.sort((a,b) => b.lastSeen.getTime() - a.lastSeen.getTime());
+    };
+
+
   const handleValidateSubscription = (subscriber: Subscriber) => {
     const newTransaction: Omit<Transaction, 'id'> = {
         date: format(new Date(), "yyyy-MM-dd"),
@@ -266,6 +354,15 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
     };
     await addDoc(collection(db, "rewards"), newReward);
   };
+  
+  const handleUpdateClient = async (clientId: string, clientData: Partial<Omit<Client, 'id'>>) => {
+     try {
+        const clientRef = doc(db, "clients", clientId);
+        await updateDoc(clientRef, clientData);
+     } catch (error) {
+         console.error("Failed to update client points", error);
+     }
+  }
 
   const handleCreateContractFromBooking = (booking: Booking) => {
       setBookingForContract(booking);
@@ -273,14 +370,14 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
   };
 
   const adminViews = {
-    clients: { component: ClientManagement, title: "Gestion des Clients", props: { subscribers, activities, rewards, onGrantReward: handleGrantReward, onAddTransaction: onAddTransaction, onAddSubscriber: handleAddSubscriber, onUpdateSubscriber, onDeleteSubscriber, onValidateSubscription: handleValidateSubscription, onRenewSubscriber: handleRenewSubscriber } },
+    clients: { component: ClientManagement, title: "Gestion des Clients", props: { subscribers, activities, rewards, clients, onGrantReward: handleGrantReward, onAddTransaction: onAddTransaction, onAddSubscriber: handleAddSubscriber, onUpdateSubscriber, onDeleteSubscriber, onValidateSubscription: handleValidateSubscription, onRenewSubscriber: handleRenewSubscriber } },
     content: { component: ContentManagement, title: "Gestion des Contenus", props: { content, onAddContent, onUpdateContent, onDeleteContent } },
-    bookings: { component: BookingSchedule, title: "Planning des Réservations", props: { bookings, onAddBooking, onUpdateBookingStatus, contracts, onCreateContract: handleCreateContractFromBooking } },
+    bookings: { component: BookingSchedule, title: "Planning des Réservations", props: { bookings, onAddBooking, onUpdateBookingStatus, onCreateContract: handleCreateContractFromBooking } },
     settings: { component: SiteSettings, title: "Paramètres du Site", props: {} },
     events: { component: EventManagement, title: "Gestion des Événements", props: { events, onAddEvent, onUpdateEvent, onDeleteEvent } },
     financial: { component: FinancialManagement, title: "Rapport Financier", props: { transactions, onAddTransaction } },
-    contracts: { component: ContractManagement, title: "Gestion des Contrats", props: { employees, bookings, onUpdateContract, onCollectPayment: handleRequestContractPayment, bookingForContract, setBookingForContract, onClearBookingForContract: () => setBookingForContract(null) } },
-    activities: { component: ActivityLog, title: "Journal d'Activité", props: { bookings, contracts, onAddTransaction, onUpdateBookingStatus, ref: activityLogRef, contractToPay, onContractPaid } },
+    contracts: { component: ContractManagement, title: "Gestion des Contrats", props: { employees, onUpdateContract, onCollectPayment: handleRequestContractPayment, bookingForContract, setBookingForContract } },
+    activities: { component: ActivityLog, title: "Journal d'Activité", props: { bookings, contracts, clients, onAddTransaction, onUpdateBookingStatus, onUpdateClient, ref: activityLogRef, contractToPay, onContractPaid } },
     platforms: { component: PlatformManagement, title: "Gestion des Plateformes", props: { payouts, setPayouts, onAddPayout: handleAddPayout } },
     "fixed-costs": { component: FixedCostsManagement, title: "Gestion des Charges Fixes", props: { fixedCosts, onAddFixedCost: handleAddFixedCost, onUpdateFixedCost: handleUpdateFixedCost, onDeleteFixedCost: handleDeleteFixedCost } },
     pricing: { component: PricingSettings, title: "Tarifs & Services", props: {} },
@@ -378,3 +475,5 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
 
 AdminHub.displayName = "AdminHub";
 export default AdminHub;
+
+    

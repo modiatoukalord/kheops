@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy, Trash2, Minus, MoreHorizontal, Edit, Eye, Printer, Pyramid, X, CreditCard, User, HandCoins, Loader2, CheckCircle2, Ban, AlertCircle, FileSignature, ChevronsUpDown, Check, Tag } from "lucide-react";
+import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy, Trash2, Minus, MoreHorizontal, Edit, Eye, Printer, Pyramid, X, CreditCard, User, HandCoins, Loader2, CheckCircle2, Ban, AlertCircle, FileSignature, ChevronsUpDown, Check, Tag, Star } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +46,7 @@ import { servicesWithPrices, calculatePrice } from "@/lib/pricing";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { iconMap } from "@/lib/icons";
 import type { ActivityCategory } from "./pricing-settings";
+import type { Client } from "./client-management";
 
 
 export type ClientActivity = {
@@ -57,7 +58,7 @@ export type ClientActivity = {
   totalAmount: number;
   date: Date;
   duration?: string;
-  paymentType: "Direct" | "Échéancier";
+  paymentType: "Direct" | "Échéancier" | "Points";
   paidAmount?: number;
   remainingAmount?: number;
   bookingId?: string;
@@ -67,8 +68,10 @@ export type ClientActivity = {
 interface ActivityLogProps {
   bookings: Booking[];
   contracts: Contract[];
+  clients: Client[];
   onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
   onUpdateBookingStatus: (bookingId: string, newStatus: Booking['status']) => void;
+  onUpdateClient: (clientId: string, clientData: Partial<Omit<Client, 'id'>>) => Promise<void>;
   contractToPay?: Contract | null;
   onContractPaid?: (contractId: string) => void;
 }
@@ -101,7 +104,7 @@ const activityItemSchema = z.object({
 const activityFormSchema = z.object({
   clientName: z.string().min(1, "Nom du client requis"),
   phone: z.string().optional(),
-  paymentType: z.enum(["Direct", "Échéancier"], { required_error: "Type de paiement requis" }),
+  paymentType: z.enum(["Direct", "Échéancier", "Points"], { required_error: "Type de paiement requis" }),
   paidAmount: z.coerce.number().optional(),
   items: z.array(activityItemSchema).min(1, "Veuillez ajouter au moins une activité."),
   contractId: z.string().optional(),
@@ -115,7 +118,7 @@ const installmentSchema = z.object({
 type InstallmentFormValues = z.infer<typeof installmentSchema>;
 
 
-const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, onUpdateBookingStatus, contractToPay, onContractPaid }: ActivityLogProps, ref) => {
+const ActivityLog = forwardRef(({ bookings, contracts = [], clients = [], onAddTransaction, onUpdateBookingStatus, onUpdateClient, contractToPay, onContractPaid }: ActivityLogProps, ref) => {
   const [activities, setActivities] = useState<ClientActivity[]>([]);
   const [activityCategories, setActivityCategories] = useState<ActivityCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -127,6 +130,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
   const [activityForInstallment, setActivityForInstallment] = useState<ClientActivity | null>(null);
   const [detailsActivity, setDetailsActivity] = useState<ClientActivity | null>(null);
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
 
   const { toast } = useToast();
@@ -197,8 +201,18 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
   const watchedItems = form.watch("items");
   const paymentType = form.watch("paymentType");
   const paidAmount = form.watch("paidAmount");
+
   const totalAmount = watchedItems.reduce((acc, current) => acc + (current.amount || 0), 0);
   const remainingAmount = paymentType === 'Échéancier' ? totalAmount - (paidAmount || 0) : 0;
+  
+  const totalPointsCost = useMemo(() => {
+    return watchedItems.reduce((acc, item) => {
+        const category = activityCategories.find(c => c.name === item.category);
+        const pointCost = category?.pointCost || 0;
+        return acc + (pointCost * item.quantity);
+    }, 0);
+  }, [watchedItems, activityCategories]);
+
 
   // Auto-calculate amount when quantity or unitPrice changes
   useEffect(() => {
@@ -232,35 +246,17 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
   const totalRevenue = activities.reduce((acc, activity) => {
       if (activity.paymentType === 'Direct') {
           return acc + activity.totalAmount;
-      } else {
+      } else if (activity.paymentType === 'Échéancier') {
           return acc + (activity.paidAmount || 0);
       }
+      return acc;
   }, 0);
 
   const signedContracts = useMemo(() => {
     return (contracts || []).filter(c => c.status === "Signé");
   }, [contracts]);
   
-  const existingClients = useMemo(() => {
-    const clients = new Map<string, { name: string, phone?: string }>();
-    activities.forEach(act => {
-        if (!clients.has(act.clientName)) {
-            clients.set(act.clientName, { name: act.clientName, phone: act.phone });
-        }
-    });
-    bookings.forEach(book => {
-        if (!clients.has(book.artistName)) {
-            clients.set(book.artistName, { name: book.artistName, phone: book.phone });
-        }
-    });
-     contracts.forEach(cont => {
-        if (!clients.has(cont.clientName)) {
-            clients.set(cont.clientName, { name: cont.clientName });
-        }
-    });
-    return Array.from(clients.values());
-  }, [activities, bookings, contracts]);
-
+  const existingClients = clients;
 
   useEffect(() => {
     const contractId = form.watch("contractId");
@@ -297,7 +293,32 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
       date: new Date(),
     };
     
-    const totalAmount = items.reduce((acc, item) => acc + item.amount, 0);
+    if (paymentType === 'Points') {
+        if (!selectedClient) {
+            toast({ title: "Erreur", description: "Aucun client sélectionné pour le paiement par points.", variant: "destructive" });
+            return;
+        }
+        if (selectedClient.loyaltyPoints < totalPointsCost) {
+            toast({ title: "Erreur", description: "Points de fidélité insuffisants.", variant: "destructive" });
+            return;
+        }
+
+        // Create a "Reward" expense transaction
+        const transactionPayload: Omit<Transaction, 'id'> = {
+            date: format(new Date(), 'yyyy-MM-dd'),
+            description: `Achat par points: ${items.map(i => i.description).join(', ')} - ${clientName}`,
+            type: 'Dépense',
+            category: "Autre", // Or a specific "Reward" category
+            amount: -totalAmount, // The monetary value of the points used
+            status: 'Complété'
+        };
+        onAddTransaction(transactionPayload);
+
+        // Deduct points from client
+        await onUpdateClient(selectedClient.id, {
+            loyaltyPoints: selectedClient.loyaltyPoints - totalPointsCost
+        });
+    }
 
     const activityTransactionMapping: { [key: string]: Transaction['category'] } = {
         "Réservation Studio": "Prestation Studio",
@@ -322,7 +343,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
             description: item.description,
             category: item.category,
             totalAmount: item.amount,
-            paidAmount: paymentType === 'Échéancier' ? (paidAmount || 0) : item.amount,
+            paidAmount: paymentType === 'Direct' || paymentType === 'Points' ? item.amount : (paidAmount || 0),
             remainingAmount: paymentType === 'Échéancier' ? item.amount - (paidAmount || 0) : 0,
         };
 
@@ -334,16 +355,17 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
             activityPayload.contractId = contractId;
         }
 
-        // Create transaction for this activity
-        const transactionPayload: Omit<Transaction, 'id'> = {
-            date: format(new Date(), 'yyyy-MM-dd'),
-            description: `Vente: ${item.description} - ${clientName}`,
-            type: 'Revenu',
-            category: activityTransactionMapping[item.category] || "Vente",
-            amount: paymentType === 'Échéancier' ? (paidAmount || 0) : item.amount,
-            status: 'Complété'
-        };
-        onAddTransaction(transactionPayload);
+        if (paymentType !== 'Points') {
+            const transactionPayload: Omit<Transaction, 'id'> = {
+                date: format(new Date(), 'yyyy-MM-dd'),
+                description: `Vente: ${item.description} - ${clientName}`,
+                type: 'Revenu',
+                category: activityTransactionMapping[item.category] || "Vente",
+                amount: paymentType === 'Échéancier' ? (paidAmount || 0) : item.amount,
+                status: 'Complété'
+            };
+            onAddTransaction(transactionPayload);
+        }
 
         return addDoc(collection(db, "activities"), activityPayload);
     });
@@ -370,6 +392,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
         paidAmount: 0,
         items: [{ description: "", category: "Autre", quantity: 1, unitPrice: 0, amount: 0, startTime: "", endTime: "" }],
     });
+    setSelectedClient(null);
   };
 
   const handleOpenNewActivityDialog = (contract: Contract | null = null) => {
@@ -400,6 +423,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
             contractId: undefined,
         });
     }
+    setSelectedClient(null);
     setActivityDialogOpen(true);
   }
   
@@ -582,6 +606,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
                     setActivityDialogOpen(isOpen);
                     if (!isOpen) {
                         form.reset();
+                        setSelectedClient(null);
                         if (contractToPay && onContractPaid) {
                            onContractPaid(contractToPay.id); // A bit of a hack to reset state
                         }
@@ -630,12 +655,15 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
                                                 if (client) {
                                                     form.setValue("clientName", client.name);
                                                     form.setValue("phone", client.phone || '');
+                                                    setSelectedClient(client);
+                                                } else {
+                                                    setSelectedClient(null);
                                                 }
                                             }}>
                                                 <FormControl><SelectTrigger><SelectValue placeholder="Choisir parmi les clients enregistrés..." /></SelectTrigger></FormControl>
                                                 <SelectContent>
                                                     {existingClients.map(client => (
-                                                        <SelectItem key={client.name} value={client.name}>{client.name}</SelectItem>
+                                                        <SelectItem key={client.id} value={client.name}>{client.name} ({client.loyaltyPoints} pts)</SelectItem>
                                                     ))}
                                                 </SelectContent>
                                           </Select>
@@ -651,9 +679,21 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
                                     <FormField control={form.control} name="paymentType" render={({ field }) => (<FormItem><Label>Type de paiement</Label>
                                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                                             <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
-                                            <SelectContent><SelectItem value="Direct">Direct</SelectItem><SelectItem value="Échéancier">Échéancier</SelectItem></SelectContent>
+                                            <SelectContent>
+                                                <SelectItem value="Direct">Direct</SelectItem>
+                                                <SelectItem value="Échéancier">Échéancier</SelectItem>
+                                                <SelectItem value="Points" disabled={!selectedClient || selectedClient.loyaltyPoints < totalPointsCost}>
+                                                    Payer avec les points ({totalPointsCost} pts)
+                                                </SelectItem>
+                                            </SelectContent>
                                         </Select><FormMessage /></FormItem>)} />
                                 </div>
+                                 {selectedClient && (
+                                    <div className="text-sm font-medium text-muted-foreground flex items-center justify-end gap-2">
+                                        <Star className="h-4 w-4 text-yellow-400"/>
+                                        Solde de points du client: <span className="font-bold text-foreground">{selectedClient.loyaltyPoints}</span>
+                                    </div>
+                                )}
                                 <Separator />
                                 <div className="space-y-4">
                                     {fields.map((field, index) => (
@@ -719,10 +759,17 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
                                             <Separator orientation="vertical" className="h-10" />
                                         </>
                                     )}
-                                    <div className="text-right">
-                                        <span>Total:</span>
-                                        <p>{totalAmount.toLocaleString('fr-FR')} FCFA</p>
-                                    </div>
+                                     {paymentType === 'Points' ? (
+                                        <div className="text-right">
+                                            <span>Coût Total en Points:</span>
+                                            <p className="text-primary flex items-center justify-end gap-1.5">{totalPointsCost} <Star className="h-5 w-5"/></p>
+                                        </div>
+                                     ) : (
+                                        <div className="text-right">
+                                            <span>Total:</span>
+                                            <p>{totalAmount.toLocaleString('fr-FR')} FCFA</p>
+                                        </div>
+                                     )}
                                 </div>
                             </div>
                             <DialogFooter className="pt-4 border-t">
@@ -780,8 +827,11 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
                                     </Badge>
                                 </TableCell>
                                 <TableCell>
-                                    <Badge variant={activity.paymentType === 'Direct' ? 'default' : 'outline'} className={activity.paymentType === 'Direct' ? 'bg-green-500/80 text-white' : 'border-blue-500 text-blue-500'}>
-                                        <CreditCard className="mr-1.5 h-3.5 w-3.5"/>
+                                    <Badge variant={activity.paymentType === 'Direct' ? 'default' : activity.paymentType === 'Points' ? 'outline' : 'outline'} className={
+                                        activity.paymentType === 'Direct' ? 'bg-green-500/80 text-white' 
+                                        : activity.paymentType === 'Points' ? 'border-yellow-500 text-yellow-500'
+                                        : 'border-blue-500 text-blue-500'}>
+                                        {activity.paymentType === 'Points' ? <Star className="mr-1.5 h-3.5 w-3.5"/> : <CreditCard className="mr-1.5 h-3.5 w-3.5"/>}
                                         {activity.paymentType}
                                     </Badge>
                                 </TableCell>
@@ -802,7 +852,13 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
                                     )}
                                 </TableCell>
                                 <TableCell className="text-right font-semibold">
-                                    <div className="text-green-600">{activity.totalAmount.toLocaleString('fr-FR')} FCFA</div>
+                                    {activity.paymentType === 'Points' ? (
+                                        <div className="flex items-center justify-end gap-1 text-yellow-500">
+                                            {activityCategories.find(c=>c.name === activity.category)?.pointCost?.toLocaleString('fr-FR')} <Star className="h-4 w-4"/>
+                                        </div>
+                                    ) : (
+                                        <div className="text-green-600">{activity.totalAmount.toLocaleString('fr-FR')} FCFA</div>
+                                    )}
                                     {activity.paymentType === 'Échéancier' && activity.remainingAmount && activity.remainingAmount > 0 && (
                                         <div className="text-xs text-red-500">Reste: {activity.remainingAmount.toLocaleString('fr-FR')} FCFA</div>
                                     )}
@@ -1078,3 +1134,5 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
 
 ActivityLog.displayName = "ActivityLog";
 export default ActivityLog;
+
+    
