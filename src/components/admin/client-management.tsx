@@ -7,8 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MoreHorizontal, Search, Filter, Phone, User, Award, DollarSign, Star, TrendingUp, Gem, UserCheck, UserX } from "lucide-react";
-import { format, isValid, parse } from "date-fns";
+import { MoreHorizontal, Search, Filter, Phone, User, Award, DollarSign, Star, TrendingUp, Gem, UserCheck, UserX, Users } from "lucide-react";
+import { format, isValid, parse, isAfter } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import UserProfile from "./user-profile";
 import { KHEOPS_MEMBER_FEE } from "@/lib/pricing";
@@ -94,7 +94,7 @@ export default function ClientManagement({
             const existingClient = clientMap.get(phoneKey)!;
             existingClient.totalSpent += totalAmount;
             existingClient.activityCount++;
-            if (act.date > existingClient.lastSeen) {
+            if (isAfter(act.date, existingClient.lastSeen)) {
                 existingClient.lastSeen = act.date;
             }
         } else {
