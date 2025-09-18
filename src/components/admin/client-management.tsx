@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MoreHorizontal, Search, Filter, Phone, User, Award, DollarSign, Star, TrendingUp, Gem, UserCheck, UserX, Users } from "lucide-react";
+import { MoreHorizontal, Search, Filter, Phone, User, Award, DollarSign, Star, TrendingUp, Gem, UserCheck, UserX, Users, Gift, Ticket, Percent, PlusCircle } from "lucide-react";
 import { format, isValid, parse, isAfter } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import UserProfile from "./user-profile";
@@ -16,6 +16,8 @@ import { Subscriber } from "./user-management";
 import { ClientActivity } from "./activity-log";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import UserManagement from "./user-management";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuPortal, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+
 
 export type Client = {
     id: string;
@@ -58,6 +60,7 @@ export default function ClientManagement({
 }: ClientManagementProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const { toast } = useToast();
 
   const clients = useMemo<Client[]>(() => {
     const clientMap = new Map<string, Client>();
@@ -148,6 +151,13 @@ export default function ClientManagement({
 
   const totalClients = clients.length;
   const totalSubscribers = subscribers.length;
+
+  const handleGrantReward = (clientName: string, reward: string) => {
+    toast({
+      title: "Récompense Accordée !",
+      description: `${reward} a été accordé(e) à ${clientName}.`,
+    });
+  };
   
   if (selectedClient) {
       const sub = subscribers.find(s => s.phone === selectedClient.phone);
@@ -243,9 +253,42 @@ export default function ClientManagement({
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <Button variant="ghost" size="sm" onClick={() => setSelectedClient(client)}>
-                                            Voir le profil
-                                        </Button>
+                                       <DropdownMenu>
+                                          <DropdownMenuTrigger asChild>
+                                              <Button variant="ghost" size="icon">
+                                                  <MoreHorizontal className="h-4 w-4" />
+                                              </Button>
+                                          </DropdownMenuTrigger>
+                                          <DropdownMenuContent align="end">
+                                              <DropdownMenuItem onClick={() => setSelectedClient(client)}>
+                                                  <User className="mr-2 h-4 w-4" />
+                                                  Voir le profil
+                                              </DropdownMenuItem>
+                                              <DropdownMenuSeparator />
+                                              <DropdownMenuSub>
+                                                  <DropdownMenuSubTrigger>
+                                                      <Gift className="mr-2 h-4 w-4" />
+                                                      Accorder une récompense
+                                                  </DropdownMenuSubTrigger>
+                                                  <DropdownMenuPortal>
+                                                      <DropdownMenuSubContent>
+                                                          <DropdownMenuItem onClick={() => handleGrantReward(client.name, "Une réduction de 10%")}>
+                                                              <Percent className="mr-2 h-4 w-4" />
+                                                              Réduction
+                                                          </DropdownMenuItem>
+                                                          <DropdownMenuItem onClick={() => handleGrantReward(client.name, "Une entrée gratuite")}>
+                                                              <Ticket className="mr-2 h-4 w-4" />
+                                                              Entrée gratuite
+                                                          </DropdownMenuItem>
+                                                           <DropdownMenuItem onClick={() => handleGrantReward(client.name, "100 points bonus")}>
+                                                              <PlusCircle className="mr-2 h-4 w-4" />
+                                                              Points bonus
+                                                          </DropdownMenuItem>
+                                                      </DropdownMenuSubContent>
+                                                  </DropdownMenuPortal>
+                                              </DropdownMenuSub>
+                                          </DropdownMenuContent>
+                                      </DropdownMenu>
                                     </TableCell>
                                 </TableRow>
                             )})}
@@ -261,3 +304,5 @@ export default function ClientManagement({
     </Tabs>
   );
 }
+
+    
