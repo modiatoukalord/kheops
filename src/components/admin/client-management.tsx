@@ -362,7 +362,7 @@ export default function ClientManagement({
                                                       <DropdownMenuSubContent>
                                                           <DropdownMenuItem onClick={() => handleOpenReductionDialog(client)}>
                                                               <Percent className="mr-2 h-4 w-4" />
-                                                              Réduction
+                                                              Réduction (points)
                                                           </DropdownMenuItem>
                                                           <DropdownMenuItem onClick={() => handleGrantReward(client, "Entrée gratuite")}>
                                                               <Ticket className="mr-2 h-4 w-4" />
@@ -442,3 +442,5 @@ export default function ClientManagement({
     </Tabs>
   );
 }
+
+    
