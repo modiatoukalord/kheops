@@ -47,7 +47,7 @@ export type Client = {
     rewards: Reward[];
 };
 
-const tierConfig = {
+export const tierConfig = {
     Bronze: { icon: Star, color: "text-yellow-600" },
     Argent: { icon: Star, color: "text-gray-400" },
     Or: { icon: Award, color: "text-yellow-500" },
@@ -85,6 +85,12 @@ export default function ClientManagement({
   const [clientForReduction, setClientForReduction] = useState<Client | null>(null);
   const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
   const [reductionAmount, setReductionAmount] = useState(0);
+   const [loyaltyTiers, setLoyaltyTiers] = useState({
+    Argent: 5,
+    Or: 10,
+    Platine: 25,
+    Diamant: 50,
+  });
 
   const clients = useMemo<Client[]>(() => {
     const clientMap = new Map<string, Client>();
@@ -149,13 +155,13 @@ export default function ClientManagement({
     allClients.forEach(client => {
         client.loyaltyPoints = client.activityCount;
 
-        if (client.loyaltyPoints > 50) {
+        if (client.loyaltyPoints > loyaltyTiers.Diamant) {
             client.loyaltyTier = "Diamant";
-        } else if (client.loyaltyPoints > 25) {
+        } else if (client.loyaltyPoints > loyaltyTiers.Platine) {
             client.loyaltyTier = "Platine";
-        } else if (client.loyaltyPoints > 10) {
+        } else if (client.loyaltyPoints > loyaltyTiers.Or) {
             client.loyaltyTier = "Or";
-        } else if (client.loyaltyPoints > 5) {
+        } else if (client.loyaltyPoints > loyaltyTiers.Argent) {
             client.loyaltyTier = "Argent";
         } else {
             client.loyaltyTier = "Bronze";
@@ -167,7 +173,7 @@ export default function ClientManagement({
     
     return allClients.sort((a,b) => b.lastSeen.getTime() - a.lastSeen.getTime());
 
-  }, [subscribers, activities, rewards]);
+  }, [subscribers, activities, rewards, loyaltyTiers]);
 
 
   const filteredClients = clients.filter(client => {
@@ -436,5 +442,3 @@ export default function ClientManagement({
     </Tabs>
   );
 }
-
-    

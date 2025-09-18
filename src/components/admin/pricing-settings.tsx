@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { DollarSign, Percent, Music, Tag, PlusCircle, Edit, Trash2, Palette, FileSignature } from "lucide-react";
+import { DollarSign, Percent, Music, Tag, PlusCircle, Edit, Trash2, Palette, FileSignature, Gem } from "lucide-react";
 import { KHEOPS_MEMBER_FEE, servicesWithPrices } from "@/lib/pricing";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
 import { iconList, iconMap } from "@/lib/icons";
+import { tierConfig } from "@/components/admin/client-management";
 
 export type ActivityCategory = {
     id: string;
@@ -30,7 +31,6 @@ export type ContractTypeConfig = {
     color: string;
 };
 
-
 const tailwindColors = ["slate", "gray", "zinc", "neutral", "stone", "red", "orange", "amber", "yellow", "lime", "green", "emerald", "teal", "cyan", "sky", "blue", "indigo", "violet", "purple", "fuchsia", "pink", "rose"];
 
 export default function PricingSettings() {
@@ -43,6 +43,12 @@ export default function PricingSettings() {
   const [isContractTypeDialogOpen, setContractTypeDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<ActivityCategory | null>(null);
   const [editingContractType, setEditingContractType] = useState<ContractTypeConfig | null>(null);
+  const [loyaltyTiers, setLoyaltyTiers] = useState({
+    Argent: 5,
+    Or: 10,
+    Platine: 25,
+    Diamant: 50,
+  });
 
   useEffect(() => {
     const unsubActivityCategories = onSnapshot(collection(db, "activityCategories"), (snapshot) => {
@@ -172,6 +178,7 @@ export default function PricingSettings() {
         <TabsTrigger value="studio">Tarifs & Abonnements</TabsTrigger>
         <TabsTrigger value="categories">Catégories d'Activité</TabsTrigger>
         <TabsTrigger value="contract-types">Types de Contrat</TabsTrigger>
+        <TabsTrigger value="loyalty">Fidélité</TabsTrigger>
       </TabsList>
 
       <TabsContent value="studio" className="space-y-8">
@@ -424,6 +431,50 @@ export default function PricingSettings() {
                     })}
                 </div>
             </CardContent>
+        </Card>
+      </TabsContent>
+       <TabsContent value="loyalty">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0 bg-yellow-500/20 text-yellow-500 p-3 rounded-full">
+                <Gem className="h-6 w-6" />
+              </div>
+              <div>
+                <CardTitle>Niveaux de Fidélité</CardTitle>
+                <CardDescription>Définissez le nombre de points d'activité requis pour chaque niveau.</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
+              {Object.entries(tierConfig).map(([tierName, tierInfo]) => {
+                if (tierName === 'Bronze') return null;
+                const tierKey = tierName as keyof typeof loyaltyTiers;
+                return (
+                  <div key={tierName} className="space-y-2">
+                    <Label htmlFor={`loyalty-${tierName}`} className="flex items-center gap-2">
+                        <tierInfo.icon className={`h-4 w-4 ${tierInfo.color}`} />
+                        {tierName}
+                    </Label>
+                    <Input
+                      id={`loyalty-${tierName}`}
+                      type="number"
+                      value={loyaltyTiers[tierKey]}
+                      onChange={(e) => setLoyaltyTiers(prev => ({ ...prev, [tierKey]: Number(e.target.value) }))}
+                      placeholder={`Points pour ${tierName}`}
+                    />
+                  </div>
+                )
+              })}
+               <div className="space-y-2 col-span-full sm:col-span-1 flex items-end">
+                 <p className="text-sm text-muted-foreground w-full text-center p-2 rounded-md bg-muted">Le niveau Bronze est attribué par défaut pour 0 point.</p>
+               </div>
+            </div>
+          </CardContent>
+          <CardFooter className="border-t px-6 py-4 justify-end">
+            <Button onClick={() => handleSave("Niveaux de Fidélité")}>Enregistrer les Niveaux</Button>
+          </CardFooter>
         </Card>
       </TabsContent>
     </Tabs>
