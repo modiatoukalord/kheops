@@ -81,9 +81,6 @@ interface ContractManagementProps {
   bookings: Booking[];
   onUpdateContract: (id: string, data: Partial<Omit<Contract, 'id'>>) => Promise<void>;
   onCollectPayment: (contract: Contract) => void;
-  bookingForContract: Booking | null;
-  setBookingForContract: (booking: Booking | null) => void;
-  onClearBookingForContract: () => void;
 }
 
 const contractFormSchema = z.object({
@@ -104,7 +101,7 @@ const contractFormSchema = z.object({
 type ContractFormValues = z.infer<typeof contractFormSchema>;
 
 
-export default function ContractManagement({ employees, bookings, onUpdateContract, onCollectPayment, bookingForContract, setBookingForContract, onClearBookingForContract }: ContractManagementProps) {
+export default function ContractManagement({ employees, bookings, onUpdateContract, onCollectPayment }: ContractManagementProps) {
     const [contracts, setContracts] = useState<Contract[]>([]);
     const [contractTypes, setContractTypes] = useState<ContractTypeConfig[]>([]);
     const [isAddDialogOpen, setAddDialogOpen] = useState(false);
@@ -126,11 +123,6 @@ export default function ContractManagement({ employees, bookings, onUpdateContra
       }
     });
     
-    useEffect(() => {
-        if (bookingForContract) {
-            handleOpenAddDialog("Prestation studio", bookingForContract);
-        }
-    }, [bookingForContract]);
 
     useEffect(() => {
       const qContracts = query(collection(db, "contracts"), orderBy("lastUpdate", "desc"));
@@ -251,12 +243,12 @@ export default function ContractManagement({ employees, bookings, onUpdateContra
         }
     };
 
-    const handleOpenAddDialog = (type: "Prestation studio" | "Autre", fromBooking?: Booking | null) => {
+    const handleOpenAddDialog = (type: "Prestation studio" | "Autre") => {
         form.reset({
-            clientName: fromBooking ? fromBooking.artistName : "",
+            clientName: "",
             type: type,
             paymentStatus: "En attente",
-            value: fromBooking ? fromBooking.amount : 0,
+            value: 0,
         });
         setDateRange(undefined);
         setAddDialogOpen(true);
@@ -342,7 +334,7 @@ export default function ContractManagement({ employees, bookings, onUpdateContra
                     <FormItem>
                         <FormLabel>Client</FormLabel>
                         <FormControl>
-                        <Input placeholder="Nom du Client" {...field} required disabled={!!bookingForContract}/>
+                        <Input placeholder="Nom du Client" {...field} required />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -379,19 +371,21 @@ export default function ContractManagement({ employees, bookings, onUpdateContra
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <FormField control={form.control} name="type" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Type de contrat</FormLabel>
-                       <Select onValueChange={field.onChange} value={field.value} required disabled={!!bookingForContract}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Type..." /></SelectTrigger></FormControl>
-                        <SelectContent>
-                            <SelectItem value="Prestation studio">Prestation studio</SelectItem>
-                             <SelectItem value="Autre">Autre</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
+                  { typeValue !== 'Prestation studio' && 
+                    <FormField control={form.control} name="type" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Type de contrat</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value} required>
+                          <FormControl><SelectTrigger><SelectValue placeholder="Type..." /></SelectTrigger></FormControl>
+                          <SelectContent>
+                              <SelectItem value="Prestation studio">Prestation studio</SelectItem>
+                              <SelectItem value="Autre">Autre</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  }
                   <FormField control={form.control} name="paymentStatus" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Statut Paiement</FormLabel>
@@ -409,7 +403,7 @@ export default function ContractManagement({ employees, bookings, onUpdateContra
                         <FormLabel>Valeur (FCFA)</FormLabel>
                         <div className="relative">
                           <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <FormControl><Input type="number" placeholder="Ex: 150000" className="pl-10" {...field} disabled={!!bookingForContract} /></FormControl>
+                          <FormControl><Input type="number" placeholder="Ex: 150000" className="pl-10" {...field} /></FormControl>
                         </div>
                         <FormMessage />
                       </FormItem>
@@ -600,7 +594,7 @@ export default function ContractManagement({ employees, bookings, onUpdateContra
                     <p className="text-sm text-muted-foreground">Cliquez sur "Ajouter un contrat" pour commencer.</p>
                 </CardFooter>
             )}
-            <Dialog open={isAddDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) { setDateRange(undefined); form.reset(); onClearBookingForContract(); } setAddDialogOpen(isOpen); }}>
+            <Dialog open={isAddDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) { setDateRange(undefined); form.reset(); } setAddDialogOpen(isOpen); }}>
                 <DialogContent className="sm:max-w-2xl">
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(handleAddContract)}>
