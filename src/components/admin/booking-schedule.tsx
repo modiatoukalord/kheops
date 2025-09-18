@@ -7,7 +7,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, PlusCircle, CheckCircle2, XCircle, Clock, Calendar as CalendarIcon, GripVertical, DiscAlbum, Pencil, Minus, Plus, User, FileText, Server, Eye, Phone, Trash2, Edit } from "lucide-react";
+import { MoreHorizontal, PlusCircle, CheckCircle2, XCircle, Clock, Calendar as CalendarIcon, GripVertical, DiscAlbum, Pencil, Minus, Plus, User, FileText, Server, Eye, Phone, Trash2, Edit, FileSignature } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -69,6 +69,7 @@ interface BookingScheduleProps {
   onAddBooking: (booking: Omit<Booking, 'id' | 'status'>) => void;
   onUpdateBookingStatus: (bookingId: string, newStatus: Booking['status']) => void;
   contracts: Contract[];
+  onCreateContract: (booking: Booking) => void;
 }
 
 const trackSchema = z.object({
@@ -105,7 +106,7 @@ const bookingFormSchema = z.object({
 type BookingFormValues = z.infer<typeof bookingFormSchema>;
 
 
-export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookingStatus, contracts }: BookingScheduleProps) {
+export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookingStatus, contracts, onCreateContract }: BookingScheduleProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [isBookingDialogOpen, setBookingDialogOpen] = useState(false);
   const [isDetailsDialogOpen, setDetailsDialogOpen] = useState(false);
@@ -505,6 +506,7 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
                   <div className="space-y-4">
                     {bookingsForSelectedDate.map((booking) => {
                       const statusInfo = bookingStatusConfig[booking.status];
+                      const hasContract = contracts.some(c => c.bookingId === booking.id);
                       return (
                           <div key={booking.id} className="flex items-center gap-4 p-3 rounded-lg bg-card-foreground/5">
                              <div className="font-mono text-sm text-center">
@@ -533,6 +535,12 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
                                       <Eye className="mr-2 h-4 w-4" />
                                       Voir les détails
                                   </DropdownMenuItem>
+                                  {!hasContract && (
+                                    <DropdownMenuItem onClick={() => onCreateContract(booking)}>
+                                        <FileSignature className="mr-2 h-4 w-4" />
+                                        Créer un contrat
+                                    </DropdownMenuItem>
+                                  )}
                                   <DropdownMenuItem onClick={() => openBookingDialog(booking)}>
                                       <Edit className="mr-2 h-4 w-4" />
                                       Modifier
@@ -663,6 +671,3 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
     </div>
   );
 }
-
-
-    

@@ -79,8 +79,11 @@ export type Contract = {
 
 interface ContractManagementProps {
   employees: Employee[];
+  bookings: Booking[];
   onUpdateContract: (id: string, data: Partial<Omit<Contract, 'id'>>) => Promise<void>;
   onCollectPayment: (contract: Contract) => void;
+  bookingForContract?: Booking | null;
+  onClearBookingForContract: () => void;
 }
 
 const contractFormSchema = z.object({
@@ -102,9 +105,8 @@ const contractFormSchema = z.object({
 type ContractFormValues = z.infer<typeof contractFormSchema>;
 
 
-export default function ContractManagement({ employees, onUpdateContract, onCollectPayment }: ContractManagementProps) {
+export default function ContractManagement({ employees, bookings, onUpdateContract, onCollectPayment, bookingForContract, onClearBookingForContract }: ContractManagementProps) {
     const [contracts, setContracts] = useState<Contract[]>([]);
-    const [bookings, setBookings] = useState<Booking[]>([]);
     const [contractTypes, setContractTypes] = useState<ContractTypeConfig[]>([]);
     const [isAddDialogOpen, setAddDialogOpen] = useState(false);
     const [isEditDialogOpen, setEditDialogOpen] = useState(false);
@@ -126,6 +128,12 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
     });
 
     useEffect(() => {
+        if (bookingForContract && !isAddDialogOpen) {
+            handleOpenAddDialog(bookingForContract);
+        }
+    }, [bookingForContract]);
+
+    useEffect(() => {
       const qContracts = query(collection(db, "contracts"), orderBy("lastUpdate", "desc"));
       const unsubContracts = onSnapshot(qContracts, (snapshot) => {
         const contractsData = snapshot.docs.map(doc => {
@@ -139,19 +147,6 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
         });
         setContracts(contractsData);
       });
-
-      const qBookings = query(collection(db, "bookings"), orderBy("date", "desc"));
-      const unsubBookings = onSnapshot(qBookings, (snapshot) => {
-        const bookingsData = snapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                id: doc.id,
-                ...data,
-                date: (data.date as Timestamp).toDate()
-            } as Booking;
-        });
-        setBookings(bookingsData);
-      });
       
       const qContractTypes = query(collection(db, "contractTypes"));
         const unsubContractTypes = onSnapshot(qContractTypes, (snapshot) => {
@@ -160,7 +155,6 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
 
        return () => {
            unsubContracts();
-           unsubBookings();
            unsubContractTypes();
        };
     }, []);
@@ -201,27 +195,16 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
     };
     
     const handleAddContract = async (data: ContractFormValues) => {
-        const bookingIdOrClientName = data.clientName;
-        
-        if (!bookingIdOrClientName) {
-             toast({ title: "Erreur", description: "Veuillez saisir un nom de client.", variant: "destructive" });
-            return;
-        }
-
-        const booking = bookings.find(b => b.id === bookingIdOrClientName);
-        let clientName = booking ? booking.artistName : bookingIdOrClientName;
-        let bookingId = booking ? booking.id : undefined;
-
-        if (bookingId && contracts.some(c => c.bookingId === bookingId)) {
+        if (data.bookingId && contracts.some(c => c.bookingId === data.bookingId)) {
              toast({ title: "Erreur", description: "Un contrat existe déjà pour cette réservation.", variant: "destructive" });
             return;
         }
         
         const signatory = employees.find(e => e.id === data.signatoryId);
 
-        const newContractData: Omit<Contract, 'id' | 'bookingId'> & {bookingId?: string} = {
+        const newContractData: Omit<Contract, 'id'> = {
             ...data,
-            clientName,
+            clientName: data.clientName,
             status: "En attente",
             lastUpdate: format(new Date(), 'yyyy-MM-dd'),
             startDate: dateRange?.from,
@@ -231,12 +214,11 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
             signatoryId: data.signatoryId,
             signatoryName: signatory ? signatory.name : undefined,
         };
-        if (bookingId) newContractData.bookingId = bookingId;
 
 
         try {
             await addDoc(collection(db, "contracts"), newContractData as any);
-            toast({ title: "Contrat Ajouté", description: `Le contrat pour ${clientName} a été créé.` });
+            toast({ title: "Contrat Ajouté", description: `Le contrat pour ${data.clientName} a été créé.` });
             setAddDialogOpen(false);
             setDateRange(undefined);
             form.reset();
@@ -273,6 +255,18 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
             console.error("Error updating contract: ", error);
             toast({ title: "Erreur", description: "Impossible de modifier le contrat.", variant: "destructive"});
         }
+    };
+
+    const handleOpenAddDialog = (booking?: Booking) => {
+        form.reset({
+            clientName: booking?.artistName || "",
+            bookingId: booking?.id,
+            type: booking ? "Prestation Studio" : "Prestation Studio",
+            paymentStatus: "En attente",
+            value: booking?.amount || 0,
+        });
+        setDateRange(booking ? { from: booking.date, to: undefined } : undefined);
+        setAddDialogOpen(true);
     };
 
     const handleOpenEditDialog = (contract: Contract) => {
@@ -346,6 +340,7 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
         
     const renderContractFormFields = (isEditing: boolean) => {
         const typeValue = form.watch("type");
+        const bookingId = form.watch("bookingId");
 
         return (
             <div className="grid gap-4 py-4 max-h-[80vh] overflow-y-auto pr-4">
@@ -354,9 +349,9 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
                     name="clientName"
                     render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Client ou Réservation ID</FormLabel>
+                        <FormLabel>Client</FormLabel>
                         <FormControl>
-                        <Input placeholder="Ex: res-001 ou Nom du Client" {...field} required disabled={isEditing}/>
+                        <Input placeholder="Nom du Client" {...field} required disabled={isEditing || !!bookingId}/>
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -396,7 +391,7 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
                   <FormField control={form.control} name="type" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Type de contrat</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value} required>
+                      <Select onValueChange={field.onChange} value={field.value} required disabled={!!bookingId}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Type..." /></SelectTrigger></FormControl>
                         <SelectContent>{contractTypes.map(type => <SelectItem key={type.id} value={type.name}>{type.name}</SelectItem>)}</SelectContent>
                       </Select>
@@ -497,6 +492,7 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
                         <TableRow key={contract.id}>
                             <TableCell>
                                 <div className="font-mono text-xs">{contract.id}</div>
+                                {contract.bookingId && <div className="text-xs text-muted-foreground font-mono">résa: {contract.bookingId.substring(0,5)}...</div>}
                             </TableCell>
                             <TableCell>
                                 <div className="font-medium">{contract.clientName}</div>
@@ -565,8 +561,8 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
         </Table>
     );
 
-    const studioContracts = contracts.filter(c => contractTypes.find(ct => ct.name === c.type));
-    const partnerContracts = contracts.filter(c => !contractTypes.find(ct => ct.name === c.type));
+    const studioContracts = contracts.filter(c => contractTypes.some(ct => ct.name === c.type));
+    const partnerContracts = contracts.filter(c => !contractTypes.some(ct => ct.name === c.type));
 
 
     return (
@@ -576,9 +572,9 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
                     <CardTitle>Gestion des Contrats</CardTitle>
                     <CardDescription>Suivez et mettez à jour le statut des contrats de réservation.</CardDescription>
                 </div>
-                 <Dialog open={isAddDialogOpen} onOpenChange={(isOpen) => { setAddDialogOpen(isOpen); if (!isOpen) { setDateRange(undefined); form.reset(); } }}>
+                 <Dialog open={isAddDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) { setDateRange(undefined); form.reset(); onClearBookingForContract(); } setAddDialogOpen(isOpen); }}>
                     <DialogTrigger asChild>
-                        <Button>
+                        <Button onClick={() => handleOpenAddDialog()}>
                             <PlusCircle className="mr-2 h-4 w-4" />
                             Ajouter un contrat
                         </Button>
@@ -619,7 +615,7 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
                     <p className="text-sm text-muted-foreground">Cliquez sur "Ajouter un contrat" pour commencer.</p>
                 </CardFooter>
             )}
-             <Dialog open={isEditDialogOpen} onOpenChange={(isOpen) => { setEditDialogOpen(isOpen); if (!isOpen) { setDateRange(undefined); form.reset(); } }}>
+             <Dialog open={isEditDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) { setDateRange(undefined); form.reset(); } setEditDialogOpen(isOpen); }}>
                 <DialogContent className="sm:max-w-2xl">
                     <Form {...form}>
                       <form onSubmit={form.handleSubmit(handleEditContract)}>
