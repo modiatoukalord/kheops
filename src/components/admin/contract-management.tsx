@@ -25,7 +25,6 @@ import { Calendar } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { db } from "@/lib/firebase";
 import { collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, Timestamp } from "firebase/firestore";
-import { Booking } from "@/components/admin/booking-schedule";
 import { servicesWithPrices } from "@/lib/pricing";
 import ContractView from "./contract-view";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,7 +33,6 @@ import type { GenerateContractClauseInput } from "@/ai/types/contract-clause";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Employee } from "./human-resources-management";
 import { ContractTypeConfig } from "./pricing-settings";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 
 
 const contractStatusConfig = {
@@ -57,7 +55,6 @@ type PaymentStatus = keyof typeof paymentStatusConfig;
 
 export type Contract = {
     id: string;
-    bookingId?: string;
     clientName: string;
     status: "Signé" | "Envoyé" | "En attente" | "Archivé";
     lastUpdate: string;
@@ -80,16 +77,11 @@ export type Contract = {
 
 interface ContractManagementProps {
   employees: Employee[];
-  bookings: Booking[];
   onUpdateContract: (id: string, data: Partial<Omit<Contract, 'id'>>) => Promise<void>;
   onCollectPayment: (contract: Contract) => void;
-  bookingForContract?: Booking | null;
-  setBookingForContract: (booking: Booking | null) => void;
-  onClearBookingForContract: () => void;
 }
 
 const contractFormSchema = z.object({
-  bookingId: z.string().optional(),
   clientName: z.string().min(1, "Client requis"),
   startDate: z.date().optional(),
   endDate: z.date().optional(),
@@ -107,7 +99,7 @@ const contractFormSchema = z.object({
 type ContractFormValues = z.infer<typeof contractFormSchema>;
 
 
-export default function ContractManagement({ employees, bookings, onUpdateContract, onCollectPayment, bookingForContract, setBookingForContract, onClearBookingForContract }: ContractManagementProps) {
+export default function ContractManagement({ employees, onUpdateContract, onCollectPayment }: ContractManagementProps) {
     const [contracts, setContracts] = useState<Contract[]>([]);
     const [contractTypes, setContractTypes] = useState<ContractTypeConfig[]>([]);
     const [isAddDialogOpen, setAddDialogOpen] = useState(false);
@@ -128,12 +120,6 @@ export default function ContractManagement({ employees, bookings, onUpdateContra
         value: 0,
       }
     });
-
-    useEffect(() => {
-        if (bookingForContract && !isAddDialogOpen) {
-            handleOpenAddDialog(bookingForContract);
-        }
-    }, [bookingForContract]);
 
     useEffect(() => {
       const qContracts = query(collection(db, "contracts"), orderBy("lastUpdate", "desc"));
@@ -197,11 +183,6 @@ export default function ContractManagement({ employees, bookings, onUpdateContra
     };
     
     const handleAddContract = async (data: ContractFormValues) => {
-        if (data.bookingId && contracts.some(c => c.bookingId === data.bookingId)) {
-             toast({ title: "Erreur", description: "Un contrat existe déjà pour cette réservation.", variant: "destructive" });
-            return;
-        }
-        
         const signatory = employees.find(e => e.id === data.signatoryId);
 
         const newContractData: Omit<Contract, 'id'> = {
@@ -259,16 +240,14 @@ export default function ContractManagement({ employees, bookings, onUpdateContra
         }
     };
 
-    const handleOpenAddDialog = (booking?: Booking) => {
-        setBookingForContract(booking || null);
+    const handleOpenAddDialog = () => {
         form.reset({
-            clientName: booking?.artistName || "",
-            bookingId: booking?.id,
-            type: booking ? "Prestation Studio" : undefined,
+            clientName: "",
+            type: undefined,
             paymentStatus: "En attente",
-            value: booking?.amount || 0,
+            value: 0,
         });
-        setDateRange(booking ? { from: booking.date, to: undefined } : undefined);
+        setDateRange(undefined);
         setAddDialogOpen(true);
     };
 
@@ -277,7 +256,6 @@ export default function ContractManagement({ employees, bookings, onUpdateContra
         setDateRange({ from: contract.startDate, to: contract.endDate });
         form.reset({
           clientName: contract.clientName,
-          bookingId: contract.bookingId,
           type: contract.type,
           paymentStatus: contract.paymentStatus,
           value: contract.value,
@@ -343,7 +321,6 @@ export default function ContractManagement({ employees, bookings, onUpdateContra
         
     const renderContractFormFields = (isEditing: boolean) => {
         const typeValue = form.watch("type");
-        const bookingId = form.watch("bookingId");
 
         return (
             <div className="grid gap-4 py-4 max-h-[80vh] overflow-y-auto pr-4">
@@ -354,7 +331,7 @@ export default function ContractManagement({ employees, bookings, onUpdateContra
                     <FormItem>
                         <FormLabel>Client</FormLabel>
                         <FormControl>
-                        <Input placeholder="Nom du Client" {...field} required disabled={isEditing || !!bookingId}/>
+                        <Input placeholder="Nom du Client" {...field} required disabled={isEditing}/>
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -394,7 +371,7 @@ export default function ContractManagement({ employees, bookings, onUpdateContra
                   <FormField control={form.control} name="type" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Type de contrat</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value} required disabled={!!bookingForContract}>
+                      <Select onValueChange={field.onChange} value={field.value} required>
                         <FormControl><SelectTrigger><SelectValue placeholder="Type..." /></SelectTrigger></FormControl>
                         <SelectContent>{contractTypes.map(type => <SelectItem key={type.id} value={type.name}>{type.name}</SelectItem>)}</SelectContent>
                       </Select>
@@ -495,7 +472,6 @@ export default function ContractManagement({ employees, bookings, onUpdateContra
                         <TableRow key={contract.id}>
                             <TableCell>
                                 <div className="font-mono text-xs">{contract.id}</div>
-                                {contract.bookingId && <div className="text-xs text-muted-foreground font-mono">résa: {contract.bookingId.substring(0,5)}...</div>}
                             </TableCell>
                             <TableCell>
                                 <div className="font-medium">{contract.clientName}</div>
@@ -565,8 +541,8 @@ export default function ContractManagement({ employees, bookings, onUpdateContra
     );
     
     const studioContractTypeNames = contractTypes.filter(ct => ct.name.toLowerCase().includes("studio")).map(ct => ct.name);
-    const studioContracts = contracts.filter(c => studioContractTypeNames.includes(c.type) || c.bookingId);
-    const partnerContracts = contracts.filter(c => !studioContractTypeNames.includes(c.type) && !c.bookingId);
+    const studioContracts = contracts.filter(c => studioContractTypeNames.includes(c.type));
+    const partnerContracts = contracts.filter(c => !studioContractTypeNames.includes(c.type));
 
 
     return (
@@ -574,43 +550,31 @@ export default function ContractManagement({ employees, bookings, onUpdateContra
             <CardHeader className="flex flex-row justify-between items-start">
                 <div>
                     <CardTitle>Gestion des Contrats</CardTitle>
-                    <CardDescription>Suivez et mettez à jour le statut des contrats de réservation.</CardDescription>
+                    <CardDescription>Suivez et mettez à jour le statut des contrats.</CardDescription>
                 </div>
-                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                         <Button>
+                <Dialog open={isAddDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) { setDateRange(undefined); form.reset(); } setAddDialogOpen(isOpen); }}>
+                    <DialogTrigger asChild>
+                        <Button onClick={handleOpenAddDialog}>
                             <PlusCircle className="mr-2 h-4 w-4" />
                             Ajouter un contrat
                         </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                         <DropdownMenuSub>
-                            <DropdownMenuSubTrigger>
-                                <FileSignature className="mr-2 h-4 w-4" />
-                                <span>Contrat Studio</span>
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuPortal>
-                                <DropdownMenuSubContent>
-                                     <Command>
-                                        <CommandInput placeholder="Rechercher une réservation..."/>
-                                        <CommandEmpty>Aucune réservation trouvée.</CommandEmpty>
-                                        <CommandGroup>
-                                             {bookings.filter(b => b.status === "Confirmé" && !contracts.some(c => c.bookingId === b.id)).map(b => (
-                                                <CommandItem key={b.id} onSelect={() => handleOpenAddDialog(b)}>
-                                                    {b.artistName} - {b.projectName}
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                     </Command>
-                                </DropdownMenuSubContent>
-                            </DropdownMenuPortal>
-                        </DropdownMenuSub>
-                        <DropdownMenuItem onClick={() => handleOpenAddDialog()}>
-                           <PenSquare className="mr-2 h-4 w-4"/>
-                           <span>Autre Contrat</span>
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                 </DropdownMenu>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-2xl">
+                        <Form {...form}>
+                            <form onSubmit={form.handleSubmit(handleAddContract)}>
+                                <DialogHeader>
+                                    <DialogTitle>Créer un nouveau contrat</DialogTitle>
+                                    <DialogDescription>Saisissez le nom du client et remplissez les détails pour générer un nouveau contrat.</DialogDescription>
+                                </DialogHeader>
+                                {renderContractFormFields(false)}
+                                <DialogFooter className="pt-4 border-t">
+                                    <Button onClick={() => setAddDialogOpen(false)} variant="ghost" type="button">Annuler</Button>
+                                    <Button type="submit">Créer le contrat</Button>
+                                </DialogFooter>
+                            </form>
+                        </Form>
+                    </DialogContent>
+                </Dialog>
             </CardHeader>
             <CardContent>
                 <Tabs defaultValue="studio">
@@ -631,23 +595,6 @@ export default function ContractManagement({ employees, bookings, onUpdateContra
                     <p className="text-sm text-muted-foreground">Cliquez sur "Ajouter un contrat" pour commencer.</p>
                 </CardFooter>
             )}
-             <Dialog open={isAddDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) { setDateRange(undefined); form.reset(); onClearBookingForContract(); } setAddDialogOpen(isOpen); }}>
-                <DialogContent className="sm:max-w-2xl">
-                    <Form {...form}>
-                        <form onSubmit={form.handleSubmit(handleAddContract)}>
-                            <DialogHeader>
-                                <DialogTitle>Créer un nouveau contrat</DialogTitle>
-                                <DialogDescription>Saisissez le nom du client et remplissez les détails pour générer un nouveau contrat.</DialogDescription>
-                            </DialogHeader>
-                            {renderContractFormFields(false)}
-                            <DialogFooter className="pt-4 border-t">
-                                <Button onClick={() => setAddDialogOpen(false)} variant="ghost" type="button">Annuler</Button>
-                                <Button type="submit">Créer le contrat</Button>
-                            </DialogFooter>
-                        </form>
-                    </Form>
-                </DialogContent>
-            </Dialog>
              <Dialog open={isEditDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) { setDateRange(undefined); form.reset(); } setEditDialogOpen(isOpen); }}>
                 <DialogContent className="sm:max-w-2xl">
                     <Form {...form}>
@@ -684,5 +631,3 @@ export default function ContractManagement({ employees, bookings, onUpdateContra
         </Card>
     );
 }
-
-    

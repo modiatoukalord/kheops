@@ -31,8 +31,6 @@ import { Separator } from "@/components/ui/separator";
 import { db } from "@/lib/firebase";
 import { doc, updateDoc, deleteDoc, collection, onSnapshot, query, where } from "firebase/firestore";
 import { servicesWithPrices, calculatePrice } from "@/lib/pricing";
-import { Contract } from "@/components/admin/contract-management";
-
 
 export type Booking = {
   id: string;
@@ -46,7 +44,6 @@ export type Booking = {
   amount: number;
   phone?: string;
   tracks?: { name: string; date: Date; timeSlot: string }[];
-  contractId?: string;
 }
 
 
@@ -68,8 +65,6 @@ interface BookingScheduleProps {
   bookings: Booking[];
   onAddBooking: (booking: Omit<Booking, 'id' | 'status'>) => void;
   onUpdateBookingStatus: (bookingId: string, newStatus: Booking['status']) => void;
-  contracts: Contract[];
-  onCreateContract: (booking: Booking) => void;
 }
 
 const trackSchema = z.object({
@@ -87,7 +82,6 @@ const bookingFormSchema = z.object({
   date: z.date().optional(),
   timeSlot: z.string().optional(),
   tracks: z.array(trackSchema).optional(),
-  contractId: z.string().optional(),
 }).superRefine((data, ctx) => {
     if (data.projectType === 'Single') {
         if (!data.date) {
@@ -106,13 +100,12 @@ const bookingFormSchema = z.object({
 type BookingFormValues = z.infer<typeof bookingFormSchema>;
 
 
-export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookingStatus, contracts, onCreateContract }: BookingScheduleProps) {
+export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookingStatus }: BookingScheduleProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [isBookingDialogOpen, setBookingDialogOpen] = useState(false);
   const [isDetailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
-  const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
 
   const { toast } = useToast();
   
@@ -136,25 +129,6 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
   });
 
   const projectType = form.watch("projectType");
-  const contractId = form.watch("contractId");
-
-  const signedContracts = useMemo(() => {
-    return (contracts || []).filter(c => c.status === "Signé");
-  }, [contracts]);
-
-  useEffect(() => {
-    const contract = signedContracts.find(c => c.id === contractId);
-    if (contract) {
-        setSelectedContract(contract);
-        form.setValue("artistName", contract.clientName);
-    } else {
-        setSelectedContract(null);
-        if (!form.getValues('artistName')) { // only clear if user hasn't typed
-             form.setValue("artistName", "");
-        }
-    }
-  }, [contractId, signedContracts, form]);
-
 
   const handleBookingStatusChange = async (bookingId: string, newStatus: BookingStatus) => {
     try {
@@ -195,10 +169,9 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
   const handleBookingSubmit = async (data: BookingFormValues) => {
     let bookingData: Omit<Booking, 'id' | 'status'>;
     let amount = 0;
-    const contract = contracts.find(c => c.id === data.contractId);
     
     if (data.projectType === 'Single' && data.date && data.timeSlot) {
-        amount = calculatePrice(data.service, 1, contract?.customPrices);
+        amount = calculatePrice(data.service, 1);
         bookingData = {
             artistName: data.artistName,
             projectName: data.projectName,
@@ -209,10 +182,9 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
             service: data.service,
             tracks: [{ name: data.projectName, date: data.date, timeSlot: data.timeSlot }],
             amount,
-            contractId: data.contractId,
         };
     } else if ((data.projectType === 'Mixtape' || data.projectType === 'Album') && data.tracks && data.tracks.length > 0) {
-        amount = calculatePrice(data.service, data.tracks.length, contract?.customPrices);
+        amount = calculatePrice(data.service, data.tracks.length);
         bookingData = {
             artistName: data.artistName,
             projectName: data.projectName,
@@ -223,11 +195,10 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
             service: data.service,
             tracks: data.tracks,
             amount,
-            contractId: data.contractId,
         };
     } else {
         // Handle 'Autre' or invalid states
-        amount = calculatePrice(data.service, 1, contract?.customPrices);
+        amount = calculatePrice(data.service, 1);
         bookingData = {
              artistName: data.artistName,
             projectName: data.projectName,
@@ -237,7 +208,6 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
             timeSlot: data.timeSlot || 'N/A',
             service: data.service,
             amount,
-            contractId: data.contractId,
         }
     }
 
@@ -273,14 +243,11 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
   const openBookingDialog = (booking: Booking | null) => {
     setEditingBooking(booking);
     if (booking) {
-      const contract = contracts.find(c => c.id === booking.contractId);
-      setSelectedContract(contract || null);
       form.reset({
         ...booking,
         tracks: booking.tracks || [{ name: '', date: new Date(), timeSlot: '' }],
       });
     } else {
-      setSelectedContract(null);
       form.reset({
         artistName: '',
         projectName: '',
@@ -290,7 +257,6 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
         date: new Date(),
         timeSlot: '',
         tracks: [{ name: '', date: new Date(), timeSlot: '' }],
-        contractId: undefined,
       });
     }
     setBookingDialogOpen(true);
@@ -334,35 +300,7 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
                           </DialogHeader>
                           
                           <div className="grid md:grid-cols-2 gap-4">
-                               <FormField
-                                  control={form.control}
-                                  name="contractId"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <Label>Contrat (Optionnel)</Label>
-                                      <Select
-                                        onValueChange={(value) => { field.onChange(value === 'none' ? undefined : value) }}
-                                        defaultValue={field.value}
-                                      >
-                                        <FormControl>
-                                          <SelectTrigger>
-                                            <SelectValue placeholder="Sélectionner un contrat" />
-                                          </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                            <SelectItem value="none">Sans Contrat</SelectItem>
-                                          {signedContracts.map(c => (
-                                            <SelectItem key={c.id} value={c.id}>
-                                              {c.clientName} - {c.type}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                              <FormField control={form.control} name="artistName" render={({ field }) => (<FormItem><Label>Artiste</Label><FormControl><Input placeholder="Nom de l'artiste" {...field} disabled={!!selectedContract} /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField control={form.control} name="artistName" render={({ field }) => (<FormItem><Label>Artiste</Label><FormControl><Input placeholder="Nom de l'artiste" {...field} /></FormControl><FormMessage /></FormItem>)} />
                               <FormField control={form.control} name="projectName" render={({ field }) => (<FormItem><Label>Projet</Label><FormControl><Input placeholder="Nom du projet" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><Label>Téléphone</Label><FormControl><Input placeholder="Numéro de téléphone" {...field} /></FormControl><FormMessage /></FormItem>)} />
                               <FormField control={form.control} name="projectType" render={({ field }) => (
@@ -377,7 +315,7 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
                                   <FormMessage />
                                   </FormItem>
                               )} />
-                               <FormField control={form.control} name="service" render={({ field }) => (<FormItem><Label>Service</Label><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un service" /></SelectTrigger></FormControl><SelectContent>{availableServices.map(service => <SelectItem key={service} value={service}>{service} {selectedContract && selectedContract.customPrices?.[service] !== undefined ? `(${selectedContract.customPrices[service].toLocaleString('fr-FR')} FCFA)` : `(${servicesWithPrices[service as keyof typeof servicesWithPrices].toLocaleString('fr-FR')} FCFA)`}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                               <FormField control={form.control} name="service" render={({ field }) => (<FormItem><Label>Service</Label><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un service" /></SelectTrigger></FormControl><SelectContent>{availableServices.map(service => <SelectItem key={service} value={service}>{service} ({servicesWithPrices[service as keyof typeof servicesWithPrices].toLocaleString('fr-FR')} FCFA)</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
                           </div>
                           
                           <Separator/>
@@ -506,7 +444,6 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
                   <div className="space-y-4">
                     {bookingsForSelectedDate.map((booking) => {
                       const statusInfo = bookingStatusConfig[booking.status];
-                      const hasContract = contracts.some(c => c.bookingId === booking.id);
                       return (
                           <div key={booking.id} className="flex items-center gap-4 p-3 rounded-lg bg-card-foreground/5">
                              <div className="font-mono text-sm text-center">
@@ -535,12 +472,6 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
                                       <Eye className="mr-2 h-4 w-4" />
                                       Voir les détails
                                   </DropdownMenuItem>
-                                  {!hasContract && (
-                                    <DropdownMenuItem onClick={() => onCreateContract(booking)}>
-                                        <FileSignature className="mr-2 h-4 w-4" />
-                                        Créer un contrat
-                                    </DropdownMenuItem>
-                                  )}
                                   <DropdownMenuItem onClick={() => openBookingDialog(booking)}>
                                       <Edit className="mr-2 h-4 w-4" />
                                       Modifier
@@ -633,12 +564,6 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
                           <div><Label className="text-muted-foreground">Service</Label><p>{selectedBooking.service}</p></div>
                           {selectedBooking.phone && <div><Label className="text-muted-foreground">Téléphone</Label><p className="flex items-center gap-2"><Phone className="h-3 w-3" />{selectedBooking.phone}</p></div>}
                           <div><Label className="text-muted-foreground">Statut</Label><Badge variant={bookingStatusConfig[selectedBooking.status].variant}>{selectedBooking.status}</Badge></div>
-                          {selectedBooking.contractId && (
-                            <div className="col-span-2">
-                                <Label className="text-muted-foreground">Contrat Associé</Label>
-                                <p className="text-xs font-mono">{selectedBooking.contractId}</p>
-                            </div>
-                          )}
                       </div>
 
                       <Separator className="my-2" />

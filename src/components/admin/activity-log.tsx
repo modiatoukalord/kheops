@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle, useMemo } from "react";
@@ -101,7 +102,6 @@ const activityFormSchema = z.object({
   paymentType: z.enum(["Direct", "Échéancier"], { required_error: "Type de paiement requis" }),
   paidAmount: z.coerce.number().optional(),
   items: z.array(activityItemSchema).min(1, "Veuillez ajouter au moins une activité."),
-  bookingId: z.string().optional(),
   contractId: z.string().optional(),
 });
 
@@ -162,13 +162,13 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
 
   useEffect(() => {
     if (contractToPay) {
-      handleOpenNewActivityDialog(null, 0, contractToPay);
+      handleOpenNewActivityDialog(contractToPay);
     }
   }, [contractToPay]);
   
   useImperativeHandle(ref, () => ({
     openDialog: (data: any) => {
-      handleOpenNewActivityDialog(data.booking, data.remainingToPay, data.contract);
+      handleOpenNewActivityDialog(data.contract);
     }
   }));
 
@@ -267,7 +267,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
   }, [form.watch("items"), selectedContract, update]);
 
   const processActivityData = async (data: ActivityFormValues) => {
-    const { clientName, phone, items, paymentType, paidAmount, bookingId, contractId } = data;
+    const { clientName, phone, items, paymentType, paidAmount, contractId } = data;
     
      const baseActivityPayload = {
       clientName,
@@ -296,7 +296,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
             } catch (e) { console.error("Invalid time format for duration calculation"); }
         }
         
-        const activityPayload: Omit<ClientActivity, 'id' | 'duration'> & { date: Date, bookingId?: string, contractId?: string, duration?: string } = {
+        const activityPayload: Omit<ClientActivity, 'id' | 'duration'> & { date: Date, contractId?: string, duration?: string } = {
             ...baseActivityPayload,
             description: item.description,
             category: item.category,
@@ -307,10 +307,6 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
 
         if (duration) {
             activityPayload.duration = duration;
-        }
-
-        if (item.category === "Réservation Studio" && bookingId) {
-            activityPayload.bookingId = bookingId;
         }
 
         if (contractId) {
@@ -355,25 +351,8 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
     });
   };
 
-  const handleOpenNewActivityDialog = (booking: Booking | null = null, remainingToPay: number = 0, contract: Contract | null = null) => {
-     if (booking) { // Creating a new activity from a booking
-         const amountToPay = remainingToPay > 0 ? remainingToPay : booking.amount;
-         
-         form.reset({
-            clientName: booking.artistName,
-            phone: booking.phone || '',
-            paymentType: "Direct", // Default to direct, user can change
-            paidAmount: amountToPay,
-            items: [{
-                description: `Réservation Studio: ${booking.projectName}`,
-                category: "Réservation Studio",
-                amount: booking.amount,
-                startTime: '',
-                endTime: ''
-            }],
-            bookingId: booking.id
-         });
-    } else if (contract) {
+  const handleOpenNewActivityDialog = (contract: Contract | null = null) => {
+     if (contract) {
         form.reset({
             clientName: contract.clientName,
             phone: '', // Contracts don't have phone numbers by default
@@ -510,7 +489,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
         return { Icon: Tag, color: "bg-gray-500/20 text-gray-700 border-gray-500/30" };
     }
     const Icon = iconMap[category.icon] || Tag;
-    const color = `bg-${category.color}-500/20 text-${category.color}-700 border-${category.color}-500/30`;
+    const color = `bg-${category.color}-500 text-white`;
     return { Icon, color };
   };
 
@@ -586,7 +565,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
                     }
                 }}>
                     <DialogTrigger asChild>
-                        <Button onClick={() => handleOpenNewActivityDialog(null, 0, null)}>
+                        <Button onClick={() => handleOpenNewActivityDialog(null)}>
                             <PlusCircle className="mr-2 h-4 w-4"/>
                             Ajouter
                         </Button>
@@ -783,7 +762,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
                                 </TableCell>
                                 <TableCell>
                                     <p>{activity.description}</p>
-                                    <Badge variant="secondary" className={`mt-1 ${color || ''}`}>
+                                    <Badge variant="secondary" className={`mt-1 text-white ${color || ''}`}>
                                         <Icon className="mr-1.5 h-3.5 w-3.5" />
                                         {activity.category}
                                     </Badge>
@@ -897,7 +876,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 {totalPaid === 0 ? (
-                                                    <Button size="sm" onClick={() => handleOpenNewActivityDialog(booking, booking.amount - totalPaid, null)}>
+                                                    <Button size="sm">
                                                         <HandCoins className="mr-2 h-4 w-4"/>
                                                         Encaisser
                                                     </Button>
