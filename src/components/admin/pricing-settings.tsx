@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -6,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { DollarSign, Percent, Music, Tag, PlusCircle, Edit, Trash2, Palette } from "lucide-react";
+import { DollarSign, Percent, Music, Tag, PlusCircle, Edit, Trash2, Palette, FileSignature } from "lucide-react";
 import { KHEOPS_MEMBER_FEE, servicesWithPrices } from "@/lib/pricing";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -22,6 +23,14 @@ export type ActivityCategory = {
     color: string;
 };
 
+export type ContractTypeConfig = {
+    id: string;
+    name: string;
+    icon: string;
+    color: string;
+};
+
+
 const tailwindColors = ["slate", "gray", "zinc", "neutral", "stone", "red", "orange", "amber", "yellow", "lime", "green", "emerald", "teal", "cyan", "sky", "blue", "indigo", "violet", "purple", "fuchsia", "pink", "rose"];
 
 export default function PricingSettings() {
@@ -29,16 +38,25 @@ export default function PricingSettings() {
   const [studioPrices, setStudioPrices] = useState(servicesWithPrices);
   const [memberFee, setMemberFee] = useState(KHEOPS_MEMBER_FEE);
   const [activityCategories, setActivityCategories] = useState<ActivityCategory[]>([]);
+  const [contractTypes, setContractTypes] = useState<ContractTypeConfig[]>([]);
   const [isCategoryDialogOpen, setCategoryDialogOpen] = useState(false);
+  const [isContractTypeDialogOpen, setContractTypeDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<ActivityCategory | null>(null);
+  const [editingContractType, setEditingContractType] = useState<ContractTypeConfig | null>(null);
 
   useEffect(() => {
-    const q = collection(db, "activityCategories");
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-        const categoriesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ActivityCategory));
-        setActivityCategories(categoriesData);
+    const unsubActivityCategories = onSnapshot(collection(db, "activityCategories"), (snapshot) => {
+        setActivityCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ActivityCategory)));
     });
-    return () => unsubscribe();
+    
+    const unsubContractTypes = onSnapshot(collection(db, "contractTypes"), (snapshot) => {
+        setContractTypes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ContractTypeConfig)));
+    });
+    
+    return () => {
+        unsubActivityCategories();
+        unsubContractTypes();
+    };
   }, []);
 
   const handleSave = (section: string) => {
@@ -99,6 +117,50 @@ export default function PricingSettings() {
         }
     }
   };
+  
+  const handleContractTypeFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const contractTypeData = {
+        name: formData.get("name") as string,
+        icon: formData.get("icon") as string,
+        color: formData.get("color") as string,
+    };
+
+    try {
+        if (editingContractType) {
+            const typeRef = doc(db, "contractTypes", editingContractType.id);
+            await updateDoc(typeRef, contractTypeData);
+            toast({ title: "Type de Contrat Modifié", description: `Le type "${contractTypeData.name}" a été mis à jour.` });
+        } else {
+            await addDoc(collection(db, "contractTypes"), contractTypeData);
+            toast({ title: "Type de Contrat Ajouté", description: `Le type "${contractTypeData.name}" a été ajouté.` });
+        }
+        setContractTypeDialogOpen(false);
+        setEditingContractType(null);
+    } catch (error) {
+        console.error("Error saving contract type: ", error);
+        toast({ title: "Erreur", description: "Impossible d'enregistrer le type de contrat.", variant: "destructive" });
+    }
+  };
+
+  const handleOpenContractTypeDialog = (contractType: ContractTypeConfig | null) => {
+    setEditingContractType(contractType);
+    setContractTypeDialogOpen(true);
+  };
+
+  const handleDeleteContractType = async (typeId: string) => {
+    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce type de contrat ?")) {
+        try {
+            await deleteDoc(doc(db, "contractTypes", typeId));
+            toast({ title: "Type de Contrat Supprimé", variant: "destructive" });
+        } catch (error) {
+             console.error("Error deleting contract type: ", error);
+             toast({ title: "Erreur", description: "Impossible de supprimer le type.", variant: "destructive" });
+        }
+    }
+  };
+
 
   const getCategoryColorClass = (color: string) => {
       return `bg-${color}-500/20 text-${color}-700 border-${color}-500/30`;
@@ -107,8 +169,9 @@ export default function PricingSettings() {
   return (
     <Tabs defaultValue="studio" className="space-y-8">
       <TabsList>
-        <TabsTrigger value="studio">Tarifs Studio & Abonnements</TabsTrigger>
+        <TabsTrigger value="studio">Tarifs & Abonnements</TabsTrigger>
         <TabsTrigger value="categories">Catégories d'Activité</TabsTrigger>
+        <TabsTrigger value="contract-types">Types de Contrat</TabsTrigger>
       </TabsList>
 
       <TabsContent value="studio" className="space-y-8">
@@ -263,6 +326,100 @@ export default function PricingSettings() {
                                         <Edit className="h-4 w-4" />
                                     </Button>
                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:bg-red-500/10 hover:text-red-500" onClick={() => handleDeleteCategory(cat.id)}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
+            </CardContent>
+        </Card>
+      </TabsContent>
+      <TabsContent value="contract-types">
+         <Card>
+            <CardHeader>
+                <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="flex-shrink-0 bg-blue-500/20 text-blue-500 p-3 rounded-full">
+                            <FileSignature className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <CardTitle>Types de Contrat</CardTitle>
+                            <CardDescription>Gérez les différentes catégories de contrats.</CardDescription>
+                        </div>
+                    </div>
+                    <Dialog open={isContractTypeDialogOpen} onOpenChange={(isOpen) => { if(!isOpen) setEditingContractType(null); setContractTypeDialogOpen(isOpen); }}>
+                        <DialogTrigger asChild>
+                            <Button onClick={() => handleOpenContractTypeDialog(null)}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Ajouter un type
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <form onSubmit={handleContractTypeFormSubmit}>
+                                <DialogHeader>
+                                    <DialogTitle>{editingContractType ? "Modifier le type" : "Nouveau Type de Contrat"}</DialogTitle>
+                                </DialogHeader>
+                                <div className="grid gap-4 py-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="ct-name">Nom</Label>
+                                        <Input id="ct-name" name="name" defaultValue={editingContractType?.name} required />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="ct-icon">Icône</Label>
+                                            <Select name="icon" defaultValue={editingContractType?.icon} required>
+                                                <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
+                                                <SelectContent>
+                                                    {iconList.map(iconName => {
+                                                        const Icon = iconMap[iconName];
+                                                        return <SelectItem key={iconName} value={iconName}><Icon className="mr-2 h-4 w-4 inline-block"/> {iconName}</SelectItem>
+                                                    })}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                         <div className="space-y-2">
+                                            <Label htmlFor="ct-color">Couleur</Label>
+                                            <Select name="color" defaultValue={editingContractType?.color} required>
+                                                <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
+                                                <SelectContent>
+                                                    {tailwindColors.map(color => (
+                                                        <SelectItem key={color} value={color}>
+                                                            <div className="flex items-center gap-2">
+                                                                <div className={`h-4 w-4 rounded-full bg-${color}-500`}></div>
+                                                                {color}
+                                                            </div>
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <DialogFooter>
+                                    <Button type="submit">{editingContractType ? "Enregistrer" : "Ajouter"}</Button>
+                                </DialogFooter>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {contractTypes.map(cat => {
+                        const Icon = iconMap[cat.icon as keyof typeof iconMap] || FileSignature;
+                        return (
+                            <div key={cat.id} className={`p-3 rounded-lg flex items-center justify-between border ${getCategoryColorClass(cat.color)}`}>
+                                <div className="flex items-center gap-2 font-medium">
+                                    <Icon className="h-5 w-5" />
+                                    <span>{cat.name}</span>
+                                </div>
+                                <div className="flex gap-1">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenContractTypeDialog(cat)}>
+                                        <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:bg-red-500/10 hover:text-red-500" onClick={() => handleDeleteContractType(cat.id)}>
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </div>

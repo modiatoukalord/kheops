@@ -4,7 +4,7 @@
 import { useState, forwardRef, useImperativeHandle, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home, Wallet, Cog, DollarSign, Clipboard, MicVocal, GanttChart, UserCog } from "lucide-react";
+import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home, Wallet, Cog, DollarSign, Clipboard, MicVocal, GanttChart, UserCog, Tag } from "lucide-react";
 import ClientManagement, { Client, Reward } from "@/components/admin/client-management";
 import ContentManagement, { initialContent as iContent, Content } from "@/components/admin/content-management";
 import BookingSchedule, { Booking } from "@/components/admin/booking-schedule";
@@ -102,7 +102,7 @@ const adminCategories: AdminCategory[] = [
         title: "Configuration",
         color: "bg-orange-600/80 text-orange-50",
         sections: [
-            { title: "Tarifs", icon: DollarSign, view: "pricing" },
+            { title: "Tarifs & Services", icon: DollarSign, view: "pricing" },
         ]
     }
 ];
@@ -283,7 +283,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
     activities: { component: ActivityLog, title: "Journal d'Activité", props: { bookings, contracts, onAddTransaction, onUpdateBookingStatus, ref: activityLogRef, contractToPay, onContractPaid } },
     platforms: { component: PlatformManagement, title: "Gestion des Plateformes", props: { payouts, setPayouts, onAddPayout: handleAddPayout } },
     "fixed-costs": { component: FixedCostsManagement, title: "Gestion des Charges Fixes", props: { fixedCosts, onAddFixedCost: handleAddFixedCost, onUpdateFixedCost: handleUpdateFixedCost, onDeleteFixedCost: handleDeleteFixedCost } },
-    pricing: { component: PricingSettings, title: "Tarifs des Services", props: {} },
+    pricing: { component: PricingSettings, title: "Tarifs & Services", props: {} },
     hr: { component: HumanResourcesManagement, title: "Gestion du Personnel", props: { employees, onAddEmployee, onUpdateEmployee, onDeleteEmployee } },
     "org-chart": { component: OrgChart, title: "Organigramme", props: { employees, onAddEmployee, onUpdateEmployee, onDeleteEmployee } },
   };
@@ -378,5 +378,3 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
 
 AdminHub.displayName = "AdminHub";
 export default AdminHub;
-
-    

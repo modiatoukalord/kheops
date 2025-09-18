@@ -33,6 +33,7 @@ import { generateContractClause } from "@/ai/flows/contract-clause-flow";
 import type { GenerateContractClauseInput } from "@/ai/types/contract-clause";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Employee } from "./human-resources-management";
+import { ContractTypeConfig } from "./pricing-settings";
 
 
 const contractStatusConfig = {
@@ -50,11 +51,8 @@ const paymentStatusConfig = {
     "N/A": { variant: "outline", className: "border-dashed" },
 };
 
-const contractTypes = ["Prestation Studio", "Licence Musique", "Distribution", "Partenariat", "Autres"];
-
 type ContractStatus = keyof typeof contractStatusConfig;
 type PaymentStatus = keyof typeof paymentStatusConfig;
-type ContractType = typeof contractTypes[number];
 
 export type Contract = {
     id: string;
@@ -66,7 +64,7 @@ export type Contract = {
     pdfUrl?: string;
     value: number;
     paymentStatus: PaymentStatus;
-    type: ContractType;
+    type: string;
     startDate?: Date;
     endDate?: Date;
     customPrices?: { [key: string]: number };
@@ -107,6 +105,7 @@ type ContractFormValues = z.infer<typeof contractFormSchema>;
 export default function ContractManagement({ employees, onUpdateContract, onCollectPayment }: ContractManagementProps) {
     const [contracts, setContracts] = useState<Contract[]>([]);
     const [bookings, setBookings] = useState<Booking[]>([]);
+    const [contractTypes, setContractTypes] = useState<ContractTypeConfig[]>([]);
     const [isAddDialogOpen, setAddDialogOpen] = useState(false);
     const [isEditDialogOpen, setEditDialogOpen] = useState(false);
     const [isViewDialogOpen, setViewDialogOpen]  = useState(false);
@@ -127,8 +126,8 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
     });
 
     useEffect(() => {
-      const q = query(collection(db, "contracts"), orderBy("lastUpdate", "desc"));
-      const unsubscribe = onSnapshot(q, (snapshot) => {
+      const qContracts = query(collection(db, "contracts"), orderBy("lastUpdate", "desc"));
+      const unsubContracts = onSnapshot(qContracts, (snapshot) => {
         const contractsData = snapshot.docs.map(doc => {
             const data = doc.data();
             return {
@@ -140,12 +139,9 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
         });
         setContracts(contractsData);
       });
-      return () => unsubscribe();
-    }, []);
 
-    useEffect(() => {
-      const q = query(collection(db, "bookings"), orderBy("date", "desc"));
-      const unsubscribe = onSnapshot(q, (snapshot) => {
+      const qBookings = query(collection(db, "bookings"), orderBy("date", "desc"));
+      const unsubBookings = onSnapshot(qBookings, (snapshot) => {
         const bookingsData = snapshot.docs.map(doc => {
             const data = doc.data();
             return {
@@ -156,7 +152,17 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
         });
         setBookings(bookingsData);
       });
-       return () => unsubscribe();
+      
+      const qContractTypes = query(collection(db, "contractTypes"));
+        const unsubContractTypes = onSnapshot(qContractTypes, (snapshot) => {
+            setContractTypes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ContractTypeConfig)));
+        });
+
+       return () => {
+           unsubContracts();
+           unsubBookings();
+           unsubContractTypes();
+       };
     }, []);
     
     const handleGenerateClause = async (clauseType: GenerateContractClauseInput['clauseType']) => {
@@ -221,7 +227,7 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
             startDate: dateRange?.from,
             endDate: dateRange?.to,
             paymentStatus: data.paymentStatus as PaymentStatus,
-            type: data.type as ContractType,
+            type: data.type,
             signatoryId: data.signatoryId,
             signatoryName: signatory ? signatory.name : undefined,
         };
@@ -251,7 +257,7 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
             startDate: dateRange?.from,
             endDate: dateRange?.to,
             paymentStatus: data.paymentStatus as PaymentStatus,
-            type: data.type as ContractType,
+            type: data.type,
             signatoryId: data.signatoryId,
             signatoryName: signatory ? signatory.name : undefined,
         };
@@ -392,7 +398,7 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
                       <FormLabel>Type de contrat</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value} required>
                         <FormControl><SelectTrigger><SelectValue placeholder="Type..." /></SelectTrigger></FormControl>
-                        <SelectContent>{contractTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent>
+                        <SelectContent>{contractTypes.map(type => <SelectItem key={type.id} value={type.name}>{type.name}</SelectItem>)}</SelectContent>
                       </Select>
                       <FormMessage />
                     </FormItem>
@@ -559,8 +565,8 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
         </Table>
     );
 
-    const studioContracts = contracts.filter(c => c.type === "Prestation Studio");
-    const partnerContracts = contracts.filter(c => c.type !== "Prestation Studio");
+    const studioContracts = contracts.filter(c => contractTypes.find(ct => ct.name === c.type));
+    const partnerContracts = contracts.filter(c => !contractTypes.find(ct => ct.name === c.type));
 
 
     return (
@@ -598,7 +604,7 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
                 <Tabs defaultValue="studio">
                     <TabsList className="grid w-full grid-cols-2">
                         <TabsTrigger value="studio">Contrats Studio</TabsTrigger>
-                        <TabsTrigger value="partners">Contrats Partenaires</TabsTrigger>
+                        <TabsTrigger value="partners">Contrats Partenaires & Autres</TabsTrigger>
                     </TabsList>
                     <TabsContent value="studio">
                         {renderContractTable(studioContracts)}
