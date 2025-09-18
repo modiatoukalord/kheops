@@ -16,31 +16,14 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
-type CulturalContent = Pick<Content, 'title' | 'type'> & { description: string; imageUrl: string; hint: string };
+type CulturalContent = Pick<Content, 'title' | 'type' | 'imageUrl'> & { description: string; hint: string };
 
-const contentData: { [key: string]: { description: string, imageUrl: string, hint: string } } = {
-  "Le Labyrinthe d'Osiris": {
-    description: "Plongez dans un thriller mystique au cœur de l'Égypte ancienne.",
-    imageUrl: "https://picsum.photos/400/300",
-    hint: "egyptian labyrinth"
-  },
-  "Pharaoh's Legacy Vol. 1": {
-    description: "Une aventure épique où des lycéens réveillent un pouvoir ancestral.",
-    imageUrl: "https://picsum.photos/400/300",
-    hint: "pharaoh legacy"
-  },
-  "Les Chroniques de Thot": {
-    description: "Découvrez les secrets de la sagesse et de la magie égyptienne.",
-    imageUrl: "https://picsum.photos/400/300",
-    hint: "ancient scroll"
-  },
-  "L'art du Hiéroglyphe": {
-    description: "Une analyse approfondie de l'écriture sacrée des pharaons.",
-    imageUrl: "https://picsum.photos/400/300",
-    hint: "hieroglyphics wall"
-  },
+const placeholderDescriptions: { [key: string]: string } = {
+  "Le Labyrinthe d'Osiris": "Plongez dans un thriller mystique au cœur de l'Égypte ancienne.",
+  "Pharaoh's Legacy Vol. 1": "Une aventure épique où des lycéens réveillent un pouvoir ancestral.",
+  "Les Chroniques de Thot": "Découvrez les secrets de la sagesse et de la magie égyptienne.",
+  "L'art du Hiéroglyphe": "Une analyse approfondie de l'écriture sacrée des pharaons.",
 };
-
 
 const categoryIcons: { [key in Content['type']]: React.ElementType } = {
     Livre: BookOpen,
@@ -65,13 +48,13 @@ export default function CultureHub({ content, events, onEventRegistration }: Cul
   const [selectedEvent, setSelectedEvent] = useState<AppEvent | null>(null);
 
   const culturalContent: CulturalContent[] = content
-    .filter(c => c.status === "Publié" && c.type !== 'Projet Studio' && contentData[c.title])
-    .map(c => ({
+    .filter(c => c.status === "Publié" && c.type !== 'Projet Studio')
+    .map((c, index) => ({
         title: c.title,
         type: c.type,
-        description: contentData[c.title].description,
-        imageUrl: contentData[c.title].imageUrl,
-        hint: contentData[c.title].hint
+        description: placeholderDescriptions[c.title] || `Découvrez le contenu de ${c.title}.`,
+        imageUrl: c.imageUrl || `https://picsum.photos/seed/culture${index}/400/300`,
+        hint: c.title.toLowerCase().split(' ').slice(0,2).join(' ')
     }));
     
   const upcomingEvents = events
