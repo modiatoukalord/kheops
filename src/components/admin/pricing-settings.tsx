@@ -16,6 +16,7 @@ import { db } from "@/lib/firebase";
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
 import { iconList, iconMap } from "@/lib/icons";
 import { tierConfig } from "@/components/admin/client-management";
+import { Separator } from "@/components/ui/separator";
 
 export type ActivityCategory = {
     id: string;
@@ -44,6 +45,7 @@ export default function PricingSettings() {
   const [isContractTypeDialogOpen, setContractTypeDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<ActivityCategory | null>(null);
   const [editingContractType, setEditingContractType] = useState<ContractTypeConfig | null>(null);
+  const [loyaltyPointValue, setLoyaltyPointValue] = useState(100);
   const [loyaltyTiers, setLoyaltyTiers] = useState({
     Argent: 5,
     Or: 10,
@@ -342,6 +344,7 @@ export default function PricingSettings() {
                                 </div>
                                 <Icon className="h-8 w-8" />
                                 <span className="font-bold text-center">{cat.name}</span>
+                                {cat.price && <span className="text-xs font-mono">{cat.price.toLocaleString('fr-FR')} FCFA</span>}
                             </div>
                         )
                     })}
@@ -449,44 +452,61 @@ export default function PricingSettings() {
                 <Gem className="h-6 w-6" />
               </div>
               <div>
-                <CardTitle>Niveaux de Fidélité</CardTitle>
-                <CardDescription>Définissez le nombre de points d'activité requis pour chaque niveau.</CardDescription>
+                <CardTitle>Programme de Fidélité</CardTitle>
+                <CardDescription>Définissez la valeur des points et les seuils pour chaque niveau.</CardDescription>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
-              {Object.entries(tierConfig).map(([tierName, tierInfo]) => {
-                if (tierName === 'Bronze') return null;
-                const tierKey = tierName as keyof typeof loyaltyTiers;
-                return (
-                  <div key={tierName} className="space-y-2">
-                    <Label htmlFor={`loyalty-${tierName}`} className="flex items-center gap-2">
-                        <tierInfo.icon className={`h-4 w-4 ${tierInfo.color}`} />
-                        {tierName}
-                    </Label>
-                    <Input
-                      id={`loyalty-${tierName}`}
-                      type="number"
-                      value={loyaltyTiers[tierKey]}
-                      onChange={(e) => setLoyaltyTiers(prev => ({ ...prev, [tierKey]: Number(e.target.value) }))}
-                      placeholder={`Points pour ${tierName}`}
+          <CardContent className="space-y-6">
+             <div className="space-y-2 max-w-sm">
+                <Label htmlFor="loyalty-point-value">Valeur d'un point (FCFA)</Label>
+                <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                        id="loyalty-point-value" 
+                        type="number" 
+                        value={loyaltyPointValue}
+                        onChange={(e) => setLoyaltyPointValue(Number(e.target.value))}
+                        className="pl-10" 
                     />
-                  </div>
-                )
-              })}
-               <div className="space-y-2 col-span-full sm:col-span-1 flex items-end">
-                 <p className="text-sm text-muted-foreground w-full text-center p-2 rounded-md bg-muted">Le niveau Bronze est attribué par défaut pour 0 point.</p>
-               </div>
+                </div>
+                <p className="text-xs text-muted-foreground">Chaque point de fidélité équivaut à cette somme en FCFA lors de l'utilisation des récompenses.</p>
+            </div>
+            <Separator />
+            <div>
+                 <Label className="font-medium">Seuils des Niveaux</Label>
+                 <p className="text-sm text-muted-foreground mb-4">Nombre de points requis pour atteindre chaque niveau.</p>
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
+                  {Object.entries(tierConfig).map(([tierName, tierInfo]) => {
+                    if (tierName === 'Bronze') return null;
+                    const tierKey = tierName as keyof typeof loyaltyTiers;
+                    return (
+                      <div key={tierName} className="space-y-2">
+                        <Label htmlFor={`loyalty-${tierName}`} className="flex items-center gap-2">
+                            <tierInfo.icon className={`h-4 w-4 ${tierInfo.color}`} />
+                            {tierName}
+                        </Label>
+                        <Input
+                          id={`loyalty-${tierName}`}
+                          type="number"
+                          value={loyaltyTiers[tierKey]}
+                          onChange={(e) => setLoyaltyTiers(prev => ({ ...prev, [tierKey]: Number(e.target.value) }))}
+                          placeholder={`Points pour ${tierName}`}
+                        />
+                      </div>
+                    )
+                  })}
+                   <div className="space-y-2 col-span-full sm:col-span-1 flex items-end">
+                     <p className="text-sm text-muted-foreground w-full text-center p-2 rounded-md bg-muted">Le niveau Bronze est attribué par défaut pour 0 point.</p>
+                   </div>
+                </div>
             </div>
           </CardContent>
           <CardFooter className="border-t px-6 py-4 justify-end">
-            <Button onClick={() => handleSave("Niveaux de Fidélité")}>Enregistrer les Niveaux</Button>
+            <Button onClick={() => handleSave("Niveaux de Fidélité")}>Enregistrer les Paramètres</Button>
           </CardFooter>
         </Card>
       </TabsContent>
     </Tabs>
   );
 }
-
-    
