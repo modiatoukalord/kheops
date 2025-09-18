@@ -33,6 +33,7 @@ import type { GenerateContractClauseInput } from "@/ai/types/contract-clause";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Employee } from "./human-resources-management";
 import { ContractTypeConfig } from "./pricing-settings";
+import { Booking } from "./booking-schedule";
 
 
 const contractStatusConfig = {
@@ -79,6 +80,8 @@ interface ContractManagementProps {
   employees: Employee[];
   onUpdateContract: (id: string, data: Partial<Omit<Contract, 'id'>>) => Promise<void>;
   onCollectPayment: (contract: Contract) => void;
+  bookingForContract: Booking | null;
+  setBookingForContract: (booking: Booking | null) => void;
 }
 
 const contractFormSchema = z.object({
@@ -99,7 +102,7 @@ const contractFormSchema = z.object({
 type ContractFormValues = z.infer<typeof contractFormSchema>;
 
 
-export default function ContractManagement({ employees, onUpdateContract, onCollectPayment }: ContractManagementProps) {
+export default function ContractManagement({ employees, onUpdateContract, onCollectPayment, bookingForContract, setBookingForContract }: ContractManagementProps) {
     const [contracts, setContracts] = useState<Contract[]>([]);
     const [contractTypes, setContractTypes] = useState<ContractTypeConfig[]>([]);
     const [isAddDialogOpen, setAddDialogOpen] = useState(false);
@@ -147,6 +150,22 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
            unsubContractTypes();
        };
     }, []);
+
+    useEffect(() => {
+        if (bookingForContract) {
+            form.reset({
+                clientName: bookingForContract.artistName,
+                type: 'Prestation studio',
+                paymentStatus: 'En attente',
+                value: bookingForContract.amount,
+                object: `Contrat de prestation pour le projet "${bookingForContract.projectName}"`,
+            });
+            setDateRange({ from: bookingForContract.date, to: undefined });
+            setAddDialogOpen(true);
+            // Reset bookingForContract after use
+            setBookingForContract(null);
+        }
+    }, [bookingForContract, form, setBookingForContract]);
     
     const handleGenerateClause = async (clauseType: GenerateContractClauseInput['clauseType']) => {
         setGeneratingClause(clauseType);
@@ -644,5 +663,3 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
         </Card>
     );
 }
-
-    

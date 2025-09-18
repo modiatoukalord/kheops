@@ -65,6 +65,7 @@ interface BookingScheduleProps {
   bookings: Booking[];
   onAddBooking: (booking: Omit<Booking, 'id' | 'status'>) => void;
   onUpdateBookingStatus: (bookingId: string, newStatus: Booking['status']) => void;
+  onCreateContract: (booking: Booking) => void;
 }
 
 const trackSchema = z.object({
@@ -100,7 +101,7 @@ const bookingFormSchema = z.object({
 type BookingFormValues = z.infer<typeof bookingFormSchema>;
 
 
-export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookingStatus }: BookingScheduleProps) {
+export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookingStatus, onCreateContract }: BookingScheduleProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [isBookingDialogOpen, setBookingDialogOpen] = useState(false);
   const [isDetailsDialogOpen, setDetailsDialogOpen] = useState(false);
@@ -529,15 +530,29 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
                       <TableCell>{format(booking.date, "d MMM yyyy", { locale: fr })} à {booking.timeSlot}</TableCell>
                       <TableCell>{booking.service}</TableCell>
                        <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" onClick={() => { setSelectedBooking(booking); setDetailsDialogOpen(true); }}>
-                              <Eye className="h-4 w-4" />
-                          </Button>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => { setSelectedBooking(booking); setDetailsDialogOpen(true); }}>
+                                        <Eye className="mr-2 h-4 w-4" />
+                                        Voir les détails
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => onCreateContract(booking)}>
+                                        <FileSignature className="mr-2 h-4 w-4" />
+                                        Créer un contrat
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                        </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
+                    <TableCell colSpan={5} className="h-24 text-center">
                       Aucune réservation confirmée pour le moment.
                     </TableCell>
                   </TableRow>
