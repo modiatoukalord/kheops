@@ -108,6 +108,7 @@ const activityFormSchema = z.object({
   paidAmount: z.coerce.number().optional(),
   items: z.array(activityItemSchema).min(1, "Veuillez ajouter au moins une activité."),
   contractId: z.string().optional(),
+  bookingId: z.string().optional(),
 });
 
 type ActivityFormValues = z.infer<typeof activityFormSchema>;
@@ -168,13 +169,13 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], clients = [], onAddT
 
   useEffect(() => {
     if (contractToPay) {
-      handleOpenNewActivityDialog(contractToPay);
+      handleOpenNewActivityDialog({contract: contractToPay});
     }
   }, [contractToPay]);
   
   useImperativeHandle(ref, () => ({
     openDialog: (data: any) => {
-      handleOpenNewActivityDialog(data.contract);
+      handleOpenNewActivityDialog({contract: data.contract});
     }
   }));
 
@@ -284,7 +285,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], clients = [], onAddT
   }, [form.watch("items"), selectedContract, update]);
 
   const processActivityData = async (data: ActivityFormValues) => {
-    const { clientName, phone, items, paymentType, paidAmount, contractId } = data;
+    const { clientName, phone, items, paymentType, paidAmount, contractId, bookingId } = data;
     
      const baseActivityPayload = {
       clientName,
@@ -338,7 +339,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], clients = [], onAddT
             } catch (e) { console.error("Invalid time format for duration calculation"); }
         }
         
-        const activityPayload: Omit<ClientActivity, 'id' | 'duration'> & { date: Date, contractId?: string, duration?: string } = {
+        const activityPayload: Omit<ClientActivity, 'id' | 'duration'> & { date: Date, contractId?: string, bookingId?: string, duration?: string } = {
             ...baseActivityPayload,
             description: item.description,
             category: item.category,
@@ -353,6 +354,10 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], clients = [], onAddT
 
         if (contractId) {
             activityPayload.contractId = contractId;
+        }
+        
+        if (bookingId) {
+            activityPayload.bookingId = bookingId;
         }
 
         if (paymentType !== 'Points') {
@@ -379,6 +384,9 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], clients = [], onAddT
         if (contractId && onContractPaid) {
           onContractPaid(contractId);
         }
+        if (bookingId) {
+            // No status update here as it's assumed payment confirms it
+        }
     } catch (error) {
         console.error("Error adding documents: ", error);
         toast({ title: "Erreur", description: "Impossible d'ajouter les activités.", variant: "destructive" });
@@ -395,11 +403,11 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], clients = [], onAddT
     setSelectedClient(null);
   };
 
-  const handleOpenNewActivityDialog = (contract: Contract | null = null) => {
+  const handleOpenNewActivityDialog = ({ contract, booking }: { contract?: Contract | null, booking?: Booking | null } = {}) => {
      if (contract) {
         form.reset({
             clientName: contract.clientName,
-            phone: '', // Contracts don't have phone numbers by default
+            phone: '',
             paymentType: "Direct",
             paidAmount: contract.value,
             items: [{
@@ -413,7 +421,24 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], clients = [], onAddT
             }],
             contractId: contract.id,
         });
-    } else { // Creating a brand new activity
+    } else if (booking) {
+         form.reset({
+            clientName: booking.artistName,
+            phone: booking.phone || '',
+            paymentType: "Direct",
+            paidAmount: booking.amount,
+            items: [{
+                description: `Paiement Réservation: ${booking.projectName} (${booking.service})`,
+                category: "Réservation Studio",
+                quantity: booking.tracks?.length || 1,
+                unitPrice: booking.amount / (booking.tracks?.length || 1),
+                amount: booking.amount,
+                startTime: '',
+                endTime: ''
+            }],
+            bookingId: booking.id,
+        });
+    } else {
         form.reset({
             clientName: "",
             phone: "",
@@ -421,6 +446,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], clients = [], onAddT
             paidAmount: 0,
             items: [{ description: "", category: "Autre", quantity: 1, unitPrice: 0, amount: 0, startTime: "", endTime: "" }],
             contractId: undefined,
+            bookingId: undefined,
         });
     }
     setSelectedClient(null);
@@ -571,7 +597,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], clients = [], onAddT
             <div>
               <CardTitle>Journal d'Activité</CardTitle>
               <CardDescription>
-                Suivez toutes les activités et achats des clients non-abonnés.
+                Suivez toutes les activités et achats des clients.
               </CardDescription>
             </div>
              <div className="flex items-center gap-2 w-full md:w-auto">
@@ -602,183 +628,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], clients = [], onAddT
                     </PopoverContent>
                   </Popover>
                   {dateFilter && <Button variant="ghost" size="icon" onClick={() => setDateFilter(undefined)}><X className="h-4 w-4"/></Button>}
-                <Dialog open={isActivityDialogOpen} onOpenChange={(isOpen) => {
-                    setActivityDialogOpen(isOpen);
-                    if (!isOpen) {
-                        form.reset();
-                        setSelectedClient(null);
-                        if (contractToPay && onContractPaid) {
-                           onContractPaid(contractToPay.id); // A bit of a hack to reset state
-                        }
-                    }
-                }}>
-                    <DialogTrigger asChild>
-                        <Button onClick={() => handleOpenNewActivityDialog(null)}>
-                            <PlusCircle className="mr-2 h-4 w-4"/>
-                            Ajouter
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-3xl">
-                       <Form {...form}>
-                        <form onSubmit={form.handleSubmit(processActivityData)}>
-                            <DialogHeader>
-                                <DialogTitle>Ajouter une nouvelle vente/activité</DialogTitle>
-                                <DialogDescription>
-                                    Remplissez les informations du client et ajoutez un ou plusieurs articles/services.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <div className="grid gap-6 py-4 max-h-[80vh] overflow-y-auto pr-4">
-                                <FormField control={form.control} name="contractId" render={({ field }) => (
-                                    <FormItem>
-                                        <Label>Contrat Associé (Optionnel)</Label>
-                                         <Select onValueChange={(value) => { field.onChange(value === 'none' ? undefined : value); if (value === 'none') { form.reset({ ...form.getValues(), clientName: '' }); setSelectedContract(null); } }} defaultValue={field.value}>
-                                            <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un contrat..." /></SelectTrigger></FormControl>
-                                            <SelectContent>
-                                                <SelectItem value="none">Sans Contrat</SelectItem>
-                                                {signedContracts.map(c => <SelectItem key={c.id} value={c.id}>{c.clientName} - {c.type}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage/>
-                                    </FormItem>
-                                )} />
-                                { !selectedContract &&
-                                <Tabs defaultValue="existing-client">
-                                  <TabsList className="grid w-full grid-cols-2">
-                                      <TabsTrigger value="existing-client">Client Existant</TabsTrigger>
-                                      <TabsTrigger value="new-client">Nouveau Client</TabsTrigger>
-                                  </TabsList>
-                                  <TabsContent value="existing-client" className="pt-4">
-                                      <FormItem>
-                                          <Label>Sélectionner un client</Label>
-                                          <Select onValueChange={(clientName) => {
-                                                const client = existingClients.find(c => c.name === clientName);
-                                                if (client) {
-                                                    form.setValue("clientName", client.name);
-                                                    form.setValue("phone", client.phone || '');
-                                                    setSelectedClient(client);
-                                                } else {
-                                                    setSelectedClient(null);
-                                                }
-                                            }}>
-                                                <FormControl><SelectTrigger><SelectValue placeholder="Choisir parmi les clients enregistrés..." /></SelectTrigger></FormControl>
-                                                <SelectContent>
-                                                    {existingClients.map(client => (
-                                                        <SelectItem key={client.id} value={client.name}>{client.name} ({client.loyaltyPoints} pts)</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                          </Select>
-                                      </FormItem>
-                                  </TabsContent>
-                                  <TabsContent value="new-client" className="pt-4 space-y-4">
-                                      <FormField control={form.control} name="clientName" render={({ field }) => (<FormItem><Label>Nom du nouveau client</Label><FormControl><Input placeholder="Ex: Jean Dupont" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                  </TabsContent>
-                                </Tabs>
-                                }
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><Label>Téléphone</Label><FormControl><Input placeholder="Ex: +242 06 123 4567" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    <FormField control={form.control} name="paymentType" render={({ field }) => (<FormItem><Label>Type de paiement</Label>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                            <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
-                                            <SelectContent>
-                                                <SelectItem value="Direct">Direct</SelectItem>
-                                                <SelectItem value="Échéancier">Échéancier</SelectItem>
-                                                <SelectItem value="Points" disabled={!selectedClient || selectedClient.loyaltyPoints < totalPointsCost}>
-                                                    Payer avec les points ({totalPointsCost} pts)
-                                                </SelectItem>
-                                            </SelectContent>
-                                        </Select><FormMessage /></FormItem>)} />
-                                </div>
-                                 {selectedClient && (
-                                    <div className="text-sm font-medium text-muted-foreground flex items-center justify-end gap-2">
-                                        <Star className="h-4 w-4 text-yellow-400"/>
-                                        Solde de points du client: <span className="font-bold text-foreground">{selectedClient.loyaltyPoints}</span>
-                                    </div>
-                                )}
-                                <Separator />
-                                <div className="space-y-4">
-                                    {fields.map((field, index) => (
-                                        <div key={field.id} className="p-3 border rounded-lg space-y-4">
-                                            <div className="flex justify-between items-center">
-                                                <h4 className="font-medium text-primary">Article #{index + 1}</h4>
-                                                {fields.length > 1 && (
-                                                <Button type="button" variant="ghost" size="icon" className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
-                                                )}
-                                            </div>
-                                             <FormField control={form.control} name={`items.${index}.description`} render={({ field }) => (<FormItem><Label>Description</Label><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <FormField control={form.control} name={`items.${index}.category`} render={({ field: categoryField }) => (
-                                                    <FormItem>
-                                                        <Label>Catégorie</Label>
-                                                        <Select 
-                                                            onValueChange={(value) => {
-                                                                categoryField.onChange(value);
-                                                                const category = activityCategories.find(c => c.name === value);
-                                                                if (category) {
-                                                                    form.setValue(`items.${index}.unitPrice`, category.unitPrice || 0);
-                                                                }
-                                                            }} 
-                                                            defaultValue={categoryField.value}>
-                                                            <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
-                                                            <SelectContent>{activityCategories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}</SelectContent>
-                                                        </Select>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )} />
-                                                <FormField control={form.control} name={`items.${index}.quantity`} render={({ field }) => (<FormItem><Label>Quantité</Label><FormControl><Input type="number" {...field} min="1" /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field }) => (<FormItem><Label>Prix Unitaire</Label><FormControl><Input type="number" {...field} readOnly className="bg-muted/50" /></FormControl><FormMessage /></FormItem>)} />
-                                            </div>
-                                             <FormField control={form.control} name={`items.${index}.amount`} render={({ field }) => (<FormItem><Label>Montant Total</Label><FormControl><Input type="number" {...field} readOnly className="bg-muted/50" /></FormControl><FormMessage /></FormItem>)} />
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <FormField control={form.control} name={`items.${index}.startTime`} render={({ field }) => (<FormItem><Label>Heure de début</Label><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField control={form.control} name={`items.${index}.endTime`} render={({ field }) => (<FormItem><Label>Heure de fin</Label><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                            </div>
-                                        </div>
-                                    ))}
-                                    <Button type="button" size="sm" variant="outline" onClick={() => append({ description: "", category: "Autre", quantity: 1, unitPrice: 0, amount: 0, startTime: "", endTime: "" })}>
-                                        <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un article
-                                    </Button>
-                                </div>
-                                {(paymentType === 'Échéancier') && (
-                                    <FormField control={form.control} name="paidAmount" render={({ field }) => (
-                                        <FormItem>
-                                            <Label>Montant Versé initialement</Label>
-                                            <FormControl><Input type="number" {...field} value={field.value || 0} /></FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} />
-                                )}
-
-                                <Separator />
-                                <div className="flex justify-end items-center gap-6 text-lg font-bold">
-                                    {paymentType === 'Échéancier' && (
-                                        <>
-                                             <div className="text-right">
-                                                <span>Restant:</span>
-                                                <p className="text-red-500">{remainingAmount.toLocaleString('fr-FR')} FCFA</p>
-                                            </div>
-                                            <Separator orientation="vertical" className="h-10" />
-                                        </>
-                                    )}
-                                     {paymentType === 'Points' ? (
-                                        <div className="text-right">
-                                            <span>Coût Total en Points:</span>
-                                            <p className="text-primary flex items-center justify-end gap-1.5">{totalPointsCost} <Star className="h-5 w-5"/></p>
-                                        </div>
-                                     ) : (
-                                        <div className="text-right">
-                                            <span>Total:</span>
-                                            <p>{totalAmount.toLocaleString('fr-FR')} FCFA</p>
-                                        </div>
-                                     )}
-                                </div>
-                            </div>
-                            <DialogFooter className="pt-4 border-t">
-                                <Button type="submit">Enregistrer la vente</Button>
-                            </DialogFooter>
-                        </form>
-                        </Form>
-                    </DialogContent>
-                </Dialog>
+                
             </div>
           </div>
         </CardHeader>
@@ -789,6 +639,185 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], clients = [], onAddT
                     <TabsTrigger value="studio">Encaissement Studio</TabsTrigger>
                 </TabsList>
                 <TabsContent value="all" className="pt-4">
+                    <div className="flex justify-end mb-4">
+                        <Dialog open={isActivityDialogOpen} onOpenChange={(isOpen) => {
+                            setActivityDialogOpen(isOpen);
+                            if (!isOpen) {
+                                form.reset();
+                                setSelectedClient(null);
+                                if (contractToPay && onContractPaid) {
+                                onContractPaid(contractToPay.id); // A bit of a hack to reset state
+                                }
+                            }
+                        }}>
+                            <DialogTrigger asChild>
+                                <Button onClick={() => handleOpenNewActivityDialog({})}>
+                                    <PlusCircle className="mr-2 h-4 w-4"/>
+                                    Ajouter une vente
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-3xl">
+                            <Form {...form}>
+                                <form onSubmit={form.handleSubmit(processActivityData)}>
+                                    <DialogHeader>
+                                        <DialogTitle>Ajouter une nouvelle vente/activité</DialogTitle>
+                                        <DialogDescription>
+                                            Remplissez les informations du client et ajoutez un ou plusieurs articles/services.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="grid gap-6 py-4 max-h-[80vh] overflow-y-auto pr-4">
+                                        <FormField control={form.control} name="contractId" render={({ field }) => (
+                                            <FormItem>
+                                                <Label>Contrat Associé (Optionnel)</Label>
+                                                <Select onValueChange={(value) => { field.onChange(value === 'none' ? undefined : value); if (value === 'none') { form.reset({ ...form.getValues(), clientName: '' }); setSelectedContract(null); } }} defaultValue={field.value}>
+                                                    <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un contrat..." /></SelectTrigger></FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="none">Sans Contrat</SelectItem>
+                                                        {signedContracts.map(c => <SelectItem key={c.id} value={c.id}>{c.clientName} - {c.type}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormMessage/>
+                                            </FormItem>
+                                        )} />
+                                        { !selectedContract &&
+                                        <Tabs defaultValue="existing-client">
+                                        <TabsList className="grid w-full grid-cols-2">
+                                            <TabsTrigger value="existing-client">Client Existant</TabsTrigger>
+                                            <TabsTrigger value="new-client">Nouveau Client</TabsTrigger>
+                                        </TabsList>
+                                        <TabsContent value="existing-client" className="pt-4">
+                                            <FormItem>
+                                                <Label>Sélectionner un client</Label>
+                                                <Select onValueChange={(clientName) => {
+                                                        const client = existingClients.find(c => c.name === clientName);
+                                                        if (client) {
+                                                            form.setValue("clientName", client.name);
+                                                            form.setValue("phone", client.phone || '');
+                                                            setSelectedClient(client);
+                                                        } else {
+                                                            setSelectedClient(null);
+                                                        }
+                                                    }}>
+                                                        <FormControl><SelectTrigger><SelectValue placeholder="Choisir parmi les clients enregistrés..." /></SelectTrigger></FormControl>
+                                                        <SelectContent>
+                                                            {existingClients.map(client => (
+                                                                <SelectItem key={client.id} value={client.name}>{client.name} ({client.loyaltyPoints} pts)</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                </Select>
+                                            </FormItem>
+                                        </TabsContent>
+                                        <TabsContent value="new-client" className="pt-4 space-y-4">
+                                            <FormField control={form.control} name="clientName" render={({ field }) => (<FormItem><Label>Nom du nouveau client</Label><FormControl><Input placeholder="Ex: Jean Dupont" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        </TabsContent>
+                                        </Tabs>
+                                        }
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><Label>Téléphone</Label><FormControl><Input placeholder="Ex: +242 06 123 4567" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name="paymentType" render={({ field }) => (<FormItem><Label>Type de paiement</Label>
+                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                    <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="Direct">Direct</SelectItem>
+                                                        <SelectItem value="Échéancier">Échéancier</SelectItem>
+                                                        <SelectItem value="Points" disabled={!selectedClient || selectedClient.loyaltyPoints < totalPointsCost}>
+                                                            Payer avec les points ({totalPointsCost} pts)
+                                                        </SelectItem>
+                                                    </SelectContent>
+                                                </Select><FormMessage /></FormItem>)} />
+                                        </div>
+                                        {selectedClient && (
+                                            <div className="text-sm font-medium text-muted-foreground flex items-center justify-end gap-2">
+                                                <Star className="h-4 w-4 text-yellow-400"/>
+                                                Solde de points du client: <span className="font-bold text-foreground">{selectedClient.loyaltyPoints}</span>
+                                            </div>
+                                        )}
+                                        <Separator />
+                                        <div className="space-y-4">
+                                            {fields.map((field, index) => (
+                                                <div key={field.id} className="p-3 border rounded-lg space-y-4">
+                                                    <div className="flex justify-between items-center">
+                                                        <h4 className="font-medium text-primary">Article #{index + 1}</h4>
+                                                        {fields.length > 1 && (
+                                                        <Button type="button" variant="ghost" size="icon" className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
+                                                        )}
+                                                    </div>
+                                                    <FormField control={form.control} name={`items.${index}.description`} render={({ field }) => (<FormItem><Label>Description</Label><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                        <FormField control={form.control} name={`items.${index}.category`} render={({ field: categoryField }) => (
+                                                            <FormItem>
+                                                                <Label>Catégorie</Label>
+                                                                <Select 
+                                                                    onValueChange={(value) => {
+                                                                        categoryField.onChange(value);
+                                                                        const category = activityCategories.find(c => c.name === value);
+                                                                        if (category) {
+                                                                            form.setValue(`items.${index}.unitPrice`, category.unitPrice || 0);
+                                                                        }
+                                                                    }} 
+                                                                    defaultValue={categoryField.value}>
+                                                                    <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
+                                                                    <SelectContent>{activityCategories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}</SelectContent>
+                                                                </Select>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )} />
+                                                        <FormField control={form.control} name={`items.${index}.quantity`} render={({ field }) => (<FormItem><Label>Quantité</Label><FormControl><Input type="number" {...field} min="1" /></FormControl><FormMessage /></FormItem>)} />
+                                                        <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field }) => (<FormItem><Label>Prix Unitaire</Label><FormControl><Input type="number" {...field} readOnly className="bg-muted/50" /></FormControl><FormMessage /></FormItem>)} />
+                                                    </div>
+                                                    <FormField control={form.control} name={`items.${index}.amount`} render={({ field }) => (<FormItem><Label>Montant Total</Label><FormControl><Input type="number" {...field} readOnly className="bg-muted/50" /></FormControl><FormMessage /></FormItem>)} />
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <FormField control={form.control} name={`items.${index}.startTime`} render={({ field }) => (<FormItem><Label>Heure de début</Label><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                        <FormField control={form.control} name={`items.${index}.endTime`} render={({ field }) => (<FormItem><Label>Heure de fin</Label><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            <Button type="button" size="sm" variant="outline" onClick={() => append({ description: "", category: "Autre", quantity: 1, unitPrice: 0, amount: 0, startTime: "", endTime: "" })}>
+                                                <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un article
+                                            </Button>
+                                        </div>
+                                        {(paymentType === 'Échéancier') && (
+                                            <FormField control={form.control} name="paidAmount" render={({ field }) => (
+                                                <FormItem>
+                                                    <Label>Montant Versé initialement</Label>
+                                                    <FormControl><Input type="number" {...field} value={field.value || 0} /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                        )}
+
+                                        <Separator />
+                                        <div className="flex justify-end items-center gap-6 text-lg font-bold">
+                                            {paymentType === 'Échéancier' && (
+                                                <>
+                                                    <div className="text-right">
+                                                        <span>Restant:</span>
+                                                        <p className="text-red-500">{remainingAmount.toLocaleString('fr-FR')} FCFA</p>
+                                                    </div>
+                                                    <Separator orientation="vertical" className="h-10" />
+                                                </>
+                                            )}
+                                            {paymentType === 'Points' ? (
+                                                <div className="text-right">
+                                                    <span>Coût Total en Points:</span>
+                                                    <p className="text-primary flex items-center justify-end gap-1.5">{totalPointsCost} <Star className="h-5 w-5"/></p>
+                                                </div>
+                                            ) : (
+                                                <div className="text-right">
+                                                    <span>Total:</span>
+                                                    <p>{totalAmount.toLocaleString('fr-FR')} FCFA</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <DialogFooter className="pt-4 border-t">
+                                        <Button type="submit">Enregistrer la vente</Button>
+                                    </DialogFooter>
+                                </form>
+                                </Form>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
                     <div className="overflow-x-auto">
                         {isLoading ? (
                              <div className="flex items-center justify-center h-48 gap-2">
@@ -944,7 +973,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], clients = [], onAddT
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 {totalPaid === 0 ? (
-                                                    <Button size="sm">
+                                                    <Button size="sm" onClick={() => handleOpenNewActivityDialog({ booking })}>
                                                         <HandCoins className="mr-2 h-4 w-4"/>
                                                         Encaisser
                                                     </Button>
@@ -1134,5 +1163,3 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], clients = [], onAddT
 
 ActivityLog.displayName = "ActivityLog";
 export default ActivityLog;
-
-    
