@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MoreHorizontal, Search, Filter, Phone, User, Award, DollarSign, Star, TrendingUp, Gem, UserCheck, UserX } from "lucide-react";
-import { format, isValid } from "date-fns";
+import { format, isValid, parse } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import UserProfile from "./user-profile";
 import { KHEOPS_MEMBER_FEE } from "@/lib/pricing";
@@ -64,13 +64,16 @@ export default function ClientManagement({
 
     // Process subscribers first
     subscribers.forEach(sub => {
+        const startDate = parse(sub.startDate, 'dd-MM-yyyy', new Date());
+        const endDate = parse(sub.endDate, 'dd-MM-yyyy', new Date());
+
         const client: Client = {
             id: sub.id,
             name: sub.name,
             phone: sub.phone,
             type: "Abonné",
-            firstSeen: new Date(sub.startDate.split('-').reverse().join('-')),
-            lastSeen: new Date(sub.endDate.split('-').reverse().join('-')),
+            firstSeen: isValid(startDate) ? startDate : new Date(),
+            lastSeen: isValid(endDate) ? endDate : new Date(),
             totalSpent: parseFloat(sub.amount.replace(/[^\d,]/g, '').replace(',', '.')),
             activityCount: 1, // At least one activity (the subscription itself)
             loyaltyPoints: 0,
@@ -177,7 +180,7 @@ export default function ClientManagement({
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">{totalSubscribers}</div>
-                <p className="text-xs text-muted-foreground">{((totalSubscribers/totalClients) * 100).toFixed(1)}% des clients</p>
+                <p className="text-xs text-muted-foreground">{totalClients > 0 ? ((totalSubscribers/totalClients) * 100).toFixed(1) : 0}% des clients</p>
             </CardContent>
         </Card>
       </div>
@@ -258,3 +261,5 @@ export default function ClientManagement({
     </Tabs>
   );
 }
+
+    

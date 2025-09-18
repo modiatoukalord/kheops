@@ -156,7 +156,14 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
 
     const qActivities = query(collection(db, "activities"));
     const unsubActivities = onSnapshot(qActivities, (snapshot) => {
-        const activitiesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ClientActivity));
+        const activitiesData = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                date: (data.date as Timestamp).toDate(),
+            } as ClientActivity
+        });
         setActivities(activitiesData);
     });
 
@@ -346,3 +353,5 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
 
 AdminHub.displayName = "AdminHub";
 export default AdminHub;
+
+    
