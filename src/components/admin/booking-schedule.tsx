@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -7,7 +8,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, PlusCircle, CheckCircle2, XCircle, Clock, Calendar as CalendarIcon, GripVertical, DiscAlbum, Pencil, Minus, Plus, User, FileText, Server, Eye, Phone, Trash2, Edit, FileSignature } from "lucide-react";
+import { MoreHorizontal, PlusCircle, CheckCircle2, XCircle, Clock, Calendar as CalendarIcon, GripVertical, DiscAlbum, Pencil, Minus, Plus, User, FileText, Server, Eye, Phone, Trash2, Edit, FileSignature, AlertCircle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,7 +41,7 @@ export type Booking = {
   date: Date; // For single, this is the date. For multi-track, could be start date or first date.
   timeSlot: string; // Same as above.
   service: string;
-  status: "Confirmé" | "En attente" | "Annulé";
+  status: "Confirmé" | "En attente" | "Annulé" | "Payé";
   amount: number;
   phone?: string;
   tracks?: { name: string; date: Date; timeSlot: string }[];
@@ -51,6 +52,7 @@ const bookingStatusConfig = {
   "Confirmé": { variant: "default", icon: CheckCircle2, color: "text-green-500" },
   "En attente": { variant: "secondary", icon: Clock, color: "text-yellow-500" },
   "Annulé": { variant: "destructive", icon: XCircle, color: "text-red-500" },
+  "Payé": { variant: "default", icon: CheckCircle2, color: "bg-green-500/80 text-white" },
 };
 
 
@@ -342,7 +344,7 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
                   className="rounded-md border"
                   locale={fr}
                   modifiers={{
-                      booked: bookings.filter(b => b.status === 'Confirmé').map(b => b.date),
+                      booked: bookings.filter(b => b.status === 'Confirmé' || b.status === 'Payé').map(b => b.date),
                       pending: bookings.filter(b => b.status === 'En attente').map(b => b.date),
                   }}
                   modifiersStyles={{
@@ -376,8 +378,8 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
                                   <p className="text-sm text-muted-foreground flex items-center gap-2">
                                      <DiscAlbum className="w-3 h-3"/> {booking.projectName}
                                   </p>
-                                  <Badge variant={statusInfo.variant} className="mt-1">
-                                      <statusInfo.icon className={`mr-1.5 h-3 w-3 ${statusInfo.color}`} />
+                                  <Badge variant={statusInfo.variant} className={booking.status === 'Payé' ? statusInfo.color : ''}>
+                                      <statusInfo.icon className={`mr-1.5 h-3 w-3 ${booking.status !== 'Payé' ? statusInfo.color : ''}`} />
                                       {booking.status}
                                   </Badge>
                              </div>

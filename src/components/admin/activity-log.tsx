@@ -14,7 +14,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -385,7 +384,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], clients = [], onAddT
           onContractPaid(contractId);
         }
         if (bookingId) {
-            // No status update here as it's assumed payment confirms it
+            onUpdateBookingStatus(bookingId, 'Payé');
         }
     } catch (error) {
         console.error("Error adding documents: ", error);
@@ -942,11 +941,11 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], clients = [], onAddT
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {bookings.filter(b => b.status === "Confirmé").length > 0 ? (
-                                    bookings.filter(b => b.status === "Confirmé").map(booking => {
+                                {bookings.filter(b => b.status === "Confirmé" || b.status === "Payé").length > 0 ? (
+                                    bookings.filter(b => b.status === "Confirmé" || b.status === "Payé").map(booking => {
                                         const relatedActivities = activities.filter(act => act.bookingId === booking.id);
                                         const totalPaid = relatedActivities.reduce((sum, act) => sum + (act.paidAmount || 0), 0);
-                                        const isFullyPaid = totalPaid >= booking.amount;
+                                        const isFullyPaid = booking.status === 'Payé' || totalPaid >= booking.amount;
                                         const isPartiallyPaid = totalPaid > 0 && totalPaid < booking.amount;
                                         const firstActivity = relatedActivities[0];
 
@@ -968,11 +967,11 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], clients = [], onAddT
                                                 ) : isPartiallyPaid ? (
                                                      <Badge variant="outline" className="border-blue-500 text-blue-500"><AlertCircle className="mr-1.5 h-3.5 w-3.5"/> Échéancier</Badge>
                                                 ) : (
-                                                    <Badge variant="destructive">Non Payé</Badge>
+                                                    <Badge variant="secondary">Confirmé</Badge>
                                                 )}
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                {totalPaid === 0 ? (
+                                                {!isFullyPaid ? (
                                                     <Button size="sm" onClick={() => handleOpenNewActivityDialog({ booking })}>
                                                         <HandCoins className="mr-2 h-4 w-4"/>
                                                         Encaisser
@@ -1163,3 +1162,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], clients = [], onAddT
 
 ActivityLog.displayName = "ActivityLog";
 export default ActivityLog;
+
+    
+
+    

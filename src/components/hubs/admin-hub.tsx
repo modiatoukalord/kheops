@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, forwardRef, useImperativeHandle, useRef, useEffect } from "react";
@@ -362,10 +363,19 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
   
   const onUpdateClient = async (clientId: string, clientData: Partial<Omit<Client, 'id'>>) => {
      try {
-        const clientRef = doc(db, "clients", clientId);
-        await updateDoc(clientRef, clientData);
+        // Here, we need to find the actual document ID in the 'clients' collection if it exists
+        // This is a simplification. A real app might need a more robust way to link Client and DB doc.
+        const clientDocRef = doc(db, "clients", clientId); // This assumes the client ID is the doc ID.
+        await updateDoc(clientDocRef, clientData);
      } catch (error) {
          console.error("Failed to update client points", error);
+         // Fallback to creating a new client doc if it doesn't exist
+         try {
+            const clientDocRef = doc(db, "clients", clientId);
+            await addDoc(collection(db, "clients"), { ...clientData, id: clientId });
+         } catch(e) {
+            console.error("Also failed to create client doc", e);
+         }
      }
   }
 

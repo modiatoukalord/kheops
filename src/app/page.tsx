@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useRef, Suspense } from "react";
@@ -15,7 +16,7 @@ import { Booking } from "@/components/admin/booking-schedule";
 import { Transaction } from "@/components/admin/financial-management";
 import { Subscriber } from "@/components/admin/user-management";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, getDocs, query, orderBy, Timestamp, onSnapshot, doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, orderBy, Timestamp, onSnapshot, doc, updateDoc, deleteDoc, writeBatch, deleteField } from "firebase/firestore";
 import { Employee } from "@/components/admin/human-resources-management";
 
 
@@ -389,7 +390,3 @@ export default function Home() {
     </Suspense>
   )
 }
-
-    
-
-    
