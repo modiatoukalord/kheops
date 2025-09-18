@@ -135,8 +135,6 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
   const [activityForInstallment, setActivityForInstallment] = useState<ClientActivity | null>(null);
   const [detailsActivity, setDetailsActivity] = useState<ClientActivity | null>(null);
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
-  const [clientSearch, setClientSearch] = useState("");
-  const [comboboxOpen, setComboboxOpen] = useState(false);
 
 
   const { toast } = useToast();
@@ -579,7 +577,6 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
                     setActivityDialogOpen(isOpen);
                     if (!isOpen) {
                         form.reset();
-                        setClientSearch("");
                         if (contractToPay && onContractPaid) {
                            onContractPaid(contractToPay.id); // A bit of a hack to reset state
                         }
@@ -601,69 +598,49 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="grid gap-6 py-4 max-h-[80vh] overflow-y-auto pr-4">
-                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                     <FormField control={form.control} name="contractId" render={({ field }) => (
-                                        <FormItem>
-                                            <Label>Contrat Associé (Optionnel)</Label>
-                                             <Select onValueChange={(value) => { field.onChange(value === 'none' ? undefined : value); if (value === 'none') { form.setValue('clientName', ''); setSelectedContract(null); } }} defaultValue={field.value}>
-                                                <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un contrat..." /></SelectTrigger></FormControl>
+                                <FormField control={form.control} name="contractId" render={({ field }) => (
+                                    <FormItem>
+                                        <Label>Contrat Associé (Optionnel)</Label>
+                                         <Select onValueChange={(value) => { field.onChange(value === 'none' ? undefined : value); if (value === 'none') { form.reset({ ...form.getValues(), clientName: '' }); setSelectedContract(null); } }} defaultValue={field.value}>
+                                            <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un contrat..." /></SelectTrigger></FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="none">Sans Contrat</SelectItem>
+                                                {signedContracts.map(c => <SelectItem key={c.id} value={c.id}>{c.clientName} - {c.type}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage/>
+                                    </FormItem>
+                                )} />
+                                { !selectedContract &&
+                                <Tabs defaultValue="existing-client">
+                                  <TabsList className="grid w-full grid-cols-2">
+                                      <TabsTrigger value="existing-client">Client Existant</TabsTrigger>
+                                      <TabsTrigger value="new-client">Nouveau Client</TabsTrigger>
+                                  </TabsList>
+                                  <TabsContent value="existing-client" className="pt-4">
+                                      <FormItem>
+                                          <Label>Sélectionner un client</Label>
+                                          <Select onValueChange={(clientName) => {
+                                                const client = existingClients.find(c => c.name === clientName);
+                                                if (client) {
+                                                    form.setValue("clientName", client.name);
+                                                    form.setValue("phone", client.phone || '');
+                                                }
+                                            }}>
+                                                <FormControl><SelectTrigger><SelectValue placeholder="Choisir parmi les clients enregistrés..." /></SelectTrigger></FormControl>
                                                 <SelectContent>
-                                                    <SelectItem value="none">Sans Contrat</SelectItem>
-                                                    {signedContracts.map(c => <SelectItem key={c.id} value={c.id}>{c.clientName} - {c.type}</SelectItem>)}
+                                                    {existingClients.map(client => (
+                                                        <SelectItem key={client.name} value={client.name}>{client.name}</SelectItem>
+                                                    ))}
                                                 </SelectContent>
-                                            </Select>
-                                            <FormMessage/>
-                                        </FormItem>
-                                    )} />
-                                     <FormField control={form.control} name="clientName" render={({ field }) => (
-                                        <FormItem className="flex flex-col">
-                                            <Label>Nom du client</Label>
-                                             <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
-                                                <PopoverTrigger asChild>
-                                                    <FormControl>
-                                                        <Input
-                                                            placeholder="Sélectionner ou créer un client"
-                                                            {...field}
-                                                            onChange={(e) => {
-                                                                field.onChange(e.target.value);
-                                                                setClientSearch(e.target.value);
-                                                                if (!comboboxOpen) setComboboxOpen(true);
-                                                            }}
-                                                            onFocus={() => setComboboxOpen(true)}
-                                                            onBlur={() => setTimeout(() => setComboboxOpen(false), 150)}
-                                                            disabled={!!selectedContract}
-                                                            className="w-full"
-                                                        />
-                                                    </FormControl>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                                    <Command>
-                                                        <CommandList>
-                                                            <CommandEmpty>Aucun client trouvé. Créez-en un nouveau.</CommandEmpty>
-                                                            <CommandGroup>
-                                                                {existingClients.filter(c => c.name.toLowerCase().includes(clientSearch.toLowerCase())).map(client => (
-                                                                    <CommandItem
-                                                                        value={client.name}
-                                                                        key={client.name}
-                                                                        onSelect={() => {
-                                                                            form.setValue("clientName", client.name);
-                                                                            if(client.phone) form.setValue("phone", client.phone);
-                                                                            setComboboxOpen(false);
-                                                                        }}
-                                                                    >
-                                                                         <Check className={cn("mr-2 h-4 w-4", client.name === field.value ? "opacity-100" : "opacity-0")} />
-                                                                        {client.name}
-                                                                    </CommandItem>
-                                                                ))}
-                                                            </CommandGroup>
-                                                        </CommandList>
-                                                    </Command>
-                                                </PopoverContent>
-                                            </Popover>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} />
-                               </div>
+                                          </Select>
+                                      </FormItem>
+                                  </TabsContent>
+                                  <TabsContent value="new-client" className="pt-4 space-y-4">
+                                      <FormField control={form.control} name="clientName" render={({ field }) => (<FormItem><Label>Nom du nouveau client</Label><FormControl><Input placeholder="Ex: Jean Dupont" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                  </TabsContent>
+                                </Tabs>
+                                }
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><Label>Téléphone</Label><FormControl><Input placeholder="Ex: +242 06 123 4567" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     <FormField control={form.control} name="paymentType" render={({ field }) => (<FormItem><Label>Type de paiement</Label>
@@ -1111,3 +1088,4 @@ export default ActivityLog;
     
 
     
+
