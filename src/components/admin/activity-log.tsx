@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle, useMemo } from "react";
@@ -6,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy, Trash2, Minus, MoreHorizontal, Edit, Eye, Printer, Pyramid, X, CreditCard, User, HandCoins, Loader2, CheckCircle2, Ban, AlertCircle, FileSignature } from "lucide-react";
+import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy, Trash2, Minus, MoreHorizontal, Edit, Eye, Printer, Pyramid, X, CreditCard, User, HandCoins, Loader2, CheckCircle2, Ban, AlertCircle, FileSignature, ChevronsUpDown, Check } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -43,6 +44,7 @@ import { collection, addDoc, getDocs, query, orderBy, Timestamp, onSnapshot, doc
 import { Transaction } from "./financial-management";
 import type { Contract } from "./contract-management";
 import { servicesWithPrices, calculatePrice } from "@/lib/pricing";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 
 export type ClientActivity = {
@@ -133,6 +135,8 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
   const [activityForInstallment, setActivityForInstallment] = useState<ClientActivity | null>(null);
   const [detailsActivity, setDetailsActivity] = useState<ClientActivity | null>(null);
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
+  const [clientSearch, setClientSearch] = useState("");
+  const [comboboxOpen, setComboboxOpen] = useState(false);
 
 
   const { toast } = useToast();
@@ -219,6 +223,27 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
   const signedContracts = useMemo(() => {
     return (contracts || []).filter(c => c.status === "Signé");
   }, [contracts]);
+  
+  const existingClients = useMemo(() => {
+    const clients = new Map<string, { name: string, phone?: string }>();
+    activities.forEach(act => {
+        if (!clients.has(act.clientName)) {
+            clients.set(act.clientName, { name: act.clientName, phone: act.phone });
+        }
+    });
+    bookings.forEach(book => {
+        if (!clients.has(book.artistName)) {
+            clients.set(book.artistName, { name: book.artistName, phone: book.phone });
+        }
+    });
+     contracts.forEach(cont => {
+        if (!clients.has(cont.clientName)) {
+            clients.set(cont.clientName, { name: cont.clientName });
+        }
+    });
+    return Array.from(clients.values());
+  }, [activities, bookings, contracts]);
+
 
   useEffect(() => {
     const contractId = form.watch("contractId");
@@ -554,6 +579,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
                     setActivityDialogOpen(isOpen);
                     if (!isOpen) {
                         form.reset();
+                        setClientSearch("");
                         if (contractToPay && onContractPaid) {
                            onContractPaid(contractToPay.id); // A bit of a hack to reset state
                         }
@@ -589,7 +615,46 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
                                             <FormMessage/>
                                         </FormItem>
                                     )} />
-                                    <FormField control={form.control} name="clientName" render={({ field }) => (<FormItem><Label>Nom du client</Label><FormControl><Input placeholder="Ex: Jean Dupont" {...field} disabled={!!selectedContract} /></FormControl><FormMessage /></FormItem>)} />
+                                     <FormField control={form.control} name="clientName" render={({ field }) => (
+                                        <FormItem className="flex flex-col">
+                                            <Label>Nom du client</Label>
+                                             <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
+                                                <PopoverTrigger asChild>
+                                                    <FormControl>
+                                                        <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")} disabled={!!selectedContract}>
+                                                            {field.value ? existingClients.find(c => c.name === field.value)?.name : "Sélectionner ou créer un client"}
+                                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                        </Button>
+                                                    </FormControl>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                                    <Command>
+                                                        <CommandInput placeholder="Rechercher un client..." onValueChange={setClientSearch} />
+                                                        <CommandList>
+                                                            <CommandEmpty>Aucun client trouvé. Créez-en un nouveau.</CommandEmpty>
+                                                            <CommandGroup>
+                                                                {existingClients.filter(c => c.name.toLowerCase().includes(clientSearch.toLowerCase())).map(client => (
+                                                                    <CommandItem
+                                                                        value={client.name}
+                                                                        key={client.name}
+                                                                        onSelect={() => {
+                                                                            form.setValue("clientName", client.name);
+                                                                            if(client.phone) form.setValue("phone", client.phone);
+                                                                            setComboboxOpen(false);
+                                                                        }}
+                                                                    >
+                                                                         <Check className={cn("mr-2 h-4 w-4", client.name === field.value ? "opacity-100" : "opacity-0")} />
+                                                                        {client.name}
+                                                                    </CommandItem>
+                                                                ))}
+                                                            </CommandGroup>
+                                                        </CommandList>
+                                                    </Command>
+                                                </PopoverContent>
+                                            </Popover>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
                                </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><Label>Téléphone</Label><FormControl><Input placeholder="Ex: +242 06 123 4567" {...field} /></FormControl><FormMessage /></FormItem>)} />
@@ -1034,5 +1099,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
 
 ActivityLog.displayName = "ActivityLog";
 export default ActivityLog;
+
+    
 
     
