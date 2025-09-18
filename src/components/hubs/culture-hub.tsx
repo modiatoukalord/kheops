@@ -48,6 +48,7 @@ const categoryIcons: { [key in Content['type']]: React.ElementType } = {
     Article: FileText,
     Film: Film,
     "Jeu de société": Puzzle,
+    "Projet Studio": () => null,
 };
 
 
@@ -64,7 +65,7 @@ export default function CultureHub({ content, events, onEventRegistration }: Cul
   const [selectedEvent, setSelectedEvent] = useState<AppEvent | null>(null);
 
   const culturalContent: CulturalContent[] = content
-    .filter(c => c.status === "Publié" && contentData[c.title])
+    .filter(c => c.status === "Publié" && c.type !== 'Projet Studio' && contentData[c.title])
     .map(c => ({
         title: c.title,
         type: c.type,
