@@ -202,13 +202,21 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
 
   // Auto-calculate amount when quantity or unitPrice changes
   useEffect(() => {
-    watchedItems.forEach((item, index) => {
-      const newAmount = (item.quantity || 0) * (item.unitPrice || 0);
-      if (item.amount !== newAmount) {
-        form.setValue(`items.${index}.amount`, newAmount, { shouldValidate: true });
+    const subscription = form.watch((value, { name, type }) => {
+      if (name && (name.startsWith('items.') && (name.endsWith('.quantity') || name.endsWith('.unitPrice')))) {
+        const parts = name.split('.');
+        const index = parseInt(parts[1], 10);
+        const item = value.items?.[index];
+        if (item) {
+          const newAmount = (item.quantity || 0) * (item.unitPrice || 0);
+          if (item.amount !== newAmount) {
+            form.setValue(`items.${index}.amount`, newAmount, { shouldValidate: true });
+          }
+        }
       }
     });
-  }, [watchedItems, form]);
+    return () => subscription.unsubscribe();
+  }, [form]);
 
 
   const filteredActivities = activities.filter(
@@ -665,8 +673,8 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
                                                             onValueChange={(value) => {
                                                                 categoryField.onChange(value);
                                                                 const category = activityCategories.find(c => c.name === value);
-                                                                if (category && category.unitPrice) {
-                                                                    form.setValue(`items.${index}.unitPrice`, category.unitPrice);
+                                                                if (category) {
+                                                                    form.setValue(`items.${index}.unitPrice`, category.unitPrice || 0);
                                                                 }
                                                             }} 
                                                             defaultValue={categoryField.value}>
@@ -677,7 +685,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
                                                     </FormItem>
                                                 )} />
                                                 <FormField control={form.control} name={`items.${index}.quantity`} render={({ field }) => (<FormItem><Label>Quantité</Label><FormControl><Input type="number" {...field} min="1" /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field }) => (<FormItem><Label>Prix Unitaire</Label><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field }) => (<FormItem><Label>Prix Unitaire</Label><FormControl><Input type="number" {...field} readOnly className="bg-muted/50" /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
                                              <FormField control={form.control} name={`items.${index}.amount`} render={({ field }) => (<FormItem><Label>Montant Total</Label><FormControl><Input type="number" {...field} readOnly className="bg-muted/50" /></FormControl><FormMessage /></FormItem>)} />
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
