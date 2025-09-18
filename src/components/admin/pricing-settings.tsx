@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { DollarSign, Percent, Music, Tag, PlusCircle, Edit, Trash2, Palette, FileSignature, Gem } from "lucide-react";
+import { DollarSign, Percent, Music, Tag, PlusCircle, Edit, Trash2, Palette, FileSignature, Gem, Star } from "lucide-react";
 import { KHEOPS_MEMBER_FEE, servicesWithPrices } from "@/lib/pricing";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -24,6 +24,7 @@ export type ActivityCategory = {
     icon: string;
     color: string;
     unitPrice?: number;
+    pointCost?: number;
 };
 
 export type ContractTypeConfig = {
@@ -92,6 +93,7 @@ export default function PricingSettings() {
         icon: formData.get("icon") as string,
         color: formData.get("color") as string,
         unitPrice: Number(formData.get("unitPrice")) || undefined,
+        pointCost: Number(formData.get("pointCost")) || undefined,
     };
 
     try {
@@ -279,14 +281,18 @@ export default function PricingSettings() {
                                     <DialogTitle>{editingCategory ? "Modifier la catégorie" : "Nouvelle Catégorie"}</DialogTitle>
                                 </DialogHeader>
                                 <div className="grid gap-4 py-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="cat-name">Nom</Label>
+                                        <Input id="cat-name" name="name" defaultValue={editingCategory?.name} required />
+                                    </div>
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="cat-name">Nom</Label>
-                                            <Input id="cat-name" name="name" defaultValue={editingCategory?.name} required />
-                                        </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="cat-unitPrice">Prix Unitaire (FCFA)</Label>
                                             <Input id="cat-unitPrice" name="unitPrice" type="number" defaultValue={editingCategory?.unitPrice || ''} placeholder="Optionnel" />
+                                        </div>
+                                         <div className="space-y-2">
+                                            <Label htmlFor="cat-pointCost">Coût en Points</Label>
+                                            <Input id="cat-pointCost" name="pointCost" type="number" defaultValue={editingCategory?.pointCost || ''} placeholder="Optionnel" />
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
@@ -344,7 +350,11 @@ export default function PricingSettings() {
                                 </div>
                                 <Icon className="h-8 w-8" />
                                 <span className="font-bold text-center">{cat.name}</span>
-                                {cat.unitPrice && <span className="text-xs font-mono">{cat.unitPrice.toLocaleString('fr-FR')} FCFA</span>}
+                                <div className="text-xs font-mono text-center">
+                                    {cat.unitPrice && <span>{cat.unitPrice.toLocaleString('fr-FR')} FCFA</span>}
+                                    {cat.unitPrice && cat.pointCost && <span className="mx-1">/</span>}
+                                    {cat.pointCost && <span className="flex items-center justify-center gap-1">{cat.pointCost} <Star className="h-3 w-3 text-yellow-300"/></span>}
+                                </div>
                             </div>
                         )
                     })}
