@@ -19,6 +19,15 @@ import UserManagement from "./user-management";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuPortal, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 
+export type Reward = {
+    id: string;
+    clientId: string;
+    clientName: string;
+    type: 'Réduction' | 'Entrée gratuite' | 'Points bonus';
+    grantedAt: Date;
+    status: 'Utilisé' | 'Non utilisé';
+};
+
 export type Client = {
     id: string;
     name: string;
@@ -31,6 +40,7 @@ export type Client = {
     loyaltyTier: "Bronze" | "Argent" | "Or" | "Platine" | "Diamant";
     loyaltyPoints: number;
     subscriberInfo?: Subscriber;
+    rewards: Reward[];
 };
 
 const tierConfig = {
@@ -44,6 +54,8 @@ const tierConfig = {
 interface ClientManagementProps {
   subscribers: Subscriber[];
   activities: ClientActivity[];
+  rewards: Reward[];
+  onGrantReward: (reward: Omit<Reward, 'id' | 'grantedAt' | 'status'>) => Promise<void>;
   // Re-use subscriber functions
   onAddSubscriber: (newSubscriber: Omit<Subscriber, 'id'>) => void;
   onUpdateSubscriber: (id: string, data: Partial<Omit<Subscriber, 'id'>>) => void;
@@ -56,6 +68,8 @@ interface ClientManagementProps {
 export default function ClientManagement({ 
     subscribers = [], 
     activities = [],
+    rewards = [],
+    onGrantReward,
     ...userManagementProps
 }: ClientManagementProps) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -82,6 +96,7 @@ export default function ClientManagement({
             loyaltyPoints: 0,
             loyaltyTier: "Bronze",
             subscriberInfo: sub,
+            rewards: [],
         };
         clientMap.set(sub.phone, client); // Use phone as a key for merging
     });
@@ -102,7 +117,7 @@ export default function ClientManagement({
             }
         } else {
             const newClient: Client = {
-                id: act.id,
+                id: act.id, // This might not be unique if a client has multiple activities
                 name: act.clientName,
                 phone: act.phone || 'N/A',
                 type: "Client Ponctuel",
@@ -112,6 +127,7 @@ export default function ClientManagement({
                 activityCount: 1,
                 loyaltyPoints: 0,
                 loyaltyTier: "Bronze",
+                rewards: [],
             };
             clientMap.set(phoneKey, newClient);
         }
@@ -137,11 +153,14 @@ export default function ClientManagement({
             client.loyaltyTier = "Bronze";
             client.loyaltyPoints = Math.floor(client.totalSpent / 300);
         }
+        
+        // Associate rewards
+        client.rewards = rewards.filter(r => r.clientId === client.id);
     });
     
     return allClients.sort((a,b) => b.lastSeen.getTime() - a.lastSeen.getTime());
 
-  }, [subscribers, activities]);
+  }, [subscribers, activities, rewards]);
 
 
   const filteredClients = clients.filter(client => {
@@ -152,11 +171,21 @@ export default function ClientManagement({
   const totalClients = clients.length;
   const totalSubscribers = subscribers.length;
 
-  const handleGrantReward = (clientName: string, reward: string) => {
-    toast({
-      title: "Récompense Accordée !",
-      description: `${reward} a été accordé(e) à ${clientName}.`,
-    });
+  const handleGrantReward = async (client: Client, rewardType: Reward['type']) => {
+    try {
+        await onGrantReward({
+            clientId: client.id,
+            clientName: client.name,
+            type: rewardType,
+        });
+        toast({
+          title: "Récompense Accordée !",
+          description: `${rewardType} a été accordé(e) à ${client.name}.`,
+        });
+    } catch (error) {
+        console.error("Error granting reward: ", error);
+        toast({ title: "Erreur", description: "Impossible d'accorder la récompense.", variant: "destructive" });
+    }
   };
   
   if (selectedClient) {
@@ -272,15 +301,15 @@ export default function ClientManagement({
                                                   </DropdownMenuSubTrigger>
                                                   <DropdownMenuPortal>
                                                       <DropdownMenuSubContent>
-                                                          <DropdownMenuItem onClick={() => handleGrantReward(client.name, "Une réduction de 10%")}>
+                                                          <DropdownMenuItem onClick={() => handleGrantReward(client, "Réduction")}>
                                                               <Percent className="mr-2 h-4 w-4" />
                                                               Réduction
                                                           </DropdownMenuItem>
-                                                          <DropdownMenuItem onClick={() => handleGrantReward(client.name, "Une entrée gratuite")}>
+                                                          <DropdownMenuItem onClick={() => handleGrantReward(client, "Entrée gratuite")}>
                                                               <Ticket className="mr-2 h-4 w-4" />
                                                               Entrée gratuite
                                                           </DropdownMenuItem>
-                                                           <DropdownMenuItem onClick={() => handleGrantReward(client.name, "100 points bonus")}>
+                                                           <DropdownMenuItem onClick={() => handleGrantReward(client, "Points bonus")}>
                                                               <PlusCircle className="mr-2 h-4 w-4" />
                                                               Points bonus
                                                           </DropdownMenuItem>
@@ -304,5 +333,3 @@ export default function ClientManagement({
     </Tabs>
   );
 }
-
-    

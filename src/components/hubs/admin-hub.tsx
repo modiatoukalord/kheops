@@ -5,7 +5,7 @@ import { useState, forwardRef, useImperativeHandle, useRef, useEffect } from "re
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home, Wallet, Cog, DollarSign, Clipboard, MicVocal, GanttChart, UserCog } from "lucide-react";
-import ClientManagement, { Client } from "@/components/admin/client-management";
+import ClientManagement, { Client, Reward } from "@/components/admin/client-management";
 import ContentManagement, { initialContent as iContent, Content } from "@/components/admin/content-management";
 import BookingSchedule, { Booking } from "@/components/admin/booking-schedule";
 import SiteSettings from "@/components/admin/site-settings";
@@ -123,6 +123,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [fixedCosts, setFixedCosts] = useState<FixedCost[]>([]);
   const [activities, setActivities] = useState<ClientActivity[]>([]);
+  const [rewards, setRewards] = useState<Reward[]>([]);
   const activityLogRef = useRef<{ openDialog: (data: any) => void }>(null);
 
   useImperativeHandle(ref, () => ({
@@ -154,7 +155,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
         setFixedCosts(costsData);
     });
 
-    const qActivities = query(collection(db, "activities"));
+    const qActivities = query(collection(db, "activities"), orderBy("date", "desc"));
     const unsubActivities = onSnapshot(qActivities, (snapshot) => {
         const activitiesData = snapshot.docs.map(doc => {
             const data = doc.data();
@@ -166,11 +167,26 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
         });
         setActivities(activitiesData);
     });
+    
+    const qRewards = query(collection(db, "rewards"), orderBy("grantedAt", "desc"));
+    const unsubRewards = onSnapshot(qRewards, (snapshot) => {
+        const rewardsData = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                grantedAt: (data.grantedAt as Timestamp).toDate(),
+            } as Reward;
+        });
+        setRewards(rewardsData);
+    });
+
 
     return () => {
       unsubContracts();
       unsubFixedCosts();
       unsubActivities();
+      unsubRewards();
     };
   }, []);
 
@@ -246,9 +262,18 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
     setContractToPay(null);
     setActiveView('contracts'); // Go back to contracts view
   };
+  
+  const handleGrantReward = async (rewardData: Omit<Reward, 'id' | 'grantedAt' | 'status'>) => {
+    const newReward = {
+        ...rewardData,
+        grantedAt: new Date(),
+        status: 'Non utilisé' as const,
+    };
+    await addDoc(collection(db, "rewards"), newReward);
+  };
 
   const adminViews = {
-    clients: { component: ClientManagement, title: "Gestion des Clients", props: { subscribers, activities, onAddSubscriber: handleAddSubscriber, onUpdateSubscriber, onDeleteSubscriber, onValidateSubscription: handleValidateSubscription, onRenewSubscriber: handleRenewSubscriber } },
+    clients: { component: ClientManagement, title: "Gestion des Clients", props: { subscribers, activities, rewards, onGrantReward: handleGrantReward, onAddSubscriber: handleAddSubscriber, onUpdateSubscriber, onDeleteSubscriber, onValidateSubscription: handleValidateSubscription, onRenewSubscriber: handleRenewSubscriber } },
     content: { component: ContentManagement, title: "Gestion des Contenus", props: { content, onAddContent, onUpdateContent, onDeleteContent } },
     bookings: { component: BookingSchedule, title: "Planning des Réservations", props: { bookings, onAddBooking, onUpdateBookingStatus, contracts } },
     settings: { component: SiteSettings, title: "Paramètres du Site", props: {} },
@@ -353,5 +378,3 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
 
 AdminHub.displayName = "AdminHub";
 export default AdminHub;
-
-    
