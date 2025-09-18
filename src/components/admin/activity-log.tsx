@@ -1035,7 +1035,4 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
 ActivityLog.displayName = "ActivityLog";
 export default ActivityLog;
 
-
-    
-
     
