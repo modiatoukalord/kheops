@@ -171,20 +171,6 @@ export default function UserManagement({
     return matchesSearch && matchesStatus;
   });
   
-  const totalSubscriptionRevenue = subscribers
-    .filter(s => s.status === 'Actif')
-    .reduce((total, s) => {
-        const amount = parseFloat(s.amount.replace(/\s/g, '').replace('FCFA', ''));
-        return total + (isNaN(amount) ? 0 : amount);
-    }, 0);
-
-  const stats = [
-    { title: "Abonnés Totaux", value: subscribers.length.toString(), icon: Users },
-    { title: "Abonnés Actifs", value: subscribers.filter(s => s.status === 'Actif').length.toString(), icon: CreditCard },
-    { title: "Abonnés en attente", value: subscribers.filter(s => s.status === 'En attente').length.toString(), icon: Clock },
-    { title: "Revenu total des abonnements", value: `${totalSubscriptionRevenue.toLocaleString('fr-FR')} FCFA`, icon: DollarSign },
-  ];
-  
   if (selectedSubscriber) {
     return <UserProfile user={selectedSubscriber} onBack={() => setSelectedSubscriber(null)} />;
   }
@@ -205,278 +191,256 @@ export default function UserManagement({
 
   return (
     <div className="space-y-6">
-      <section>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat, index) => (
-            <Card key={index} className="bg-card/50">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                <stat.icon className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
-              </CardContent>
-            </Card>
-          ))}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h3 className="text-lg font-medium">Gestion des Abonnements</h3>
+            <p className="text-sm text-muted-foreground">Consultez et gérez les abonnements des utilisateurs.</p>
         </div>
-      </section>
-
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-                <CardTitle>Liste des Abonnés</CardTitle>
-                <CardDescription>Consultez et gérez les abonnements des utilisateurs.</CardDescription>
+        <div className="flex items-center gap-2 w-full md:w-auto">
+            <div className="relative flex-grow">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                    placeholder="Rechercher par nom ou contact..." 
+                    className="pl-10 w-full"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
             </div>
-            <div className="flex items-center gap-2 w-full md:w-auto">
-                <div className="relative flex-grow">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                        placeholder="Rechercher par nom ou contact..." 
-                        className="pl-10 w-full"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline">
-                      <Filter className="mr-2 h-4 w-4" />
-                      Filtrer
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <Filter className="mr-2 h-4 w-4" />
+                  Filtrer
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Filtrer par statut</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {(Object.keys(statusVariant) as SubscriberStatus[]).map((status) => (
+                  <DropdownMenuCheckboxItem
+                    key={status}
+                    checked={statusFilters.includes(status)}
+                    onCheckedChange={(checked) => {
+                      setStatusFilters(
+                        checked
+                          ? [...statusFilters, status]
+                          : statusFilters.filter((s) => s !== status)
+                      );
+                    }}
+                  >
+                    {status}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+             <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { setDialogOpen(isOpen); if (!isOpen) { setSubscriberForDialog(null); setSearchQuery("")} }}>
+                <DialogTrigger asChild>
+                    <Button onClick={() => setDialogMode("new")}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Ajouter ou Renouveler
                     </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Filtrer par statut</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {(Object.keys(statusVariant) as SubscriberStatus[]).map((status) => (
-                      <DropdownMenuCheckboxItem
-                        key={status}
-                        checked={statusFilters.includes(status)}
-                        onCheckedChange={(checked) => {
-                          setStatusFilters(
-                            checked
-                              ? [...statusFilters, status]
-                              : statusFilters.filter((s) => s !== status)
-                          );
-                        }}
-                      >
-                        {status}
-                      </DropdownMenuCheckboxItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                 <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { setDialogOpen(isOpen); if (!isOpen) { setSubscriberForDialog(null); setSearchQuery("")} }}>
-                    <DialogTrigger asChild>
-                        <Button onClick={() => setDialogMode("new")}>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Ajouter ou Renouveler
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-md">
-                        <form onSubmit={handleSubscriptionSubmit}>
-                            <DialogHeader>
-                                <DialogTitle>{dialogTitles[dialogMode]}</DialogTitle>
-                                <DialogDescription>{dialogDescriptions[dialogMode]}</DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-4 py-4">
-                                {dialogMode !== 'edit' && (
-                                <div>
-                                    <Label>Abonné (Existant ou Nouveau)</Label>
-                                    <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
-                                      <PopoverTrigger asChild>
-                                        <Button
-                                          variant="outline"
-                                          role="combobox"
-                                          aria-expanded={comboboxOpen}
-                                          className="w-full justify-between"
-                                        >
-                                          <div className="flex items-center gap-2">
-                                            {dialogMode === 'new' ? <UserPlus className="h-4 w-4 text-muted-foreground"/> : <User className="h-4 w-4 text-muted-foreground"/>}
-                                            {subscriberForDialog?.name || "Nouvel Abonné"}
-                                          </div>
-                                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                      </PopoverTrigger>
-                                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                        <Command>
-                                          <CommandInput 
-                                            placeholder="Rechercher un abonné..."
-                                            value={searchQuery}
-                                            onValueChange={setSearchQuery}
-                                          />
-                                          <CommandList>
-                                            <CommandEmpty>Aucun abonné trouvé.</CommandEmpty>
-                                            <CommandGroup>
-                                              <CommandItem
-                                                value="new"
-                                                onSelect={() => {
-                                                  setDialogMode("new");
-                                                  setSubscriberForDialog(null);
-                                                  setSearchQuery("");
-                                                  setComboboxOpen(false);
-                                                }}
-                                                className="cursor-pointer"
-                                              >
-                                                <Check
-                                                    className={cn(
-                                                      "mr-2 h-4 w-4",
-                                                      dialogMode === "new" ? "opacity-100" : "opacity-0"
-                                                    )}
-                                                  />
-                                                Nouvel Abonné
-                                              </CommandItem>
-                                              {commandSubscribers.map((s) => (
-                                                <CommandItem
-                                                  key={s.id}
-                                                  value={s.name}
-                                                  onSelect={(currentValue) => {
-                                                    const selected = subscribers.find(sub => sub.name.toLowerCase() === currentValue.toLowerCase());
-                                                    setDialogMode("renew");
-                                                    setSubscriberForDialog(selected || null);
-                                                    setSearchQuery("");
-                                                    setComboboxOpen(false);
-                                                  }}
-                                                  className="cursor-pointer"
-                                                >
-                                                  <Check
-                                                    className={cn(
-                                                      "mr-2 h-4 w-4",
-                                                      subscriberForDialog?.id === s.id ? "opacity-100" : "opacity-0"
-                                                    )}
-                                                  />
-                                                  {s.name}
-                                                </CommandItem>
-                                              ))}
-                                            </CommandGroup>
-                                          </CommandList>
-                                        </Command>
-                                      </PopoverContent>
-                                    </Popover>
-                                </div>
-                                )}
-                                <div className="space-y-2">
-                                    <Label htmlFor="name">Nom complet</Label>
-                                    <div className="relative">
-                                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                        <Input id="name" name="name" placeholder="Ex: Jean Dupont" className="pl-10" required defaultValue={subscriberForDialog?.name} disabled={dialogMode === 'renew'} />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="phone">Téléphone</Label>
-                                    <div className="relative">
-                                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                        <Input id="phone" name="phone" placeholder="Ex: +242 06 123 4567" className="pl-10" required defaultValue={subscriberForDialog?.phone} disabled={dialogMode === 'renew' && !subscriberForDialog?.phone} />
-                                    </div>
-                                </div>
-                                {dialogMode !== 'edit' && (
-                                <div className="space-y-2">
-                                    <Label htmlFor="duration">Durée (en mois)</Label>
-                                    <Input id="duration" name="duration" type="number" placeholder="Ex: 3" required defaultValue="1" min="1" />
-                                </div>
-                                )}
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                    <form onSubmit={handleSubscriptionSubmit}>
+                        <DialogHeader>
+                            <DialogTitle>{dialogTitles[dialogMode]}</DialogTitle>
+                            <DialogDescription>{dialogDescriptions[dialogMode]}</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                            {dialogMode !== 'edit' && (
+                            <div>
+                                <Label>Abonné (Existant ou Nouveau)</Label>
+                                <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      role="combobox"
+                                      aria-expanded={comboboxOpen}
+                                      className="w-full justify-between"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        {dialogMode === 'new' ? <UserPlus className="h-4 w-4 text-muted-foreground"/> : <User className="h-4 w-4 text-muted-foreground"/>}
+                                        {subscriberForDialog?.name || "Nouvel Abonné"}
+                                      </div>
+                                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                    <Command>
+                                      <CommandInput 
+                                        placeholder="Rechercher un abonné..."
+                                        value={searchQuery}
+                                        onValueChange={setSearchQuery}
+                                      />
+                                      <CommandList>
+                                        <CommandEmpty>Aucun abonné trouvé.</CommandEmpty>
+                                        <CommandGroup>
+                                          <CommandItem
+                                            value="new"
+                                            onSelect={() => {
+                                              setDialogMode("new");
+                                              setSubscriberForDialog(null);
+                                              setSearchQuery("");
+                                              setComboboxOpen(false);
+                                            }}
+                                            className="cursor-pointer"
+                                          >
+                                            <Check
+                                                className={cn(
+                                                  "mr-2 h-4 w-4",
+                                                  dialogMode === "new" ? "opacity-100" : "opacity-0"
+                                                )}
+                                              />
+                                            Nouvel Abonné
+                                          </CommandItem>
+                                          {commandSubscribers.map((s) => (
+                                            <CommandItem
+                                              key={s.id}
+                                              value={s.name}
+                                              onSelect={(currentValue) => {
+                                                const selected = subscribers.find(sub => sub.name.toLowerCase() === currentValue.toLowerCase());
+                                                setDialogMode("renew");
+                                                setSubscriberForDialog(selected || null);
+                                                setSearchQuery("");
+                                                setComboboxOpen(false);
+                                              }}
+                                              className="cursor-pointer"
+                                            >
+                                              <Check
+                                                className={cn(
+                                                  "mr-2 h-4 w-4",
+                                                  subscriberForDialog?.id === s.id ? "opacity-100" : "opacity-0"
+                                                )}
+                                              />
+                                              {s.name}
+                                            </CommandItem>
+                                          ))}
+                                        </CommandGroup>
+                                      </CommandList>
+                                    </Command>
+                                  </PopoverContent>
+                                </Popover>
                             </div>
-                            <DialogFooter>
-                                <Button type="submit">{dialogMode === 'edit' ? "Enregistrer" : dialogMode === 'renew' ? "Renouveler" : "Ajouter l'abonné"}</Button>
-                            </DialogFooter>
-                        </form>
-                    </DialogContent>
-                </Dialog>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nom</TableHead>
-                  <TableHead className="hidden lg:table-cell">Contact</TableHead>
-                  <TableHead className="hidden sm:table-cell">Statut</TableHead>
-                  <TableHead className="hidden md:table-cell">Début</TableHead>
-                  <TableHead className="hidden md:table-cell">Fin</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredSubscribers.length > 0 ? (
-                  filteredSubscribers.map((subscriber) => (
-                  <TableRow key={subscriber.id}>
-                    <TableCell>
-                        <div className="font-medium">{subscriber.name}</div>
-                        <div className="text-xs text-muted-foreground">{subscriber.amount}</div>
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                        <div className="flex items-center gap-2">
-                           <Phone className="h-4 w-4 text-muted-foreground" />
-                           {subscriber.phone}
+                            )}
+                            <div className="space-y-2">
+                                <Label htmlFor="name">Nom complet</Label>
+                                <div className="relative">
+                                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input id="name" name="name" placeholder="Ex: Jean Dupont" className="pl-10" required defaultValue={subscriberForDialog?.name} disabled={dialogMode === 'renew'} />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="phone">Téléphone</Label>
+                                <div className="relative">
+                                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input id="phone" name="phone" placeholder="Ex: +242 06 123 4567" className="pl-10" required defaultValue={subscriberForDialog?.phone} disabled={dialogMode === 'renew' && !subscriberForDialog?.phone} />
+                                </div>
+                            </div>
+                            {dialogMode !== 'edit' && (
+                            <div className="space-y-2">
+                                <Label htmlFor="duration">Durée (en mois)</Label>
+                                <Input id="duration" name="duration" type="number" placeholder="Ex: 3" required defaultValue="1" min="1" />
+                            </div>
+                            )}
                         </div>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <Badge variant={statusVariant[subscriber.status] || "default"}>
-                        {subscriber.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">{subscriber.startDate}</TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {subscriber.endDate !== "N/A" ? (
-                        subscriber.endDate
-                      ) : (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <CalendarOff className="h-4 w-4" />
-                          <span>N/A</span>
-                        </div>
+                        <DialogFooter>
+                            <Button type="submit">{dialogMode === 'edit' ? "Enregistrer" : dialogMode === 'renew' ? "Renouveler" : "Ajouter l'abonné"}</Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nom</TableHead>
+              <TableHead className="hidden lg:table-cell">Contact</TableHead>
+              <TableHead className="hidden sm:table-cell">Statut</TableHead>
+              <TableHead className="hidden md:table-cell">Début</TableHead>
+              <TableHead className="hidden md:table-cell">Fin</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredSubscribers.length > 0 ? (
+              filteredSubscribers.map((subscriber) => (
+              <TableRow key={subscriber.id}>
+                <TableCell>
+                    <div className="font-medium">{subscriber.name}</div>
+                    <div className="text-xs text-muted-foreground">{subscriber.amount}</div>
+                </TableCell>
+                <TableCell className="hidden lg:table-cell">
+                    <div className="flex items-center gap-2">
+                       <Phone className="h-4 w-4 text-muted-foreground" />
+                       {subscriber.phone}
+                    </div>
+                </TableCell>
+                <TableCell className="hidden sm:table-cell">
+                  <Badge variant={statusVariant[subscriber.status] || "default"}>
+                    {subscriber.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="hidden md:table-cell">{subscriber.startDate}</TableCell>
+                <TableCell className="hidden md:table-cell">
+                  {subscriber.endDate !== "N/A" ? (
+                    subscriber.endDate
+                  ) : (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <CalendarOff className="h-4 w-4" />
+                      <span>N/A</span>
+                    </div>
+                  )}
+                </TableCell>
+                <TableCell className="text-right">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreHorizontal className="h-4 w-4" />
+                        <span className="sr-only">Actions</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                      <DropdownMenuItem onClick={() => handleAction('view', subscriber.id)}>
+                        <User className="mr-2 h-4 w-4" />
+                        Voir le profil
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleAction('edit', subscriber.id)}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        Modifier l'abonné
+                      </DropdownMenuItem>
+                      {subscriber.status === 'En attente' && (
+                          <DropdownMenuItem onClick={() => handleAction('validate', subscriber.id)}>
+                            <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                            Valider l'abonnement
+                          </DropdownMenuItem>
                       )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem className="text-red-500" onClick={() => handleAction('delete', subscriber.id)}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Supprimer l'abonnement
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))) : (
+                 <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                      {subscribers.length === 0 ? (
+                         <div className="flex items-center justify-center gap-2">
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            <span>Chargement des abonnés...</span>
+                         </div>
+                       ) : "Aucun abonné trouvé."}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Actions</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => handleAction('view', subscriber.id)}>
-                            <User className="mr-2 h-4 w-4" />
-                            Voir le profil
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleAction('edit', subscriber.id)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Modifier l'abonné
-                          </DropdownMenuItem>
-                          {subscriber.status === 'En attente' && (
-                              <DropdownMenuItem onClick={() => handleAction('validate', subscriber.id)}>
-                                <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
-                                Valider l'abonnement
-                              </DropdownMenuItem>
-                          )}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-red-500" onClick={() => handleAction('delete', subscriber.id)}>
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Supprimer l'abonnement
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))) : (
-                     <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center">
-                          {subscribers.length === 0 ? (
-                             <div className="flex items-center justify-center gap-2">
-                                <Loader2 className="h-5 w-5 animate-spin" />
-                                <span>Chargement des abonnés...</span>
-                             </div>
-                           ) : "Aucun abonné trouvé."}
-                        </TableCell>
-                    </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }

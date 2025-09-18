@@ -4,15 +4,15 @@
 import { useState, forwardRef, useImperativeHandle, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home, Wallet, Cog, DollarSign, Clipboard, MicVocal, GanttChart } from "lucide-react";
-import UserManagement, { Subscriber } from "@/components/admin/user-management";
+import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home, Wallet, Cog, DollarSign, Clipboard, MicVocal, GanttChart, UserCog } from "lucide-react";
+import ClientManagement, { Client } from "@/components/admin/client-management";
 import ContentManagement, { initialContent as iContent, Content } from "@/components/admin/content-management";
 import BookingSchedule, { Booking } from "@/components/admin/booking-schedule";
 import SiteSettings from "@/components/admin/site-settings";
 import EventManagement, { AppEvent } from "@/components/admin/event-management";
 import FinancialManagement, { Transaction } from "@/components/admin/financial-management";
 import ContractManagement, { Contract } from "@/components/admin/contract-management";
-import ActivityLog from "@/components/admin/activity-log";
+import ActivityLog, { ClientActivity } from "@/components/admin/activity-log";
 import PlatformManagement, { Payout, initialPayouts as iPayouts } from "@/components/admin/platform-management";
 import FixedCostsManagement, { FixedCost } from "@/components/admin/fixed-costs-management";
 import PricingSettings from "@/components/admin/pricing-settings";
@@ -22,9 +22,10 @@ import { format, parseISO } from "date-fns";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, updateDoc, doc, addDoc, deleteDoc, Timestamp } from "firebase/firestore";
+import type { Subscriber } from "@/components/admin/user-management";
 
 
-type AdminView = "dashboard" | "users" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities" | "platforms" | "fixed-costs" | "pricing" | "hr" | "org-chart";
+type AdminView = "dashboard" | "clients" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities" | "platforms" | "fixed-costs" | "pricing" | "hr" | "org-chart";
 
 export type { Contract, Payout };
 
@@ -71,7 +72,7 @@ const adminCategories: AdminCategory[] = [
         title: "Gestion",
         color: "bg-blue-600/80 text-blue-50",
         sections: [
-            { title: "Abonnements", icon: Users, view: "users" },
+            { title: "Clients", icon: Users, view: "clients" },
             { title: "Réservations", icon: CalendarCheck, view: "bookings" },
             { title: "Contrats", icon: FileSignature, view: "contracts" },
             { title: "Personnel", icon: Briefcase, view: "hr" },
@@ -121,6 +122,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
   const [contractToPay, setContractToPay] = useState<Contract | null>(null);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [fixedCosts, setFixedCosts] = useState<FixedCost[]>([]);
+  const [activities, setActivities] = useState<ClientActivity[]>([]);
   const activityLogRef = useRef<{ openDialog: (data: any) => void }>(null);
 
   useImperativeHandle(ref, () => ({
@@ -152,9 +154,16 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
         setFixedCosts(costsData);
     });
 
+    const qActivities = query(collection(db, "activities"));
+    const unsubActivities = onSnapshot(qActivities, (snapshot) => {
+        const activitiesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ClientActivity));
+        setActivities(activitiesData);
+    });
+
     return () => {
       unsubContracts();
       unsubFixedCosts();
+      unsubActivities();
     };
   }, []);
 
@@ -232,7 +241,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
   };
 
   const adminViews = {
-    users: { component: UserManagement, title: "Gestion des Abonnements", props: { subscribers, onAddSubscriber: handleAddSubscriber, onUpdateSubscriber, onDeleteSubscriber, onValidateSubscription: handleValidateSubscription, onRenewSubscriber: handleRenewSubscriber } },
+    clients: { component: ClientManagement, title: "Gestion des Clients", props: { subscribers, activities, onAddSubscriber: handleAddSubscriber, onUpdateSubscriber, onDeleteSubscriber, onValidateSubscription: handleValidateSubscription, onRenewSubscriber: handleRenewSubscriber } },
     content: { component: ContentManagement, title: "Gestion des Contenus", props: { content, onAddContent, onUpdateContent, onDeleteContent } },
     bookings: { component: BookingSchedule, title: "Planning des Réservations", props: { bookings, onAddBooking, onUpdateBookingStatus, contracts } },
     settings: { component: SiteSettings, title: "Paramètres du Site", props: {} },
