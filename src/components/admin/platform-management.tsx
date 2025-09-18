@@ -45,11 +45,7 @@ export type Payout = {
     status: 'Payé' | 'En attente' | 'Annulé';
 }
 
-export const initialPayouts: Payout[] = [
-    { id: 'p-001', platform: 'YouTube', date: '15/07/2024', amount: '1,500,000 FCFA', status: 'Payé' },
-    { id: 'p-002', platform: 'TikTok', date: '12/07/2024', amount: '750,000 FCFA', status: 'Payé' },
-    { id: 'p-003', platform: 'YouTube', date: '15/06/2024', amount: '1,350,000 FCFA', status: 'Payé' },
-]
+export const initialPayouts: Payout[] = []
 
 interface PlatformManagementProps {
     payouts: Payout[];

@@ -9,7 +9,7 @@ import CultureHub from "@/components/hubs/culture-hub";
 import StudioHub from "@/components/hubs/studio-hub";
 import WearHub from "@/components/hubs/wear-hub";
 import AdminHub, { Contract, Payout } from "@/components/hubs/admin-hub";
-import { initialContent, Content } from "@/components/admin/content-management";
+import { Content } from "@/components/admin/content-management";
 import { AppEvent } from "@/components/admin/event-management";
 import { Booking } from "@/components/admin/booking-schedule";
 import { Transaction } from "@/components/admin/financial-management";
@@ -66,22 +66,6 @@ function HomePageContent() {
   }, [searchParams]);
 
   useEffect(() => {
-    // Check if content collection exists and seed if not
-    const seedContent = async () => {
-        const contentRef = collection(db, "content");
-        const snapshot = await getDocs(contentRef);
-        if (snapshot.empty) {
-            console.log("Seeding initial content...");
-            const batch = writeBatch(db);
-            initialContent.forEach((c) => {
-                const docRef = doc(contentRef);
-                batch.set(docRef, c);
-            });
-            await batch.commit();
-        }
-    };
-    seedContent();
-
     const fetchBookings = onSnapshot(query(collection(db, "bookings"), orderBy("date", "desc")), (snapshot) => {
         const bookingsData = snapshot.docs.map(doc => {
             const data = doc.data();

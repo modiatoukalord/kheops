@@ -6,14 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home, Wallet, Cog, DollarSign, Clipboard, MicVocal, GanttChart, UserCog, Tag } from "lucide-react";
 import ClientManagement, { Client, Reward } from "@/components/admin/client-management";
-import ContentManagement, { initialContent as iContent, Content } from "@/components/admin/content-management";
+import ContentManagement, { Content } from "@/components/admin/content-management";
 import BookingSchedule, { Booking } from "@/components/admin/booking-schedule";
 import SiteSettings from "@/components/admin/site-settings";
 import EventManagement, { AppEvent } from "@/components/admin/event-management";
 import FinancialManagement, { Transaction } from "@/components/admin/financial-management";
 import ContractManagement, { Contract } from "@/components/admin/contract-management";
 import ActivityLog, { ClientActivity } from "@/components/admin/activity-log";
-import PlatformManagement, { Payout, initialPayouts as iPayouts } from "@/components/admin/platform-management";
+import PlatformManagement, { Payout } from "@/components/admin/platform-management";
 import FixedCostsManagement, { FixedCost } from "@/components/admin/fixed-costs-management";
 import PricingSettings from "@/components/admin/pricing-settings";
 import HumanResourcesManagement, { Employee } from "@/components/admin/human-resources-management";
@@ -133,7 +133,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
     setActiveView
   }));
 
-  const [payouts, setPayouts] = useState<Payout[]>(iPayouts);
+  const [payouts, setPayouts] = useState<Payout[]>([]);
   const [loyaltyTiers, setLoyaltyTiers] = useState({ Argent: 5, Or: 10, Platine: 25, Diamant: 50 });
 
   useEffect(() => {
@@ -474,5 +474,3 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
 
 AdminHub.displayName = "AdminHub";
 export default AdminHub;
-
-    
