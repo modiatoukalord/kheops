@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MoreHorizontal, Search, Filter, Phone, User, Award, DollarSign, Star, TrendingUp, Gem, UserCheck, UserX, Users, Gift, Ticket, Percent, PlusCircle } from "lucide-react";
+import { MoreHorizontal, Search, Filter, Phone, User, Award, DollarSign, Star, TrendingUp, Gem, UserCheck, UserX, Users, Gift, Ticket, Percent, PlusCircle, StarIcon } from "lucide-react";
 import { format, isValid, parse, isAfter } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import UserProfile from "./user-profile";
@@ -137,21 +137,18 @@ export default function ClientManagement({
     
     // Calculate loyalty
     allClients.forEach(client => {
-        if (client.totalSpent > 500000) {
+        client.loyaltyPoints = client.activityCount;
+
+        if (client.loyaltyPoints > 50) {
             client.loyaltyTier = "Diamant";
-            client.loyaltyPoints = Math.floor(client.totalSpent / 100);
-        } else if (client.totalSpent > 250000) {
+        } else if (client.loyaltyPoints > 25) {
             client.loyaltyTier = "Platine";
-            client.loyaltyPoints = Math.floor(client.totalSpent / 150);
-        } else if (client.totalSpent > 100000) {
+        } else if (client.loyaltyPoints > 10) {
             client.loyaltyTier = "Or";
-            client.loyaltyPoints = Math.floor(client.totalSpent / 200);
-        } else if (client.totalSpent > 50000) {
+        } else if (client.loyaltyPoints > 5) {
             client.loyaltyTier = "Argent";
-            client.loyaltyPoints = Math.floor(client.totalSpent / 250);
         } else {
             client.loyaltyTier = "Bronze";
-            client.loyaltyPoints = Math.floor(client.totalSpent / 300);
         }
         
         // Associate rewards
@@ -255,9 +252,9 @@ export default function ClientManagement({
                         <TableHeader>
                             <TableRow>
                             <TableHead>Nom</TableHead>
-                            <TableHead>Contact</TableHead>
                             <TableHead>Type</TableHead>
                             <TableHead>Dépenses Totales</TableHead>
+                            <TableHead>Points</TableHead>
                             <TableHead>Niveau de Fidélité</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
@@ -267,14 +264,22 @@ export default function ClientManagement({
                                 const tierInfo = tierConfig[client.loyaltyTier];
                                 return(
                                 <TableRow key={client.id}>
-                                    <TableCell className="font-medium">{client.name}</TableCell>
-                                    <TableCell>{client.phone}</TableCell>
+                                    <TableCell>
+                                        <div className="font-medium">{client.name}</div>
+                                        <div className="text-xs text-muted-foreground">{client.phone}</div>
+                                    </TableCell>
                                     <TableCell>
                                         <Badge variant={client.type === "Abonné" ? "default" : "outline"}>
                                             {client.type}
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="font-semibold">{client.totalSpent.toLocaleString('fr-FR')} FCFA</TableCell>
+                                    <TableCell>
+                                        <div className="flex items-center gap-1.5 font-semibold">
+                                            <StarIcon className="h-4 w-4 text-yellow-400" />
+                                            {client.loyaltyPoints}
+                                        </div>
+                                    </TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
                                             <tierInfo.icon className={`h-4 w-4 ${tierInfo.color}`}/>
