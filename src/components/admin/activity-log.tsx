@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle, useMemo } from "react";
@@ -7,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy, Trash2, Minus, MoreHorizontal, Edit, Eye, Printer, Pyramid, X, CreditCard, User, HandCoins, Loader2, CheckCircle2, Ban, AlertCircle, FileSignature, ChevronsUpDown, Check } from "lucide-react";
+import { Search, PlusCircle, DollarSign, Calendar as CalendarIcon, Book, Gamepad2, MicVocal, Phone, Clock, Puzzle, BookCopy, Trash2, Minus, MoreHorizontal, Edit, Eye, Printer, Pyramid, X, CreditCard, User, HandCoins, Loader2, CheckCircle2, Ban, AlertCircle, FileSignature, ChevronsUpDown, Check, Tag } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -45,6 +43,8 @@ import { Transaction } from "./financial-management";
 import type { Contract } from "./contract-management";
 import { servicesWithPrices, calculatePrice } from "@/lib/pricing";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { iconMap } from "@/lib/icons";
+import type { ActivityCategory } from "./pricing-settings";
 
 
 export type ClientActivity = {
@@ -52,7 +52,7 @@ export type ClientActivity = {
   clientName: string;
   phone?: string;
   description: string;
-  category: "Livre" | "Manga" | "Jeu de société" | "Session de jeu" | "Réservation Studio" | "Paiement Contrat" | "Abonnement" | "Autre";
+  category: string;
   totalAmount: number;
   date: Date;
   duration?: string;
@@ -72,20 +72,9 @@ interface ActivityLogProps {
   onContractPaid?: (contractId: string) => void;
 }
 
-const categoryConfig = {
-    "Livre": { icon: Book, color: "bg-blue-500/20 text-blue-700 border-blue-500/30" },
-    "Manga": { icon: BookCopy, color: "bg-orange-500/20 text-orange-700 border-orange-500/30" },
-    "Jeu de société": { icon: Puzzle, color: "bg-green-500/20 text-green-700 border-green-500/30" },
-    "Session de jeu": { icon: Gamepad2, color: "bg-red-500/20 text-red-700 border-red-500/30" },
-    "Réservation Studio": { icon: MicVocal, color: "bg-purple-500/20 text-purple-700 border-purple-500/30" },
-    "Abonnement": { icon: User, color: "bg-cyan-500/20 text-cyan-700 border-cyan-500/30" },
-    "Paiement Contrat": { icon: FileSignature, color: "bg-indigo-500/20 text-indigo-700 border-indigo-500/30" },
-    "Autre": { icon: DollarSign, color: "bg-gray-500/20 text-gray-700 border-gray-500/30" },
-};
-
 const activityItemSchema = z.object({
   description: z.string().min(1, "Description requise"),
-  category: z.enum(Object.keys(categoryConfig) as [keyof typeof categoryConfig]),
+  category: z.string().min(1, "Catégorie requise"),
   amount: z.coerce.number().min(0, "Montant invalide"),
   startTime: z.string().optional(),
   endTime: z.string().optional(),
@@ -126,6 +115,7 @@ type InstallmentFormValues = z.infer<typeof installmentSchema>;
 
 const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, onUpdateBookingStatus, contractToPay, onContractPaid }: ActivityLogProps, ref) => {
   const [activities, setActivities] = useState<ClientActivity[]>([]);
+  const [activityCategories, setActivityCategories] = useState<ActivityCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState<Date | undefined>();
@@ -162,6 +152,14 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
     return () => unsubscribe();
   }, [toast]);
   
+  useEffect(() => {
+    const q = query(collection(db, "activityCategories"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        setActivityCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ActivityCategory)));
+    });
+    return () => unsubscribe();
+  }, []);
+
   useEffect(() => {
     if (contractToPay) {
       handleOpenNewActivityDialog(null, 0, contractToPay);
@@ -281,14 +279,9 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
     const totalAmount = items.reduce((acc, item) => acc + item.amount, 0);
 
     const activityTransactionMapping: { [key: string]: Transaction['category'] } = {
-        "Livre": "Vente",
-        "Manga": "Vente",
-        "Jeu de société": "Vente",
-        "Session de jeu": "Vente",
         "Réservation Studio": "Prestation Studio",
         "Paiement Contrat": "Prestation Studio", // Or a specific category
         "Abonnement": "Abonnement",
-        "Autre": "Vente"
     };
 
     const newActivitiesPromises = items.map(item => {
@@ -511,6 +504,16 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
     window.print();
   };
 
+  const getCategoryDisplay = (categoryName: string) => {
+    const category = activityCategories.find(c => c.name === categoryName);
+    if (!category) {
+        return { Icon: Tag, color: "bg-gray-500/20 text-gray-700 border-gray-500/30" };
+    }
+    const Icon = iconMap[category.icon] || Tag;
+    const color = `bg-${category.color}-500/20 text-${category.color}-700 border-${category.color}-500/30`;
+    return { Icon, color };
+  };
+
   return (
     <div className="space-y-6">
       <section className="grid gap-4 md:grid-cols-2">
@@ -660,7 +663,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
                                                 )}
                                             </div>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <FormField control={form.control} name={`items.${index}.category`} render={({ field }) => (<FormItem><Label>Catégorie</Label><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent>{Object.keys(categoryConfig).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name={`items.${index}.category`} render={({ field }) => (<FormItem><Label>Catégorie</Label><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent>{activityCategories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
                                                 {watchedItems[index]?.category === 'Réservation Studio' ? (
                                                      <FormField
                                                         control={form.control}
@@ -770,7 +773,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
                         <TableBody>
                             {filteredActivities.filter(act => act.category !== 'Réservation Studio').length > 0 ? (
                             filteredActivities.filter(act => act.category !== 'Réservation Studio').map((activity) => {
-                                const catInfo = categoryConfig[activity.category];
+                                const { Icon, color } = getCategoryDisplay(activity.category);
                                 const isInstallmentAndUnpaid = activity.paymentType === 'Échéancier' && (activity.remainingAmount || 0) > 0;
                                 return (
                                 <TableRow key={activity.id}>
@@ -780,8 +783,8 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
                                 </TableCell>
                                 <TableCell>
                                     <p>{activity.description}</p>
-                                    <Badge variant="secondary" className={`mt-1 ${catInfo?.color || ''}`}>
-                                        {catInfo?.icon && <catInfo.icon className="mr-1.5 h-3.5 w-3.5" />}
+                                    <Badge variant="secondary" className={`mt-1 ${color || ''}`}>
+                                        <Icon className="mr-1.5 h-3.5 w-3.5" />
                                         {activity.category}
                                     </Badge>
                                 </TableCell>
@@ -1084,8 +1087,3 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
 
 ActivityLog.displayName = "ActivityLog";
 export default ActivityLog;
-
-    
-
-    
-
