@@ -120,6 +120,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
 }, ref) => {
   const [activeView, setActiveView] = useState<AdminView>("dashboard");
   const [contractToPay, setContractToPay] = useState<Contract | null>(null);
+  const [bookingForContract, setBookingForContract] = useState<Booking | null>(null);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [fixedCosts, setFixedCosts] = useState<FixedCost[]>([]);
   const [activities, setActivities] = useState<ClientActivity[]>([]);
@@ -266,14 +267,19 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
     await addDoc(collection(db, "rewards"), newReward);
   };
 
+  const handleCreateContractFromBooking = (booking: Booking) => {
+      setBookingForContract(booking);
+      setActiveView("contracts");
+  };
+
   const adminViews = {
     clients: { component: ClientManagement, title: "Gestion des Clients", props: { subscribers, activities, rewards, onGrantReward: handleGrantReward, onAddTransaction: onAddTransaction, onAddSubscriber: handleAddSubscriber, onUpdateSubscriber, onDeleteSubscriber, onValidateSubscription: handleValidateSubscription, onRenewSubscriber: handleRenewSubscriber } },
     content: { component: ContentManagement, title: "Gestion des Contenus", props: { content, onAddContent, onUpdateContent, onDeleteContent } },
-    bookings: { component: BookingSchedule, title: "Planning des Réservations", props: { bookings, onAddBooking, onUpdateBookingStatus } },
+    bookings: { component: BookingSchedule, title: "Planning des Réservations", props: { bookings, onAddBooking, onUpdateBookingStatus, contracts, onCreateContract: handleCreateContractFromBooking } },
     settings: { component: SiteSettings, title: "Paramètres du Site", props: {} },
     events: { component: EventManagement, title: "Gestion des Événements", props: { events, onAddEvent, onUpdateEvent, onDeleteEvent } },
     financial: { component: FinancialManagement, title: "Rapport Financier", props: { transactions, onAddTransaction } },
-    contracts: { component: ContractManagement, title: "Gestion des Contrats", props: { employees, bookings, onUpdateContract, onCollectPayment: handleRequestContractPayment } },
+    contracts: { component: ContractManagement, title: "Gestion des Contrats", props: { employees, bookings, onUpdateContract, onCollectPayment: handleRequestContractPayment, bookingForContract, setBookingForContract, onClearBookingForContract: () => setBookingForContract(null) } },
     activities: { component: ActivityLog, title: "Journal d'Activité", props: { bookings, contracts, onAddTransaction, onUpdateBookingStatus, ref: activityLogRef, contractToPay, onContractPaid } },
     platforms: { component: PlatformManagement, title: "Gestion des Plateformes", props: { payouts, setPayouts, onAddPayout: handleAddPayout } },
     "fixed-costs": { component: FixedCostsManagement, title: "Gestion des Charges Fixes", props: { fixedCosts, onAddFixedCost: handleAddFixedCost, onUpdateFixedCost: handleUpdateFixedCost, onDeleteFixedCost: handleDeleteFixedCost } },
