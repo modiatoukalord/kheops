@@ -81,9 +81,6 @@ interface ContractManagementProps {
   bookings: Booking[];
   onUpdateContract: (id: string, data: Partial<Omit<Contract, 'id'>>) => Promise<void>;
   onCollectPayment: (contract: Contract) => void;
-  bookingForContract: Booking | null;
-  setBookingForContract: (booking: Booking | null) => void;
-  onClearBookingForContract: () => void;
 }
 
 const contractFormSchema = z.object({
@@ -104,7 +101,7 @@ const contractFormSchema = z.object({
 type ContractFormValues = z.infer<typeof contractFormSchema>;
 
 
-export default function ContractManagement({ employees, bookings, onUpdateContract, onCollectPayment, bookingForContract, setBookingForContract, onClearBookingForContract }: ContractManagementProps) {
+export default function ContractManagement({ employees, bookings, onUpdateContract, onCollectPayment }: ContractManagementProps) {
     const [contracts, setContracts] = useState<Contract[]>([]);
     const [contractTypes, setContractTypes] = useState<ContractTypeConfig[]>([]);
     const [isAddDialogOpen, setAddDialogOpen] = useState(false);
@@ -120,7 +117,7 @@ export default function ContractManagement({ employees, bookings, onUpdateContra
       resolver: zodResolver(contractFormSchema),
       defaultValues: {
         clientName: "",
-        type: "Prestation Studio",
+        type: "Prestation studio",
         paymentStatus: "En attente",
         value: 0,
       }
@@ -151,15 +148,6 @@ export default function ContractManagement({ employees, bookings, onUpdateContra
            unsubContractTypes();
        };
     }, []);
-
-    useEffect(() => {
-        if (bookingForContract) {
-            form.setValue("clientName", bookingForContract.artistName);
-            form.setValue("type", "Prestation Studio");
-            form.setValue("value", bookingForContract.amount);
-            setAddDialogOpen(true);
-        }
-    }, [bookingForContract, form]);
     
     const handleGenerateClause = async (clauseType: GenerateContractClauseInput['clauseType']) => {
         setGeneratingClause(clauseType);
@@ -219,7 +207,6 @@ export default function ContractManagement({ employees, bookings, onUpdateContra
             setAddDialogOpen(false);
             setDateRange(undefined);
             form.reset();
-            onClearBookingForContract();
         } catch (error) {
              console.error("Error adding contract: ", error);
              toast({ title: "Erreur", description: "Impossible d'ajouter le contrat.", variant: "destructive"});
@@ -346,7 +333,7 @@ export default function ContractManagement({ employees, bookings, onUpdateContra
                     <FormItem>
                         <FormLabel>Client</FormLabel>
                         <FormControl>
-                        <Input placeholder="Nom du Client" {...field} required disabled={isEditing || !!bookingForContract}/>
+                        <Input placeholder="Nom du Client" {...field} required disabled={isEditing}/>
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -386,9 +373,11 @@ export default function ContractManagement({ employees, bookings, onUpdateContra
                   <FormField control={form.control} name="type" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Type de contrat</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value} required disabled={!!bookingForContract}>
+                      <Select onValueChange={field.onChange} value={field.value} required>
                         <FormControl><SelectTrigger><SelectValue placeholder="Type..." /></SelectTrigger></FormControl>
-                        <SelectContent>{contractTypes.map(type => <SelectItem key={type.id} value={type.name}>{type.name}</SelectItem>)}</SelectContent>
+                        <SelectContent>
+                            <SelectItem value="Prestation studio">Prestation studio</SelectItem>
+                        </SelectContent>
                       </Select>
                       <FormMessage />
                     </FormItem>
@@ -410,7 +399,7 @@ export default function ContractManagement({ employees, bookings, onUpdateContra
                         <FormLabel>Valeur (FCFA)</FormLabel>
                         <div className="relative">
                           <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <FormControl><Input type="number" placeholder="Ex: 150000" className="pl-10" {...field} disabled={!!bookingForContract} /></FormControl>
+                          <FormControl><Input type="number" placeholder="Ex: 150000" className="pl-10" {...field} /></FormControl>
                         </div>
                         <FormMessage />
                       </FormItem>
@@ -556,8 +545,8 @@ export default function ContractManagement({ employees, bookings, onUpdateContra
     );
     
     const studioContractTypeNames = contractTypes.filter(ct => ct.name.toLowerCase().includes("studio")).map(ct => ct.name);
-    const studioContracts = contracts.filter(c => studioContractTypeNames.includes(c.type));
-    const partnerContracts = contracts.filter(c => !studioContractTypeNames.includes(c.type));
+    const studioContracts = contracts.filter(c => c.type === 'Prestation studio');
+    const partnerContracts = contracts.filter(c => c.type !== 'Prestation studio');
 
 
     return (
@@ -567,7 +556,7 @@ export default function ContractManagement({ employees, bookings, onUpdateContra
                     <CardTitle>Gestion des Contrats</CardTitle>
                     <CardDescription>Suivez et mettez à jour le statut des contrats.</CardDescription>
                 </div>
-                <Dialog open={isAddDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) { setDateRange(undefined); form.reset(); onClearBookingForContract(); } setAddDialogOpen(isOpen); }}>
+                <Dialog open={isAddDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) { setDateRange(undefined); form.reset(); } setAddDialogOpen(isOpen); }}>
                     <DialogTrigger asChild>
                         <Button onClick={handleOpenAddDialog}>
                             <PlusCircle className="mr-2 h-4 w-4" />
