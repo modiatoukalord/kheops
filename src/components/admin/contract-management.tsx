@@ -33,6 +33,7 @@ import type { GenerateContractClauseInput } from "@/ai/types/contract-clause";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Employee } from "./human-resources-management";
 import { ContractTypeConfig } from "./pricing-settings";
+import { Booking } from "./booking-schedule";
 
 
 const contractStatusConfig = {
@@ -77,8 +78,12 @@ export type Contract = {
 
 interface ContractManagementProps {
   employees: Employee[];
+  bookings: Booking[];
   onUpdateContract: (id: string, data: Partial<Omit<Contract, 'id'>>) => Promise<void>;
   onCollectPayment: (contract: Contract) => void;
+  bookingForContract: Booking | null;
+  setBookingForContract: (booking: Booking | null) => void;
+  onClearBookingForContract: () => void;
 }
 
 const contractFormSchema = z.object({
@@ -99,7 +104,7 @@ const contractFormSchema = z.object({
 type ContractFormValues = z.infer<typeof contractFormSchema>;
 
 
-export default function ContractManagement({ employees, onUpdateContract, onCollectPayment }: ContractManagementProps) {
+export default function ContractManagement({ employees, bookings, onUpdateContract, onCollectPayment, bookingForContract, setBookingForContract, onClearBookingForContract }: ContractManagementProps) {
     const [contracts, setContracts] = useState<Contract[]>([]);
     const [contractTypes, setContractTypes] = useState<ContractTypeConfig[]>([]);
     const [isAddDialogOpen, setAddDialogOpen] = useState(false);
@@ -146,6 +151,15 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
            unsubContractTypes();
        };
     }, []);
+
+    useEffect(() => {
+        if (bookingForContract) {
+            form.setValue("clientName", bookingForContract.artistName);
+            form.setValue("type", "Prestation Studio");
+            form.setValue("value", bookingForContract.amount);
+            setAddDialogOpen(true);
+        }
+    }, [bookingForContract, form]);
     
     const handleGenerateClause = async (clauseType: GenerateContractClauseInput['clauseType']) => {
         setGeneratingClause(clauseType);
@@ -205,6 +219,7 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
             setAddDialogOpen(false);
             setDateRange(undefined);
             form.reset();
+            onClearBookingForContract();
         } catch (error) {
              console.error("Error adding contract: ", error);
              toast({ title: "Erreur", description: "Impossible d'ajouter le contrat.", variant: "destructive"});
@@ -331,7 +346,7 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
                     <FormItem>
                         <FormLabel>Client</FormLabel>
                         <FormControl>
-                        <Input placeholder="Nom du Client" {...field} required disabled={isEditing}/>
+                        <Input placeholder="Nom du Client" {...field} required disabled={isEditing || !!bookingForContract}/>
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -371,7 +386,7 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
                   <FormField control={form.control} name="type" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Type de contrat</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value} required>
+                      <Select onValueChange={field.onChange} value={field.value} required disabled={!!bookingForContract}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Type..." /></SelectTrigger></FormControl>
                         <SelectContent>{contractTypes.map(type => <SelectItem key={type.id} value={type.name}>{type.name}</SelectItem>)}</SelectContent>
                       </Select>
@@ -395,7 +410,7 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
                         <FormLabel>Valeur (FCFA)</FormLabel>
                         <div className="relative">
                           <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <FormControl><Input type="number" placeholder="Ex: 150000" className="pl-10" {...field} /></FormControl>
+                          <FormControl><Input type="number" placeholder="Ex: 150000" className="pl-10" {...field} disabled={!!bookingForContract} /></FormControl>
                         </div>
                         <FormMessage />
                       </FormItem>
@@ -552,7 +567,7 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
                     <CardTitle>Gestion des Contrats</CardTitle>
                     <CardDescription>Suivez et mettez à jour le statut des contrats.</CardDescription>
                 </div>
-                <Dialog open={isAddDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) { setDateRange(undefined); form.reset(); } setAddDialogOpen(isOpen); }}>
+                <Dialog open={isAddDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) { setDateRange(undefined); form.reset(); onClearBookingForContract(); } setAddDialogOpen(isOpen); }}>
                     <DialogTrigger asChild>
                         <Button onClick={handleOpenAddDialog}>
                             <PlusCircle className="mr-2 h-4 w-4" />
@@ -580,7 +595,7 @@ export default function ContractManagement({ employees, onUpdateContract, onColl
                 <Tabs defaultValue="studio">
                     <TabsList className="grid w-full grid-cols-2">
                         <TabsTrigger value="studio">Contrats Studio</TabsTrigger>
-                        <TabsTrigger value="partners">Contrats Partenaires & Autres</TabsTrigger>
+                        <TabsTrigger value="partners">Contrats Partenaires &amp; Autres</TabsTrigger>
                     </TabsList>
                     <TabsContent value="studio">
                         {renderContractTable(studioContracts)}

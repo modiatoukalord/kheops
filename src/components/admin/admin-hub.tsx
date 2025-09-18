@@ -32,7 +32,7 @@ export type { Contract, Payout };
 export type AdminHubProps = {
   content: Content[];
   onAddContent: (content: Omit<Content, 'id'>) => Promise<void>;
-  onUpdateContent: (id: string, content: Partial<Omit<Content, 'id'>) => Promise<void>;
+  onUpdateContent: (id: string, content: Partial<Omit<Content, 'id'>>) => Promise<void>;
   onDeleteContent: (id: string) => Promise<void>;
   events: AppEvent[];
   onAddEvent: (event: Omit<AppEvent, 'id'>) => void;
@@ -378,5 +378,3 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
 
 AdminHub.displayName = "AdminHub";
 export default AdminHub;
-
-    
