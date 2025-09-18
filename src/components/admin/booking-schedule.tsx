@@ -77,25 +77,9 @@ const trackSchema = z.object({
 const bookingFormSchema = z.object({
   artistName: z.string().min(1, "Nom de l'artiste requis"),
   projectName: z.string().min(1, "Nom du projet requis"),
-  projectType: z.enum(projectTypes, { required_error: "Type de projet requis" }),
   service: z.string({ required_error: "Service requis" }),
   phone: z.string().optional(),
-  date: z.date().optional(),
-  timeSlot: z.string().optional(),
-  tracks: z.array(trackSchema).optional(),
-}).superRefine((data, ctx) => {
-    if (data.projectType === 'Single') {
-        if (!data.date) {
-            ctx.addIssue({ code: "custom", path: ['date'], message: 'Date requise pour un single.' });
-        }
-        if (!data.timeSlot) {
-            ctx.addIssue({ code: "custom", path: ['timeSlot'], message: 'Créneau requis pour un single.' });
-        }
-    } else if (data.projectType === 'Mixtape' || data.projectType === 'Album') {
-        if (!data.tracks || data.tracks.length === 0) {
-             ctx.addIssue({ code: "custom", path: ['tracks'], message: 'Veuillez ajouter au moins un titre.' });
-        }
-    }
+  tracks: z.array(trackSchema).min(1, 'Veuillez ajouter au moins une session.'),
 });
 
 type BookingFormValues = z.infer<typeof bookingFormSchema>;
@@ -116,10 +100,7 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
       artistName: '',
       projectName: '',
       phone: '',
-      projectType: 'Single',
       service: '',
-      date: new Date(),
-      timeSlot: '',
       tracks: [{ name: '', date: new Date(), timeSlot: '' }],
     },
   });
@@ -128,8 +109,13 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
     control: form.control,
     name: "tracks",
   });
+  
+  const watchedTracks = form.watch("tracks");
+  const watchedService = form.watch("service");
+  const totalAmount = useMemo(() => {
+    return calculatePrice(watchedService, watchedTracks?.length || 0);
+  }, [watchedService, watchedTracks]);
 
-  const projectType = form.watch("projectType");
 
   const handleBookingStatusChange = async (bookingId: string, newStatus: BookingStatus) => {
     try {
@@ -168,49 +154,26 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
   };
   
   const handleBookingSubmit = async (data: BookingFormValues) => {
-    let bookingData: Omit<Booking, 'id' | 'status'>;
-    let amount = 0;
-    
-    if (data.projectType === 'Single' && data.date && data.timeSlot) {
-        amount = calculatePrice(data.service, 1);
-        bookingData = {
-            artistName: data.artistName,
-            projectName: data.projectName,
-            projectType: data.projectType,
-            phone: data.phone,
-            date: data.date,
-            timeSlot: data.timeSlot,
-            service: data.service,
-            tracks: [{ name: data.projectName, date: data.date, timeSlot: data.timeSlot }],
-            amount,
-        };
-    } else if ((data.projectType === 'Mixtape' || data.projectType === 'Album') && data.tracks && data.tracks.length > 0) {
-        amount = calculatePrice(data.service, data.tracks.length);
-        bookingData = {
-            artistName: data.artistName,
-            projectName: data.projectName,
-            projectType: data.projectType,
-            phone: data.phone,
-            date: data.tracks[0].date, // Use first track's date as main date
-            timeSlot: data.tracks[0].timeSlot,
-            service: data.service,
-            tracks: data.tracks,
-            amount,
-        };
-    } else {
-        // Handle 'Autre' or invalid states
-        amount = calculatePrice(data.service, 1);
-        bookingData = {
-             artistName: data.artistName,
-            projectName: data.projectName,
-            projectType: 'Autre',
-            phone: data.phone,
-            date: data.date || new Date(),
-            timeSlot: data.timeSlot || 'N/A',
-            service: data.service,
-            amount,
-        }
+    let projectType: Booking['projectType'] = 'Autre';
+    if (data.tracks.length === 1) {
+        projectType = 'Single';
+    } else if (data.tracks.length > 1 && data.tracks.length <= 5) {
+        projectType = 'Mixtape';
+    } else if (data.tracks.length > 5) {
+        projectType = 'Album';
     }
+
+    const bookingData: Omit<Booking, 'id' | 'status'> = {
+        artistName: data.artistName,
+        projectName: data.projectName,
+        projectType: projectType,
+        phone: data.phone,
+        service: data.service,
+        tracks: data.tracks,
+        date: data.tracks[0].date, // Use first track's date as main date
+        timeSlot: data.tracks[0].timeSlot,
+        amount: totalAmount,
+    };
 
     if (editingBooking) {
       try {
@@ -245,7 +208,10 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
     setEditingBooking(booking);
     if (booking) {
       form.reset({
-        ...booking,
+        artistName: booking.artistName,
+        projectName: booking.projectName,
+        phone: booking.phone,
+        service: booking.service,
         tracks: booking.tracks || [{ name: '', date: new Date(), timeSlot: '' }],
       });
     } else {
@@ -253,10 +219,7 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
         artistName: '',
         projectName: '',
         phone: '',
-        projectType: 'Single',
         service: '',
-        date: new Date(),
-        timeSlot: '',
         tracks: [{ name: '', date: new Date(), timeSlot: '' }],
       });
     }
@@ -304,110 +267,66 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
                               <FormField control={form.control} name="artistName" render={({ field }) => (<FormItem><Label>Artiste</Label><FormControl><Input placeholder="Nom de l'artiste" {...field} /></FormControl><FormMessage /></FormItem>)} />
                               <FormField control={form.control} name="projectName" render={({ field }) => (<FormItem><Label>Projet</Label><FormControl><Input placeholder="Nom du projet" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><Label>Téléphone</Label><FormControl><Input placeholder="Numéro de téléphone" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                              <FormField control={form.control} name="projectType" render={({ field }) => (
-                                  <FormItem>
-                                  <Label>Type de Projet</Label>
-                                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                      <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un type" /></SelectTrigger></FormControl>
-                                      <SelectContent>
-                                        {projectTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
-                                      </SelectContent>
-                                  </Select>
-                                  <FormMessage />
-                                  </FormItem>
-                              )} />
-                               <FormField control={form.control} name="service" render={({ field }) => (<FormItem><Label>Service</Label><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un service" /></SelectTrigger></FormControl><SelectContent>{availableServices.map(service => <SelectItem key={service} value={service}>{service} ({servicesWithPrices[service as keyof typeof servicesWithPrices].toLocaleString('fr-FR')} FCFA)</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                               <FormField control={form.control} name="service" render={({ field }) => (<FormItem><Label>Service</Label><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un service" /></SelectTrigger></FormControl><SelectContent>{availableServices.map(service => <SelectItem key={service} value={service}>{service} ({servicesWithPrices[service as keyof typeof servicesWithPrices].toLocaleString('fr-FR')} FCFA / session)</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
                           </div>
                           
                           <Separator/>
 
-                          {projectType === 'Single' && (
-                              <div className="grid md:grid-cols-2 gap-4">
-                                  <FormField control={form.control} name="date" render={({ field }) => (
-                                      <FormItem className="flex flex-col">
-                                          <Label>Date</Label>
-                                          <Popover>
-                                              <PopoverTrigger asChild>
-                                                  <FormControl>
-                                                      <Button variant="outline" className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                          {field.value ? format(field.value, "PPP", { locale: fr }) : <span>Choisir une date</span>}
-                                                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                      </Button>
-                                                  </FormControl>
-                                              </PopoverTrigger>
-                                              <PopoverContent className="w-auto p-0" align="start">
-                                                  <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} initialFocus locale={fr} />
-                                              </PopoverContent>
-                                          </Popover>
-                                          <FormMessage />
-                                      </FormItem>
-                                  )}/>
-                                   <FormField control={form.control} name="timeSlot" render={({ field }) => (
-                                      <FormItem>
-                                          <Label>Créneau</Label>
-                                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                              <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un créneau" /></SelectTrigger></FormControl>
-                                              <SelectContent>{availableTimeSlots.map(slot => <SelectItem key={slot} value={slot}>{slot}</SelectItem>)}</SelectContent>
-                                          </Select>
-                                          <FormMessage />
-                                      </FormItem>
-                                  )}/>
-                              </div>
-                          )}
-                          
-                          {(projectType === 'Mixtape' || projectType === 'Album') && (
-                              <div className="space-y-4">
-                                 <div className="flex items-center justify-between">
-                                      <h4 className="text-lg font-medium">Planification des Titres</h4>
-                                      <Button type="button" size="sm" onClick={() => append({ name: '', date: new Date(), timeSlot: '' })}><PlusCircle className="mr-2 h-4 w-4" />Ajouter un titre</Button>
-                                 </div>
-                                 <div className="space-y-4 max-h-64 overflow-y-auto pr-4">
-                                  {fields.map((item, index) => (
-                                      <div key={item.id} className="p-3 rounded-md border bg-card/50 flex items-start gap-4">
-                                          <div className="flex-grow grid md:grid-cols-3 gap-4">
-                                               <FormField control={form.control} name={`tracks.${index}.name`} render={({ field }) => (<FormItem><Label>Titre</Label><FormControl><Input placeholder={`Titre #${index + 1}`} {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                              <FormField control={form.control} name={`tracks.${index}.date`} render={({ field }) => (
-                                                  <FormItem className="flex flex-col">
-                                                      <Label>Date</Label>
-                                                      <Popover>
-                                                          <PopoverTrigger asChild>
-                                                              <FormControl>
-                                                                  <Button variant="outline" className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                                      {field.value ? format(field.value, "PPP", { locale: fr }) : <span>Choisir une date</span>}
-                                                                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                                  </Button>
-                                                              </FormControl>
-                                                          </PopoverTrigger>
-                                                          <PopoverContent className="w-auto p-0" align="start">
-                                                              <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} initialFocus locale={fr} />
-                                                          </PopoverContent>
-                                                      </Popover>
-                                                      <FormMessage />
-                                                  </FormItem>
-                                              )}/>
-                                              <FormField control={form.control} name={`tracks.${index}.timeSlot`} render={({ field }) => (
-                                                  <FormItem>
-                                                      <Label>Créneau</Label>
-                                                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                          <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger></FormControl>
-                                                          <SelectContent>{availableTimeSlots.map(slot => <SelectItem key={slot} value={slot}>{slot}</SelectItem>)}</SelectContent>
-                                                      </Select>
-                                                      <FormMessage />
-                                                  </FormItem>
-                                              )}/>
-                                          </div>
-                                          <Button type="button" variant="ghost" size="icon" className="mt-6 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={() => remove(index)}>
-                                              <Minus className="h-4 w-4" />
-                                          </Button>
+                          <div className="space-y-4">
+                             <div className="flex items-center justify-between">
+                                  <h4 className="text-lg font-medium">Planification des Sessions</h4>
+                                  <Button type="button" size="sm" onClick={() => append({ name: '', date: new Date(), timeSlot: '' })}><PlusCircle className="mr-2 h-4 w-4" />Ajouter une session</Button>
+                             </div>
+                             <div className="space-y-4 max-h-64 overflow-y-auto pr-4">
+                              {fields.map((item, index) => (
+                                  <div key={item.id} className="p-3 rounded-md border bg-card/50 flex items-start gap-4">
+                                      <div className="flex-grow grid md:grid-cols-3 gap-4">
+                                           <FormField control={form.control} name={`tracks.${index}.name`} render={({ field }) => (<FormItem><Label>Titre / Session</Label><FormControl><Input placeholder={`Titre #${index + 1}`} {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                          <FormField control={form.control} name={`tracks.${index}.date`} render={({ field }) => (
+                                              <FormItem className="flex flex-col">
+                                                  <Label>Date</Label>
+                                                  <Popover>
+                                                      <PopoverTrigger asChild>
+                                                          <FormControl>
+                                                              <Button variant="outline" className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                                  {field.value ? format(field.value, "PPP", { locale: fr }) : <span>Choisir une date</span>}
+                                                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                              </Button>
+                                                          </FormControl>
+                                                      </PopoverTrigger>
+                                                      <PopoverContent className="w-auto p-0" align="start">
+                                                          <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} initialFocus locale={fr} />
+                                                      </PopoverContent>
+                                                  </Popover>
+                                                  <FormMessage />
+                                              </FormItem>
+                                          )}/>
+                                          <FormField control={form.control} name={`tracks.${index}.timeSlot`} render={({ field }) => (
+                                              <FormItem>
+                                                  <Label>Créneau</Label>
+                                                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                      <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger></FormControl>
+                                                      <SelectContent>{availableTimeSlots.map(slot => <SelectItem key={slot} value={slot}>{slot}</SelectItem>)}</SelectContent>
+                                                  </Select>
+                                                  <FormMessage />
+                                              </FormItem>
+                                          )}/>
                                       </div>
-                                  ))}
-                                 </div>
-                              </div>
-                          )}
+                                      {fields.length > 1 && (
+                                        <Button type="button" variant="ghost" size="icon" className="mt-6 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={() => remove(index)}>
+                                            <Minus className="h-4 w-4" />
+                                        </Button>
+                                      )}
+                                  </div>
+                              ))}
+                             </div>
+                          </div>
 
-
-                          <DialogFooter>
-                              <Button type="submit">{editingBooking ? "Enregistrer les modifications" : "Ajouter la réservation"}</Button>
+                          <DialogFooter className="flex-col sm:flex-row sm:justify-between items-center pt-4 border-t">
+                            <div className="text-lg font-bold">
+                                Total: {totalAmount.toLocaleString('fr-FR')} FCFA
+                            </div>
+                            <Button type="submit">{editingBooking ? "Enregistrer les modifications" : "Ajouter la réservation"}</Button>
                           </DialogFooter>
                         </form>
                       </Form>
