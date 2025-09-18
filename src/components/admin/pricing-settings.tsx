@@ -22,6 +22,7 @@ export type ActivityCategory = {
     name: string;
     icon: string;
     color: string;
+    price?: number;
 };
 
 export type ContractTypeConfig = {
@@ -88,6 +89,7 @@ export default function PricingSettings() {
         name: formData.get("name") as string,
         icon: formData.get("icon") as string,
         color: formData.get("color") as string,
+        price: Number(formData.get("price")) || 0,
     };
 
     try {
@@ -275,9 +277,15 @@ export default function PricingSettings() {
                                     <DialogTitle>{editingCategory ? "Modifier la catégorie" : "Nouvelle Catégorie"}</DialogTitle>
                                 </DialogHeader>
                                 <div className="grid gap-4 py-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="cat-name">Nom</Label>
-                                        <Input id="cat-name" name="name" defaultValue={editingCategory?.name} required />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="cat-name">Nom</Label>
+                                            <Input id="cat-name" name="name" defaultValue={editingCategory?.name} required />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="cat-price">Prix Unitaire (FCFA)</Label>
+                                            <Input id="cat-price" name="price" type="number" defaultValue={editingCategory?.price || ''} placeholder="Optionnel" />
+                                        </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
@@ -480,3 +488,5 @@ export default function PricingSettings() {
     </Tabs>
   );
 }
+
+    
