@@ -273,7 +273,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
   };
 
   const adminViews = {
-    clients: { component: ClientManagement, title: "Gestion des Clients", props: { subscribers, activities, rewards, onGrantReward: handleGrantReward, onAddSubscriber: handleAddSubscriber, onUpdateSubscriber, onDeleteSubscriber, onValidateSubscription: handleValidateSubscription, onRenewSubscriber: handleRenewSubscriber } },
+    clients: { component: ClientManagement, title: "Gestion des Clients", props: { subscribers, activities, rewards, onGrantReward: handleGrantReward, onAddTransaction: onAddTransaction, onAddSubscriber: handleAddSubscriber, onUpdateSubscriber, onDeleteSubscriber, onValidateSubscription: handleValidateSubscription, onRenewSubscriber: handleRenewSubscriber } },
     content: { component: ContentManagement, title: "Gestion des Contenus", props: { content, onAddContent, onUpdateContent, onDeleteContent } },
     bookings: { component: BookingSchedule, title: "Planning des Réservations", props: { bookings, onAddBooking, onUpdateBookingStatus, contracts } },
     settings: { component: SiteSettings, title: "Paramètres du Site", props: {} },

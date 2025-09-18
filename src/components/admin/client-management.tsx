@@ -17,6 +17,10 @@ import { ClientActivity } from "./activity-log";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import UserManagement from "./user-management";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuPortal, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import type { Transaction } from "./financial-management";
 
 
 export type Reward = {
@@ -56,6 +60,7 @@ interface ClientManagementProps {
   activities: ClientActivity[];
   rewards: Reward[];
   onGrantReward: (reward: Omit<Reward, 'id' | 'grantedAt' | 'status'>) => Promise<void>;
+  onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
   // Re-use subscriber functions
   onAddSubscriber: (newSubscriber: Omit<Subscriber, 'id'>) => void;
   onUpdateSubscriber: (id: string, data: Partial<Omit<Subscriber, 'id'>>) => void;
@@ -70,11 +75,16 @@ export default function ClientManagement({
     activities = [],
     rewards = [],
     onGrantReward,
+    onAddTransaction,
     ...userManagementProps
 }: ClientManagementProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const { toast } = useToast();
+  const [isReductionDialogOpen, setReductionDialogOpen] = useState(false);
+  const [clientForReduction, setClientForReduction] = useState<Client | null>(null);
+  const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
+  const [reductionAmount, setReductionAmount] = useState(0);
 
   const clients = useMemo<Client[]>(() => {
     const clientMap = new Map<string, Client>();
@@ -185,6 +195,42 @@ export default function ClientManagement({
     }
   };
   
+    const handleOpenReductionDialog = (client: Client) => {
+        setClientForReduction(client);
+        setReductionDialogOpen(true);
+    };
+
+    const handleReductionSubmit = async () => {
+        if (!clientForReduction || reductionAmount <= 0 || selectedActivities.length === 0) {
+            toast({ title: "Erreur", description: "Veuillez sélectionner au moins une activité et entrer un montant valide.", variant: "destructive" });
+            return;
+        }
+
+        const reductionTransaction: Omit<Transaction, 'id'> = {
+            date: format(new Date(), "yyyy-MM-dd"),
+            description: `Réduction accordée à ${clientForReduction.name} sur activité(s) (${selectedActivities.join(', ').substring(0, 20)}...)`,
+            type: "Dépense",
+            category: "Autre", // Or a specific "Discount" category
+            amount: -reductionAmount,
+            status: "Complété",
+        };
+
+        onAddTransaction(reductionTransaction);
+        
+        await handleGrantReward(clientForReduction, "Réduction");
+
+        toast({
+            title: "Réduction Appliquée",
+            description: `Une réduction de ${reductionAmount.toLocaleString('fr-FR')} FCFA a été enregistrée pour ${clientForReduction.name}.`,
+        });
+
+        setReductionDialogOpen(false);
+        setClientForReduction(null);
+        setSelectedActivities([]);
+        setReductionAmount(0);
+    };
+
+
   if (selectedClient) {
       const sub = subscribers.find(s => s.phone === selectedClient.phone);
       if(sub) {
@@ -195,6 +241,8 @@ export default function ClientManagement({
           setSelectedClient(null);
       }
   }
+
+  const clientActivities = activities.filter(act => act.clientName === clientForReduction?.name || act.phone === clientForReduction?.phone);
 
   return (
     <Tabs defaultValue="all" className="space-y-6">
@@ -306,7 +354,7 @@ export default function ClientManagement({
                                                   </DropdownMenuSubTrigger>
                                                   <DropdownMenuPortal>
                                                       <DropdownMenuSubContent>
-                                                          <DropdownMenuItem onClick={() => handleGrantReward(client, "Réduction")}>
+                                                          <DropdownMenuItem onClick={() => handleOpenReductionDialog(client)}>
                                                               <Percent className="mr-2 h-4 w-4" />
                                                               Réduction
                                                           </DropdownMenuItem>
@@ -335,6 +383,58 @@ export default function ClientManagement({
             </TabsContent>
         </CardContent>
       </Card>
+
+        <Dialog open={isReductionDialogOpen} onOpenChange={setReductionDialogOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Accorder une réduction à {clientForReduction?.name}</DialogTitle>
+                    <DialogDescription>
+                        Sélectionnez les activités concernées et entrez le montant de la réduction.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+                    <div className="space-y-2">
+                        <Label>Activités du client</Label>
+                        <div className="space-y-2 rounded-md border p-2">
+                            {clientActivities.length > 0 ? clientActivities.map(act => (
+                                <div key={act.id} className="flex items-center space-x-2">
+                                    <Checkbox 
+                                        id={`act-${act.id}`}
+                                        onCheckedChange={(checked) => {
+                                            setSelectedActivities(prev => checked ? [...prev, act.id] : prev.filter(id => id !== act.id))
+                                        }}
+                                    />
+                                    <Label htmlFor={`act-${act.id}`} className="flex-grow cursor-pointer">
+                                        <div className="flex justify-between">
+                                            <span>{act.description}</span>
+                                            <span className="font-mono text-xs">{act.totalAmount.toLocaleString('fr-FR')} FCFA</span>
+                                        </div>
+                                         <p className="text-xs text-muted-foreground">{format(act.date, "d MMM yyyy", { locale: fr })}</p>
+                                    </Label>
+                                </div>
+                            )) : (
+                                <p className="text-sm text-muted-foreground text-center p-4">Aucune activité trouvée pour ce client.</p>
+                            )}
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="reduction-amount">Montant de la réduction (FCFA)</Label>
+                        <Input 
+                            id="reduction-amount" 
+                            type="number" 
+                            value={reductionAmount}
+                            onChange={(e) => setReductionAmount(Number(e.target.value))}
+                        />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="ghost" onClick={() => setReductionDialogOpen(false)}>Annuler</Button>
+                    <Button onClick={handleReductionSubmit}>Appliquer la réduction</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </Tabs>
   );
 }
+
+    
