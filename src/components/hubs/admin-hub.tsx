@@ -111,7 +111,7 @@ const adminCategories: AdminCategory[] = [
 const AdminHub = forwardRef<any, AdminHubProps>(({ 
     content, onAddContent, onUpdateContent, onDeleteContent,
     events, onAddEvent, onUpdateEvent, onDeleteEvent, 
-    bookings, onUpdateBookingStatus, onAddBooking,
+    bookings, onAddBooking, onUpdateBookingStatus,
     transactions, onAddTransaction,
     subscribers, onAddSubscriber, onUpdateSubscriber, onDeleteSubscriber,
     employees, onAddEmployee, onUpdateEmployee, onDeleteEmployee,
@@ -125,6 +125,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
   const [activities, setActivities] = useState<ClientActivity[]>([]);
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [loyaltyPointValue, setLoyaltyPointValue] = useState(100); // Default to 100 FCFA per point
 
   const activityLogRef = useRef<{ openDialog: (data: any) => void }>(null);
 
@@ -258,7 +259,11 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
         
         allClients.forEach(client => {
             const dbClient = dbClients.find(c => c.phone === client.phone);
-            client.loyaltyPoints = dbClient?.loyaltyPoints || client.activityCount;
+            
+            // New loyalty points calculation based on total spent
+            const earnedPoints = loyaltyPointValue > 0 ? Math.floor(client.totalSpent / loyaltyPointValue) : 0;
+            
+            client.loyaltyPoints = dbClient?.loyaltyPoints || earnedPoints;
 
             if (client.loyaltyPoints > loyaltyTiers.Diamant) client.loyaltyTier = "Diamant";
             else if (client.loyaltyPoints > loyaltyTiers.Platine) client.loyaltyTier = "Platine";
