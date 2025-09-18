@@ -76,7 +76,9 @@ interface ActivityLogProps {
 const activityItemSchema = z.object({
   description: z.string().min(1, "Description requise"),
   category: z.string().min(1, "Catégorie requise"),
-  amount: z.coerce.number().min(0, "Montant invalide"),
+  quantity: z.coerce.number().min(1, "Quantité invalide"),
+  unitPrice: z.coerce.number().min(0, "Prix invalide"),
+  amount: z.coerce.number().min(0), // Total for the line item
   startTime: z.string().optional(),
   endTime: z.string().optional(),
 }).refine(data => {
@@ -179,7 +181,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
       phone: "",
       paymentType: "Direct",
       paidAmount: 0,
-      items: [{ description: "", category: "Autre", amount: 0, startTime: "", endTime: "" }],
+      items: [{ description: "", category: "Autre", quantity: 1, unitPrice: 0, amount: 0, startTime: "", endTime: "" }],
     },
   });
   
@@ -197,6 +199,17 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
   const paidAmount = form.watch("paidAmount");
   const totalAmount = watchedItems.reduce((acc, current) => acc + (current.amount || 0), 0);
   const remainingAmount = paymentType === 'Échéancier' ? totalAmount - (paidAmount || 0) : 0;
+
+  // Auto-calculate amount when quantity or unitPrice changes
+  useEffect(() => {
+    watchedItems.forEach((item, index) => {
+      const newAmount = (item.quantity || 0) * (item.unitPrice || 0);
+      if (item.amount !== newAmount) {
+        form.setValue(`items.${index}.amount`, newAmount, { shouldValidate: true });
+      }
+    });
+  }, [watchedItems, form]);
+
 
   const filteredActivities = activities.filter(
     (activity) => {
@@ -258,9 +271,9 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
     const items = form.watch("items");
     items.forEach((item, index) => {
         if (item.category === "Réservation Studio" && selectedContract?.customPrices?.[item.description]) {
-            const newAmount = selectedContract.customPrices[item.description];
-            if (item.amount !== newAmount) {
-                 update(index, { ...item, amount: newAmount });
+            const newPrice = selectedContract.customPrices[item.description];
+            if (item.unitPrice !== newPrice) {
+                 update(index, { ...item, unitPrice: newPrice });
             }
         }
     });
@@ -347,7 +360,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
         phone: "",
         paymentType: "Direct",
         paidAmount: 0,
-        items: [{ description: "", category: "Autre", amount: 0, startTime: "", endTime: "" }],
+        items: [{ description: "", category: "Autre", quantity: 1, unitPrice: 0, amount: 0, startTime: "", endTime: "" }],
     });
   };
 
@@ -361,6 +374,8 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
             items: [{
                 description: `Paiement Contrat: ${contract.type} (${contract.id.substring(0, 5)})`,
                 category: "Paiement Contrat",
+                quantity: 1,
+                unitPrice: contract.value,
                 amount: contract.value,
                 startTime: '',
                 endTime: ''
@@ -373,7 +388,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
             phone: "",
             paymentType: "Direct",
             paidAmount: 0,
-            items: [{ description: "", category: "Autre", amount: 0, startTime: "", endTime: "" }],
+            items: [{ description: "", category: "Autre", quantity: 1, unitPrice: 0, amount: 0, startTime: "", endTime: "" }],
             contractId: undefined,
         });
     }
@@ -641,48 +656,37 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
                                                 <Button type="button" variant="ghost" size="icon" className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
                                                 )}
                                             </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <FormField control={form.control} name={`items.${index}.category`} render={({ field }) => (<FormItem><Label>Catégorie</Label><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent>{activityCategories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-                                                {watchedItems[index]?.category === 'Réservation Studio' ? (
-                                                     <FormField
-                                                        control={form.control}
-                                                        name={`items.${index}.description`}
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <Label>Prestation</Label>
-                                                                <Select 
-                                                                    onValueChange={(value) => {
-                                                                        field.onChange(value);
-                                                                        const price = calculatePrice(value, 1, selectedContract?.customPrices);
-                                                                        form.setValue(`items.${index}.amount`, price);
-                                                                    }}
-                                                                    defaultValue={field.value}
-                                                                >
-                                                                    <FormControl><SelectTrigger><SelectValue placeholder="Choisir une prestation..."/></SelectTrigger></FormControl>
-                                                                    <SelectContent>
-                                                                        {Object.keys(servicesWithPrices).map(service => (
-                                                                            <SelectItem key={service} value={service}>
-                                                                                {service}
-                                                                            </SelectItem>
-                                                                        ))}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                ) : (
-                                                    <FormField control={form.control} name={`items.${index}.description`} render={({ field }) => (<FormItem><Label>Description</Label><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                )}
+                                             <FormField control={form.control} name={`items.${index}.description`} render={({ field }) => (<FormItem><Label>Description</Label><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <FormField control={form.control} name={`items.${index}.category`} render={({ field: categoryField }) => (
+                                                    <FormItem>
+                                                        <Label>Catégorie</Label>
+                                                        <Select 
+                                                            onValueChange={(value) => {
+                                                                categoryField.onChange(value);
+                                                                const category = activityCategories.find(c => c.name === value);
+                                                                if (category && category.unitPrice) {
+                                                                    form.setValue(`items.${index}.unitPrice`, category.unitPrice);
+                                                                }
+                                                            }} 
+                                                            defaultValue={categoryField.value}>
+                                                            <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
+                                                            <SelectContent>{activityCategories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}</SelectContent>
+                                                        </Select>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )} />
+                                                <FormField control={form.control} name={`items.${index}.quantity`} render={({ field }) => (<FormItem><Label>Quantité</Label><FormControl><Input type="number" {...field} min="1" /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field }) => (<FormItem><Label>Prix Unitaire</Label><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <FormField control={form.control} name={`items.${index}.amount`} render={({ field }) => (<FormItem><Label>Montant Total</Label><FormControl><Input type="number" {...field} value={field.value || 0} /></FormControl><FormMessage /></FormItem>)} />
+                                             <FormField control={form.control} name={`items.${index}.amount`} render={({ field }) => (<FormItem><Label>Montant Total</Label><FormControl><Input type="number" {...field} readOnly className="bg-muted/50" /></FormControl><FormMessage /></FormItem>)} />
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <FormField control={form.control} name={`items.${index}.startTime`} render={({ field }) => (<FormItem><Label>Heure de début</Label><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                                 <FormField control={form.control} name={`items.${index}.endTime`} render={({ field }) => (<FormItem><Label>Heure de fin</Label><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
                                         </div>
                                     ))}
-                                    <Button type="button" size="sm" variant="outline" onClick={() => append({ description: "", category: "Autre", amount: 0, startTime: "", endTime: "" })}>
+                                    <Button type="button" size="sm" variant="outline" onClick={() => append({ description: "", category: "Autre", quantity: 1, unitPrice: 0, amount: 0, startTime: "", endTime: "" })}>
                                         <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un article
                                     </Button>
                                 </div>

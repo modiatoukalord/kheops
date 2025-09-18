@@ -23,7 +23,7 @@ export type ActivityCategory = {
     name: string;
     icon: string;
     color: string;
-    price?: number;
+    unitPrice?: number;
 };
 
 export type ContractTypeConfig = {
@@ -91,7 +91,7 @@ export default function PricingSettings() {
         name: formData.get("name") as string,
         icon: formData.get("icon") as string,
         color: formData.get("color") as string,
-        price: Number(formData.get("price")) || 0,
+        unitPrice: Number(formData.get("unitPrice")) || undefined,
     };
 
     try {
@@ -285,8 +285,8 @@ export default function PricingSettings() {
                                             <Input id="cat-name" name="name" defaultValue={editingCategory?.name} required />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label htmlFor="cat-price">Prix Unitaire (FCFA)</Label>
-                                            <Input id="cat-price" name="price" type="number" defaultValue={editingCategory?.price || ''} placeholder="Optionnel" />
+                                            <Label htmlFor="cat-unitPrice">Prix Unitaire (FCFA)</Label>
+                                            <Input id="cat-unitPrice" name="unitPrice" type="number" defaultValue={editingCategory?.unitPrice || ''} placeholder="Optionnel" />
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
@@ -344,7 +344,7 @@ export default function PricingSettings() {
                                 </div>
                                 <Icon className="h-8 w-8" />
                                 <span className="font-bold text-center">{cat.name}</span>
-                                {cat.price && <span className="text-xs font-mono">{cat.price.toLocaleString('fr-FR')} FCFA</span>}
+                                {cat.unitPrice && <span className="text-xs font-mono">{cat.unitPrice.toLocaleString('fr-FR')} FCFA</span>}
                             </div>
                         )
                     })}
