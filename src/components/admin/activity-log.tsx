@@ -621,15 +621,23 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], onAddTransaction, on
                                              <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
                                                 <PopoverTrigger asChild>
                                                     <FormControl>
-                                                        <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")} disabled={!!selectedContract}>
-                                                            {field.value ? existingClients.find(c => c.name === field.value)?.name : "Sélectionner ou créer un client"}
-                                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                        </Button>
+                                                        <Input
+                                                            placeholder="Sélectionner ou créer un client"
+                                                            {...field}
+                                                            onChange={(e) => {
+                                                                field.onChange(e.target.value);
+                                                                setClientSearch(e.target.value);
+                                                                if (!comboboxOpen) setComboboxOpen(true);
+                                                            }}
+                                                            onFocus={() => setComboboxOpen(true)}
+                                                            onBlur={() => setTimeout(() => setComboboxOpen(false), 150)}
+                                                            disabled={!!selectedContract}
+                                                            className="w-full"
+                                                        />
                                                     </FormControl>
                                                 </PopoverTrigger>
                                                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                                     <Command>
-                                                        <CommandInput placeholder="Rechercher un client..." onValueChange={setClientSearch} />
                                                         <CommandList>
                                                             <CommandEmpty>Aucun client trouvé. Créez-en un nouveau.</CommandEmpty>
                                                             <CommandGroup>
