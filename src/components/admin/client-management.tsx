@@ -254,12 +254,10 @@ export default function ClientManagement({
                 </div>
             </TabsContent>
              <TabsContent value="subscribers">
-                <UserManagement {...userManagementProps} />
+                <UserManagement subscribers={subscribers} {...userManagementProps} />
             </TabsContent>
         </CardContent>
       </Card>
     </Tabs>
   );
 }
-
-    

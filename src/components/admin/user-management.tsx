@@ -62,7 +62,7 @@ const getEndDate = (startDate: string, durationMonths = 1) => {
 
 
 export default function UserManagement({
-  subscribers,
+  subscribers = [],
   onAddSubscriber,
   onUpdateSubscriber,
   onDeleteSubscriber,
