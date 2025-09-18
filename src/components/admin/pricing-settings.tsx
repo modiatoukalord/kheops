@@ -163,7 +163,7 @@ export default function PricingSettings() {
 
 
   const getCategoryColorClass = (color: string) => {
-      return `bg-${color}-500/20 text-${color}-700 border-${color}-500/30`;
+      return `bg-${color}-500 text-white`;
   };
 
   return (
@@ -316,19 +316,17 @@ export default function PricingSettings() {
                     {activityCategories.map(cat => {
                         const Icon = iconMap[cat.icon as keyof typeof iconMap] || Tag;
                         return (
-                            <div key={cat.id} className={`p-3 rounded-lg flex items-center justify-between border ${getCategoryColorClass(cat.color)}`}>
-                                <div className="flex items-center gap-2 font-medium">
-                                    <Icon className="h-5 w-5" />
-                                    <span>{cat.name}</span>
-                                </div>
-                                <div className="flex gap-1">
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenCategoryDialog(cat)}>
+                            <div key={cat.id} className={`p-4 rounded-lg flex flex-col items-center justify-center gap-2 relative group border ${getCategoryColorClass(cat.color)}`}>
+                                <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/20" onClick={() => handleOpenCategoryDialog(cat)}>
                                         <Edit className="h-4 w-4" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:bg-red-500/10 hover:text-red-500" onClick={() => handleDeleteCategory(cat.id)}>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/20" onClick={() => handleDeleteCategory(cat.id)}>
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </div>
+                                <Icon className="h-8 w-8" />
+                                <span className="font-bold text-center">{cat.name}</span>
                             </div>
                         )
                     })}
@@ -410,19 +408,17 @@ export default function PricingSettings() {
                     {contractTypes.map(cat => {
                         const Icon = iconMap[cat.icon as keyof typeof iconMap] || FileSignature;
                         return (
-                            <div key={cat.id} className={`p-3 rounded-lg flex items-center justify-between border ${getCategoryColorClass(cat.color)}`}>
-                                <div className="flex items-center gap-2 font-medium">
-                                    <Icon className="h-5 w-5" />
-                                    <span>{cat.name}</span>
-                                </div>
-                                <div className="flex gap-1">
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenContractTypeDialog(cat)}>
+                            <div key={cat.id} className={`p-4 rounded-lg flex flex-col items-center justify-center gap-2 relative group border ${getCategoryColorClass(cat.color)}`}>
+                                 <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/20" onClick={() => handleOpenContractTypeDialog(cat)}>
                                         <Edit className="h-4 w-4" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:bg-red-500/10 hover:text-red-500" onClick={() => handleDeleteContractType(cat.id)}>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/20" onClick={() => handleDeleteContractType(cat.id)}>
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </div>
+                                <Icon className="h-8 w-8" />
+                                <span className="font-bold text-center">{cat.name}</span>
                             </div>
                         )
                     })}
