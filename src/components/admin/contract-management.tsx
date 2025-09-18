@@ -33,7 +33,6 @@ import type { GenerateContractClauseInput } from "@/ai/types/contract-clause";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Employee } from "./human-resources-management";
 import { ContractTypeConfig } from "./pricing-settings";
-import { Booking } from "./booking-schedule";
 
 
 const contractStatusConfig = {
@@ -78,7 +77,6 @@ export type Contract = {
 
 interface ContractManagementProps {
   employees: Employee[];
-  bookings: Booking[];
   onUpdateContract: (id: string, data: Partial<Omit<Contract, 'id'>>) => Promise<void>;
   onCollectPayment: (contract: Contract) => void;
 }
@@ -101,7 +99,7 @@ const contractFormSchema = z.object({
 type ContractFormValues = z.infer<typeof contractFormSchema>;
 
 
-export default function ContractManagement({ employees, bookings, onUpdateContract, onCollectPayment }: ContractManagementProps) {
+export default function ContractManagement({ employees, onUpdateContract, onCollectPayment }: ContractManagementProps) {
     const [contracts, setContracts] = useState<Contract[]>([]);
     const [contractTypes, setContractTypes] = useState<ContractTypeConfig[]>([]);
     const [isAddDialogOpen, setAddDialogOpen] = useState(false);
@@ -548,7 +546,6 @@ export default function ContractManagement({ employees, bookings, onUpdateContra
         </Table>
     );
     
-    const studioContractTypeNames = contractTypes.filter(ct => ct.name.toLowerCase().includes("studio")).map(ct => ct.name);
     const studioContracts = contracts.filter(c => c.type === 'Prestation studio');
     const partnerContracts = contracts.filter(c => c.type !== 'Prestation studio');
 
@@ -647,3 +644,5 @@ export default function ContractManagement({ employees, bookings, onUpdateContra
         </Card>
     );
 }
+
+    
