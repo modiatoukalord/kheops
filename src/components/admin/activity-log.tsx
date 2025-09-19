@@ -119,7 +119,7 @@ const installmentSchema = z.object({
 type InstallmentFormValues = z.infer<typeof installmentSchema>;
 
 
-const ActivityLog = forwardRef(({ bookings, contracts = [], clients = [], onAddTransaction, onUpdateBookingStatus, onUpdateClient, contractToPay, onContractPaid }: ActivityLogProps, ref) => {
+const ActivityLog = forwardRef<unknown, ActivityLogProps>(({ bookings, contracts = [], clients = [], onAddTransaction, onUpdateBookingStatus, onUpdateClient, contractToPay, onContractPaid }: ActivityLogProps, ref) => {
   const [activities, setActivities] = useState<ClientActivity[]>([]);
   const [activityCategories, setActivityCategories] = useState<ActivityCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -542,7 +542,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], clients = [], onAddT
           const deletePromises = relatedActivitiesToDelete.map(act => deleteDoc(doc(db, "activities", act.id)));
           await Promise.all(deletePromises);
           
-          await onUpdateBookingStatus(bookingId, 'En attente');
+          onUpdateBookingStatus(bookingId, 'En attente');
           
           toast({
               title: "Paiement Annulé",
@@ -1166,5 +1166,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], clients = [], onAddT
 
 ActivityLog.displayName = "ActivityLog";
 export default ActivityLog;
+
+    
 
     
