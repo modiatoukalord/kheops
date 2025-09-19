@@ -14,6 +14,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -522,34 +523,34 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], clients = [], onAddT
       installmentForm.reset();
   };
   
-    const handleCancelPayment = async (bookingId: string) => {
-        const relatedActivitiesToDelete = activities.filter(act => act.bookingId === bookingId);
-        
-        if (relatedActivitiesToDelete.length === 0) {
-            toast({ title: "Aucun paiement trouvé", description: "Aucun paiement à annuler pour cette réservation.", variant: "destructive" });
-            return;
-        }
+  const handleCancelPayment = async (bookingId: string) => {
+      const relatedActivitiesToDelete = activities.filter(act => act.bookingId === bookingId);
+      
+      if (relatedActivitiesToDelete.length === 0) {
+          toast({ title: "Aucun paiement trouvé", description: "Aucun paiement à annuler pour cette réservation.", variant: "destructive" });
+          return;
+      }
 
-        if (!window.confirm("Êtes-vous sûr de vouloir annuler le(s) paiement(s) pour cette réservation ?")) {
-            return;
-        }
+      if (!window.confirm("Êtes-vous sûr de vouloir annuler le(s) paiement(s) pour cette réservation ?")) {
+          return;
+      }
 
-        try {
-            const deletePromises = relatedActivitiesToDelete.map(act => deleteDoc(doc(db, "activities", act.id)));
-            await Promise.all(deletePromises);
-            
-            await onUpdateBookingStatus(bookingId, 'En attente');
-            
-            toast({
-                title: "Paiement Annulé",
-                description: "Le paiement pour cette réservation a été annulé et le statut de la réservation a été mis à jour.",
-                variant: "destructive"
-            });
-        } catch (error) {
-            console.error("Error deleting payment activities: ", error);
-            toast({ title: "Erreur", description: "Impossible d'annuler le paiement.", variant: "destructive" });
-        }
-    };
+      try {
+          const deletePromises = relatedActivitiesToDelete.map(act => deleteDoc(doc(db, "activities", act.id)));
+          await Promise.all(deletePromises);
+          
+          await onUpdateBookingStatus(bookingId, 'En attente');
+          
+          toast({
+              title: "Paiement Annulé",
+              description: "Le paiement pour cette réservation a été annulé et le statut de la réservation a été mis à jour.",
+              variant: "destructive"
+          });
+      } catch (error) {
+          console.error("Error deleting payment activities: ", error);
+          toast({ title: "Erreur", description: "Impossible d'annuler le paiement.", variant: "destructive" });
+      }
+  };
 
   const handlePrintReceipt = () => {
     window.print();
@@ -1162,7 +1163,5 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], clients = [], onAddT
 
 ActivityLog.displayName = "ActivityLog";
 export default ActivityLog;
-
-    
 
     
