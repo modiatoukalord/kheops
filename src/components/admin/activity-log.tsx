@@ -430,8 +430,8 @@ const ActivityLog = forwardRef<unknown, ActivityLogProps>(({ bookings, contracts
             items: [{
                 description: `Paiement Réservation: ${booking.projectName} (${booking.service})`,
                 category: "Réservation Studio",
-                quantity: booking.tracks?.length || 1,
-                unitPrice: booking.amount / (booking.tracks?.length || 1),
+                quantity: 1, // Treat the whole booking as one item
+                unitPrice: booking.amount,
                 amount: booking.amount,
                 startTime: '',
                 endTime: ''
@@ -766,7 +766,7 @@ const ActivityLog = forwardRef<unknown, ActivityLogProps>(({ bookings, contracts
                                                             </FormItem>
                                                         )} />
                                                         <FormField control={form.control} name={`items.${index}.quantity`} render={({ field }) => (<FormItem><Label>Quantité</Label><FormControl><Input type="number" {...field} min="1" /></FormControl><FormMessage /></FormItem>)} />
-                                                        <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field }) => (<FormItem><Label>Prix Unitaire</Label><FormControl><Input type="number" {...field} readOnly className="bg-muted/50" /></FormControl><FormMessage /></FormItem>)} />
+                                                        <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field }) => (<FormItem><Label>Prix Unitaire</Label><FormControl><Input type="number" {...field} readOnly={form.getValues('bookingId') ? true : false} className={form.getValues('bookingId') ? "bg-muted/50" : ""} /></FormControl><FormMessage /></FormItem>)} />
                                                     </div>
                                                     <FormField control={form.control} name={`items.${index}.amount`} render={({ field }) => (<FormItem><Label>Montant Total</Label><FormControl><Input type="number" {...field} readOnly className="bg-muted/50" /></FormControl><FormMessage /></FormItem>)} />
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
