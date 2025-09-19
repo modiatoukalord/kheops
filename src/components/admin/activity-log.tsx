@@ -855,9 +855,9 @@ const ActivityLog = forwardRef<unknown, ActivityLogProps>(({ bookings, contracts
                                                             </FormItem>
                                                         )} />
                                                         <FormField control={form.control} name={`items.${index}.quantity`} render={({ field }) => (<FormItem><Label>Quantité</Label><FormControl><Input type="number" {...field} min="1" /></FormControl><FormMessage /></FormItem>)} />
-                                                        <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field }) => (<FormItem><Label>Prix Unitaire</Label><FormControl><Input type="number" {...field} readOnly={form.getValues('bookingId') ? true : false} className={form.getValues('bookingId') ? "bg-muted/50" : ""} /></FormControl><FormMessage /></FormItem>)} />
+                                                        {paymentType !== 'Points' && <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field }) => (<FormItem><Label>Prix Unitaire</Label><FormControl><Input type="number" {...field} readOnly={form.getValues('bookingId') ? true : false} className={form.getValues('bookingId') ? "bg-muted/50" : ""} /></FormControl><FormMessage /></FormItem>)} />}
                                                     </div>
-                                                    <FormField control={form.control} name={`items.${index}.amount`} render={({ field }) => (<FormItem><Label>Montant Total</Label><FormControl><Input type="number" {...field} readOnly className="bg-muted/50" /></FormControl><FormMessage /></FormItem>)} />
+                                                    {paymentType !== 'Points' && <FormField control={form.control} name={`items.${index}.amount`} render={({ field }) => (<FormItem><Label>Montant Total</Label><FormControl><Input type="number" {...field} readOnly className="bg-muted/50" /></FormControl><FormMessage /></FormItem>)} />}
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                         <FormField control={form.control} name={`items.${index}.startTime`} render={({ field }) => (<FormItem><Label>Heure de début</Label><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                                         <FormField control={form.control} name={`items.${index}.endTime`} render={({ field }) => (<FormItem><Label>Heure de fin</Label><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>)} />
@@ -1272,3 +1272,5 @@ const ActivityLog = forwardRef<unknown, ActivityLogProps>(({ bookings, contracts
 
 ActivityLog.displayName = "ActivityLog";
 export default ActivityLog;
+
+    
