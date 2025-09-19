@@ -132,6 +132,7 @@ const ActivityLog = forwardRef<unknown, ActivityLogProps>(({ bookings, contracts
   const [detailsActivity, setDetailsActivity] = useState<ClientActivity | null>(null);
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [installmentAmounts, setInstallmentAmounts] = useState<{ [key: string]: number | string }>({});
 
 
   const { toast } = useToast();
@@ -402,6 +403,89 @@ const ActivityLog = forwardRef<unknown, ActivityLogProps>(({ bookings, contracts
     });
     setSelectedClient(null);
   };
+  
+  const handleInstallmentAmountChange = (bookingId: string, amount: string) => {
+    const numericAmount = parseFloat(amount);
+    setInstallmentAmounts(prev => ({
+      ...prev,
+      [bookingId]: isNaN(numericAmount) ? "" : numericAmount
+    }));
+  };
+
+  const handleBookingPayment = async (booking: Booking) => {
+    const amountToPay = installmentAmounts[booking.id];
+
+    if (typeof amountToPay !== 'number' || amountToPay <= 0) {
+      toast({ title: "Montant Invalide", description: "Veuillez entrer un montant positif.", variant: "destructive" });
+      return;
+    }
+
+    const relatedActivities = activities.filter(act => act.bookingId === booking.id);
+    const totalPaid = relatedActivities.reduce((sum, act) => sum + (act.paidAmount || 0), 0);
+    const remainingAmount = booking.amount - totalPaid;
+
+    if (amountToPay > remainingAmount) {
+        toast({ title: "Erreur de Paiement", description: "Le montant versé dépasse le montant restant.", variant: "destructive"});
+        return;
+    }
+
+    // Check if there is an existing installment activity for this booking
+    const installmentActivity = relatedActivities.find(act => act.paymentType === 'Échéancier');
+    
+    try {
+      if (installmentActivity) {
+        // Update existing installment activity
+        const newPaidAmount = (installmentActivity.paidAmount || 0) + amountToPay;
+        await updateDoc(doc(db, "activities", installmentActivity.id), {
+          paidAmount: newPaidAmount,
+          remainingAmount: installmentActivity.totalAmount - newPaidAmount,
+        });
+      } else {
+        // Create a new activity for this payment
+        const activityPayload: Omit<ClientActivity, 'id'> = {
+            clientName: booking.artistName,
+            phone: booking.phone,
+            description: `Paiement Réservation: ${booking.projectName} (${booking.service})`,
+            category: "Réservation Studio",
+            totalAmount: booking.amount,
+            date: new Date(),
+            paymentType: amountToPay < booking.amount ? "Échéancier" : "Direct",
+            paidAmount: amountToPay,
+            remainingAmount: booking.amount - amountToPay,
+            bookingId: booking.id,
+        };
+        await addDoc(collection(db, "activities"), activityPayload);
+      }
+      
+      // Create a transaction for this payment
+      const transactionPayload: Omit<Transaction, 'id'> = {
+        date: format(new Date(), 'yyyy-MM-dd'),
+        description: `Encaissement Studio: ${booking.projectName} - ${booking.artistName}`,
+        type: 'Revenu',
+        category: "Prestation Studio",
+        amount: amountToPay,
+        status: 'Complété'
+      };
+      onAddTransaction(transactionPayload);
+
+      if (totalPaid + amountToPay >= booking.amount) {
+        onUpdateBookingStatus(booking.id, 'Payé');
+      }
+
+      toast({
+          title: "Paiement Enregistré",
+          description: `Un versement de ${amountToPay.toLocaleString('fr-FR')} FCFA a été enregistré pour la réservation.`,
+      });
+      
+      // Clear input
+      setInstallmentAmounts(prev => ({...prev, [booking.id]: ""}));
+
+    } catch (error) {
+      console.error("Error processing booking payment: ", error);
+      toast({ title: "Erreur", description: "Impossible d'enregistrer le paiement.", variant: "destructive" });
+    }
+  };
+
 
   const handleOpenNewActivityDialog = ({ contract, booking }: { contract?: Contract | null, booking?: Booking | null } = {}) => {
      if (contract) {
@@ -425,7 +509,7 @@ const ActivityLog = forwardRef<unknown, ActivityLogProps>(({ bookings, contracts
          form.reset({
             clientName: booking.artistName,
             phone: booking.phone || '',
-            paymentType: "Direct",
+            paymentType: booking.amount > 0 ? "Direct" : "Échéancier",
             paidAmount: booking.amount,
             items: [{
                 description: `Paiement Réservation: ${booking.projectName} (${booking.service})`,
@@ -936,12 +1020,11 @@ const ActivityLog = forwardRef<unknown, ActivityLogProps>(({ bookings, contracts
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Artiste</TableHead>
-                                    <TableHead>Projet</TableHead>
+                                    <TableHead>Artiste & Projet</TableHead>
                                     <TableHead>Date & Heure</TableHead>
                                     <TableHead className="text-right">Montant / Payé</TableHead>
                                     <TableHead className="text-center">Statut Paiement</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
+                                    <TableHead className="text-right w-[300px]">Encaisser un montant</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -951,15 +1034,13 @@ const ActivityLog = forwardRef<unknown, ActivityLogProps>(({ bookings, contracts
                                         const totalPaid = relatedActivities.reduce((sum, act) => sum + (act.paidAmount || 0), 0);
                                         const isFullyPaid = booking.status === 'Payé' || totalPaid >= booking.amount;
                                         const isPartiallyPaid = totalPaid > 0 && totalPaid < booking.amount;
-                                        const firstActivity = relatedActivities[0];
 
                                         return (
                                         <TableRow key={booking.id}>
                                             <TableCell>
                                                 <div className="font-medium">{booking.artistName}</div>
-                                                <div className="text-xs text-muted-foreground">{booking.phone}</div>
+                                                <div className="text-xs text-muted-foreground">{booking.projectName}</div>
                                             </TableCell>
-                                            <TableCell>{booking.projectName}</TableCell>
                                             <TableCell>{format(booking.date, "d MMM yyyy", { locale: fr })} à {booking.timeSlot}</TableCell>
                                             <TableCell className="text-right font-semibold">
                                                 <div>{booking.amount.toLocaleString('fr-FR')} FCFA</div>
@@ -976,10 +1057,19 @@ const ActivityLog = forwardRef<unknown, ActivityLogProps>(({ bookings, contracts
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 {!isFullyPaid ? (
-                                                    <Button size="sm" onClick={() => handleOpenNewActivityDialog({ booking })}>
+                                                    <div className="flex items-center gap-2 justify-end">
+                                                      <Input
+                                                        type="number"
+                                                        placeholder="Montant"
+                                                        className="w-32 h-9"
+                                                        value={installmentAmounts[booking.id] || ''}
+                                                        onChange={(e) => handleInstallmentAmountChange(booking.id, e.target.value)}
+                                                      />
+                                                      <Button size="sm" onClick={() => handleBookingPayment(booking)}>
                                                         <HandCoins className="mr-2 h-4 w-4"/>
                                                         Encaisser
-                                                    </Button>
+                                                      </Button>
+                                                    </div>
                                                 ) : (
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
@@ -988,14 +1078,9 @@ const ActivityLog = forwardRef<unknown, ActivityLogProps>(({ bookings, contracts
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
-                                                             <DropdownMenuItem onClick={() => { setDetailsActivity(firstActivity); setDetailsDialogOpen(true); }}>
-                                                                <Eye className="mr-2 h-4 w-4" /> Voir les détails
-                                                            </DropdownMenuItem>
-                                                            {!isFullyPaid && firstActivity && firstActivity.paymentType === 'Échéancier' && (
-                                                                <DropdownMenuItem onClick={() => handleOpenInstallmentDialog(firstActivity)}>
-                                                                    <HandCoins className="mr-2 h-4 w-4" /> Encaisser le reste
-                                                                </DropdownMenuItem>
-                                                            )}
+                                                             {relatedActivities[0] && <DropdownMenuItem onClick={() => { setDetailsActivity(relatedActivities[0]); setDetailsDialogOpen(true); }}>
+                                                                <Eye className="mr-2 h-4 w-4" /> Voir le reçu
+                                                            </DropdownMenuItem>}
                                                             <DropdownMenuItem className="text-red-500" onClick={() => handleCancelPayment(booking.id)}>
                                                                 <Ban className="mr-2 h-4 w-4"/>
                                                                 Annuler le paiement
