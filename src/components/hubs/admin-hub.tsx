@@ -16,13 +16,13 @@ import ContractManagement, { Contract } from "@/components/admin/contract-manage
 import ActivityLog, { ClientActivity } from "@/components/admin/activity-log";
 import PlatformManagement, { Payout } from "@/components/admin/platform-management";
 import FixedCostsManagement, { FixedCost } from "@/components/admin/fixed-costs-management";
-import PricingSettings from "@/components/admin/pricing-settings";
+import PricingSettings, { ActivityCategory } from "@/components/admin/pricing-settings";
 import HumanResourcesManagement, { Employee } from "@/components/admin/human-resources-management";
 import OrgChart from "@/components/admin/org-chart";
 import { format, parseISO, isAfter } from "date-fns";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, updateDoc, doc, addDoc, deleteDoc, Timestamp, orderBy } from "firebase/firestore";
+import { collection, onSnapshot, query, updateDoc, doc, addDoc, deleteDoc, Timestamp, orderBy, writeBatch, getDocs, where } from "firebase/firestore";
 import type { Subscriber } from "@/components/admin/user-management";
 
 
@@ -127,6 +127,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
   const [activities, setActivities] = useState<ClientActivity[]>([]);
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [activityCategories, setActivityCategories] = useState<ActivityCategory[]>([]);
   const [loyaltyPointValue, setLoyaltyPointValue] = useState(100); // Default to 100 FCFA per point
 
   const activityLogRef = useRef<{ openDialog: (data: any) => void }>(null);
@@ -143,6 +144,10 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
   }, [activeView, setShowMainHeader]);
   
   useEffect(() => {
+    const unsubActivityCategories = onSnapshot(collection(db, "activityCategories"), (snapshot) => {
+        setActivityCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ActivityCategory)));
+    });
+
     const qFixedCosts = query(collection(db, "fixedCosts"));
     const unsubFixedCosts = onSnapshot(qFixedCosts, (snapshot) => {
         const costsData = snapshot.docs.map(doc => {
@@ -191,12 +196,13 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
 
 
     return () => {
+      unsubActivityCategories();
       unsubFixedCosts();
       unsubActivities();
       unsubRewards();
       unsubClients();
     };
-  }, [subscribers, activities, rewards]);
+  }, [subscribers, activities, rewards, activityCategories]);
   
    const mergeClientData = (
         dbClients: Client[], 
@@ -206,48 +212,26 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
     ): Client[] => {
         const clientMap = new Map<string, Client>();
 
-        // Process subscribers first
-        subscribers.forEach(sub => {
-            const client: Client = {
-                id: sub.id,
-                name: sub.name,
-                phone: sub.phone,
-                type: "Abonné",
-                firstSeen: parseISO(sub.startDate),
-                lastSeen: parseISO(sub.endDate),
-                totalSpent: parseFloat(sub.amount.replace(/[^\d,]/g, '').replace(',', '.')),
-                activityCount: 1, // At least one activity (the subscription itself)
-                loyaltyPoints: 0,
-                loyaltyTier: "Bronze",
-                subscriberInfo: sub,
-                rewards: [],
-            };
-            clientMap.set(sub.phone, client); // Use phone as a key for merging
-        });
-
-        // Process activities and merge with existing clients or create new ones
-        activities.forEach(act => {
-            const phoneKey = act.phone || act.clientName; // Use phone, fallback to name
+        const processClientActivity = (name: string, phone: string, date: Date, amount: number) => {
+            const phoneKey = phone || name;
             if (!phoneKey) return;
-
-            const totalAmount = act.paymentType === 'Direct' ? act.totalAmount : (act.paidAmount || 0);
 
             if (clientMap.has(phoneKey)) {
                 const existingClient = clientMap.get(phoneKey)!;
-                existingClient.totalSpent += totalAmount;
+                existingClient.totalSpent += amount;
                 existingClient.activityCount++;
-                if (isAfter(act.date, existingClient.lastSeen)) {
-                    existingClient.lastSeen = act.date;
+                if (isAfter(date, existingClient.lastSeen)) {
+                    existingClient.lastSeen = date;
                 }
             } else {
-                const newClient: Client = {
-                    id: act.id, // This might not be unique if a client has multiple activities
-                    name: act.clientName,
-                    phone: act.phone || 'N/A',
+                 const newClient: Client = {
+                    id: `client-${phoneKey}`, // Create a consistent ID
+                    name: name,
+                    phone: phone || 'N/A',
                     type: "Client Ponctuel",
-                    firstSeen: act.date,
-                    lastSeen: act.date,
-                    totalSpent: totalAmount,
+                    firstSeen: date,
+                    lastSeen: date,
+                    totalSpent: amount,
                     activityCount: 1,
                     loyaltyPoints: 0,
                     loyaltyTier: "Bronze",
@@ -255,22 +239,38 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
                 };
                 clientMap.set(phoneKey, newClient);
             }
+        };
+
+        // Process subscribers first to establish them in the map
+        subscribers.forEach(sub => {
+            const totalAmount = parseFloat(sub.amount.replace(/[^\d,]/g, '').replace(',', '.'));
+            processClientActivity(sub.name, sub.phone, parseISO(sub.startDate), totalAmount);
+            const client = clientMap.get(sub.phone)!;
+            client.type = "Abonné";
+            client.subscriberInfo = sub;
+        });
+
+        // Process activities
+        activities.forEach(act => {
+            if (act.paymentType === "Points") return; // Don't count point spending towards total spent
+            const totalAmount = act.paymentType === 'Direct' ? act.totalAmount : (act.paidAmount || 0);
+            processClientActivity(act.clientName, act.phone || '', act.date, totalAmount);
         });
 
         const allClients = Array.from(clientMap.values());
         
         allClients.forEach(client => {
-            const dbClient = dbClients.find(c => c.phone === client.phone);
+            const dbClient = dbClients.find(c => c.phone === client.phone || c.name === client.name);
             
-            // New loyalty points calculation based on total spent
-            const earnedPoints = loyaltyPointValue > 0 ? Math.floor(client.totalSpent / loyaltyPointValue) : 0;
+            const pointsFromSpending = loyaltyPointValue > 0 ? Math.floor(client.totalSpent / loyaltyPointValue) : 0;
+            const awardedPoints = (dbClient?.loyaltyPoints || 0) - (dbClient?.spentPoints || 0) + pointsFromSpending;
             
-            client.loyaltyPoints = dbClient?.loyaltyPoints || earnedPoints;
+            client.loyaltyPoints = dbClient?.loyaltyPoints || awardedPoints;
 
-            if (client.loyaltyPoints > loyaltyTiers.Diamant) client.loyaltyTier = "Diamant";
-            else if (client.loyaltyPoints > loyaltyTiers.Platine) client.loyaltyTier = "Platine";
-            else if (client.loyaltyPoints > loyaltyTiers.Or) client.loyaltyTier = "Or";
-            else if (client.loyaltyPoints > loyaltyTiers.Argent) client.loyaltyTier = "Argent";
+            if (client.loyaltyPoints >= loyaltyTiers.Diamant) client.loyaltyTier = "Diamant";
+            else if (client.loyaltyPoints >= loyaltyTiers.Platine) client.loyaltyTier = "Platine";
+            else if (client.loyaltyPoints >= loyaltyTiers.Or) client.loyaltyTier = "Or";
+            else if (client.loyaltyPoints >= loyaltyTiers.Argent) client.loyaltyTier = "Argent";
             else client.loyaltyTier = "Bronze";
             
             client.rewards = rewards.filter(r => r.clientId === client.id);
@@ -361,23 +361,24 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
     await addDoc(collection(db, "rewards"), newReward);
   };
   
-  const onUpdateClient = async (clientId: string, clientData: Partial<Omit<Client, 'id'>>) => {
-     try {
-        // Here, we need to find the actual document ID in the 'clients' collection if it exists
-        // This is a simplification. A real app might need a more robust way to link Client and DB doc.
-        const clientDocRef = doc(db, "clients", clientId); // This assumes the client ID is the doc ID.
-        await updateDoc(clientDocRef, clientData);
-     } catch (error) {
-         console.error("Failed to update client points", error);
-         // Fallback to creating a new client doc if it doesn't exist
-         try {
-            const clientDocRef = doc(db, "clients", clientId);
-            await addDoc(collection(db, "clients"), { ...clientData, id: clientId });
-         } catch(e) {
-            console.error("Also failed to create client doc", e);
-         }
-     }
-  }
+  const onUpdateClient = async (clientId: string, clientData: Partial<Client>) => {
+    try {
+        const q = query(collection(db, "clients"), where("id", "==", clientId));
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+            const docId = querySnapshot.docs[0].id;
+            const clientRef = doc(db, "clients", docId);
+            await updateDoc(clientRef, clientData);
+        } else {
+            const batch = writeBatch(db);
+            const clientRef = doc(collection(db, "clients"));
+            batch.set(clientRef, { ...clientData, id: clientId });
+            await batch.commit();
+        }
+    } catch (error) {
+        console.error("Failed to update client", error);
+    }
+  };
 
   const handleCreateContractFromBooking = (booking: Booking) => {
       setBookingForContract(booking);
@@ -490,3 +491,4 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
 
 AdminHub.displayName = "AdminHub";
 export default AdminHub;
+

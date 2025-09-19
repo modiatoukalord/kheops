@@ -43,6 +43,7 @@ export type Client = {
     activityCount: number;
     loyaltyTier: "Bronze" | "Argent" | "Or" | "Platine" | "Diamant";
     loyaltyPoints: number;
+    spentPoints?: number;
     subscriberInfo?: Subscriber;
     rewards: Reward[];
 };

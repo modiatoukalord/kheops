@@ -25,10 +25,11 @@ export type ActivityCategory = {
     color: string;
     unitPrice?: number;
     pointCost?: number;
+    loyaltyPointsAwarded?: number;
 };
 
 export type ContractTypeConfig = {
-    id: string;
+    id:string;
     name: string;
     icon: string;
     color: string;
@@ -46,7 +47,7 @@ export default function PricingSettings() {
   const [isContractTypeDialogOpen, setContractTypeDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<ActivityCategory | null>(null);
   const [editingContractType, setEditingContractType] = useState<ContractTypeConfig | null>(null);
-  const [loyaltyPointValue, setLoyaltyPointValue] = useState(100);
+  const [loyaltyPointValue, setLoyaltyPointValue] = useState(1000); // 1 point for every 1000 FCFA
   const [loyaltyTiers, setLoyaltyTiers] = useState({
     Argent: 5,
     Or: 10,
@@ -88,12 +89,13 @@ export default function PricingSettings() {
   const handleCategoryFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const categoryData = {
+    const categoryData: Omit<ActivityCategory, 'id'> = {
         name: formData.get("name") as string,
         icon: formData.get("icon") as string,
         color: formData.get("color") as string,
         unitPrice: Number(formData.get("unitPrice")) || undefined,
         pointCost: Number(formData.get("pointCost")) || undefined,
+        loyaltyPointsAwarded: Number(formData.get("loyaltyPointsAwarded")) || undefined,
     };
 
     try {
@@ -291,9 +293,13 @@ export default function PricingSettings() {
                                             <Input id="cat-unitPrice" name="unitPrice" type="number" defaultValue={editingCategory?.unitPrice || ''} placeholder="Optionnel" />
                                         </div>
                                          <div className="space-y-2">
-                                            <Label htmlFor="cat-pointCost">Coût en Points</Label>
+                                            <Label htmlFor="cat-pointCost">Coût en Points (pour achat)</Label>
                                             <Input id="cat-pointCost" name="pointCost" type="number" defaultValue={editingCategory?.pointCost || ''} placeholder="Optionnel" />
                                         </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="cat-loyaltyPointsAwarded">Points de fidélité (gagnés)</Label>
+                                        <Input id="cat-loyaltyPointsAwarded" name="loyaltyPointsAwarded" type="number" defaultValue={editingCategory?.loyaltyPointsAwarded || ''} placeholder="Optionnel" />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
@@ -350,10 +356,10 @@ export default function PricingSettings() {
                                 </div>
                                 <Icon className="h-8 w-8" />
                                 <span className="font-bold text-center">{cat.name}</span>
-                                <div className="text-xs font-mono text-center">
-                                    {cat.unitPrice && <span>{cat.unitPrice.toLocaleString('fr-FR')} FCFA</span>}
-                                    {cat.unitPrice && cat.pointCost && <span className="mx-1">/</span>}
-                                    {cat.pointCost && <span className="flex items-center justify-center gap-1">{cat.pointCost} <Star className="h-3 w-3 text-yellow-300"/></span>}
+                                <div className="text-xs font-mono text-center space-y-1">
+                                    {cat.unitPrice && <div>{cat.unitPrice.toLocaleString('fr-FR')} FCFA</div>}
+                                    {cat.pointCost && <div className="flex items-center justify-center gap-1">Coût: {cat.pointCost} <Star className="h-3 w-3 text-yellow-300"/></div>}
+                                    {cat.loyaltyPointsAwarded && <div className="flex items-center justify-center gap-1">Gagné: {cat.loyaltyPointsAwarded} <Star className="h-3 w-3 text-yellow-300"/></div>}
                                 </div>
                             </div>
                         )
@@ -469,7 +475,7 @@ export default function PricingSettings() {
           </CardHeader>
           <CardContent className="space-y-6">
              <div className="space-y-2 max-w-sm">
-                <Label htmlFor="loyalty-point-value">Valeur d'un point (FCFA)</Label>
+                <Label htmlFor="loyalty-point-value">Ratio d'acquisition des points</Label>
                 <div className="relative">
                     <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
@@ -480,7 +486,7 @@ export default function PricingSettings() {
                         className="pl-10" 
                     />
                 </div>
-                <p className="text-xs text-muted-foreground">Chaque point de fidélité équivaut à cette somme en FCFA lors de l'utilisation des récompenses.</p>
+                <p className="text-xs text-muted-foreground">Le client gagne 1 point pour chaque tranche de ce montant dépensé (en FCFA).</p>
             </div>
             <Separator />
             <div>

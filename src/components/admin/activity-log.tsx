@@ -289,6 +289,28 @@ const ActivityLog = forwardRef<unknown, ActivityLogProps>(({ bookings, contracts
   const processActivityData = async (data: ActivityFormValues) => {
     const { clientName, phone, items, paymentType, paidAmount, contractId, bookingId } = data;
     
+    let currentClient = selectedClient || clients.find(c => c.name === clientName || c.phone === phone);
+    
+    if (!currentClient) {
+        // This is a simplified creation, a more robust solution might be needed
+        const newClientId = `client-${Date.now()}`;
+        currentClient = {
+            id: newClientId,
+            name: clientName,
+            phone: phone || '',
+            type: "Client Ponctuel",
+            firstSeen: new Date(),
+            lastSeen: new Date(),
+            totalSpent: 0,
+            activityCount: 0,
+            loyaltyPoints: 0,
+            loyaltyTier: 'Bronze',
+            rewards: [],
+        };
+        await onUpdateClient(newClientId, currentClient);
+    }
+
+
      const baseActivityPayload = {
       clientName,
       phone,
@@ -297,29 +319,24 @@ const ActivityLog = forwardRef<unknown, ActivityLogProps>(({ bookings, contracts
     };
     
     if (paymentType === 'Points') {
-        if (!selectedClient) {
-            toast({ title: "Erreur", description: "Aucun client sélectionné pour le paiement par points.", variant: "destructive" });
-            return;
-        }
-        if (selectedClient.loyaltyPoints < totalPointsCost) {
+        if (currentClient.loyaltyPoints < totalPointsCost) {
             toast({ title: "Erreur", description: "Points de fidélité insuffisants.", variant: "destructive" });
             return;
         }
 
-        // Create a "Reward" expense transaction
-        const transactionPayload: Omit<Transaction, 'id'> = {
-            date: format(new Date(), 'yyyy-MM-dd'),
-            description: `Achat par points: ${items.map(i => i.description).join(', ')} - ${clientName}`,
-            type: 'Dépense',
-            category: "Autre", // Or a specific "Reward" category
-            amount: -totalAmount, // The monetary value of the points used
-            status: 'Complété'
-        };
-        onAddTransaction(transactionPayload);
-
         // Deduct points from client
-        await onUpdateClient(selectedClient.id, {
-            loyaltyPoints: selectedClient.loyaltyPoints - totalPointsCost
+        await onUpdateClient(currentClient.id, {
+            loyaltyPoints: currentClient.loyaltyPoints - totalPointsCost
+        });
+    } else {
+        // Award points
+        const pointsToAward = items.reduce((acc, item) => {
+            const category = activityCategories.find(c => c.name === item.category);
+            return acc + (category?.loyaltyPointsAwarded || 0);
+        }, 0);
+
+        await onUpdateClient(currentClient.id, {
+            loyaltyPoints: (currentClient.loyaltyPoints || 0) + pointsToAward
         });
     }
 
@@ -362,17 +379,29 @@ const ActivityLog = forwardRef<unknown, ActivityLogProps>(({ bookings, contracts
             activityPayload.bookingId = bookingId;
         }
 
-        if (paymentType !== 'Points') {
-            const transactionPayload: Omit<Transaction, 'id'> = {
-                date: format(new Date(), 'yyyy-MM-dd'),
-                description: `Vente: ${item.description} - ${clientName}`,
-                type: 'Revenu',
-                category: activityTransactionMapping[item.category] || "Vente",
-                amount: paymentType === 'Échéancier' ? (paidAmount || 0) : item.amount,
-                status: 'Complété'
-            };
-            onAddTransaction(transactionPayload);
+        const transactionCategory = activityTransactionMapping[item.category] || "Vente";
+        let transactionAmount: number;
+        let transactionDescription: string;
+        let transactionType: 'Revenu' | 'Dépense' = 'Revenu';
+
+        if (paymentType === 'Points') {
+            transactionType = 'Dépense';
+            transactionAmount = -item.amount; // The monetary value of the points used
+            transactionDescription = `Récompense: ${item.description} - ${clientName}`;
+        } else {
+            transactionAmount = paymentType === 'Échéancier' ? (paidAmount || 0) : item.amount;
+            transactionDescription = `Vente: ${item.description} - ${clientName}`;
         }
+        
+        const transactionPayload: Omit<Transaction, 'id'> = {
+            date: format(new Date(), 'yyyy-MM-dd'),
+            description: transactionDescription,
+            type: transactionType,
+            category: transactionCategory,
+            amount: transactionAmount,
+            status: 'Complété'
+        };
+        onAddTransaction(transactionPayload);
 
         return addDoc(collection(db, "activities"), activityPayload);
     });
