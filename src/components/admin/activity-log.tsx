@@ -130,6 +130,7 @@ const ActivityLog = forwardRef<unknown, ActivityLogProps>(({ bookings, contracts
   const [isInstallmentDialogOpen, setInstallmentDialogOpen] = useState(false);
   const [activityForInstallment, setActivityForInstallment] = useState<ClientActivity | null>(null);
   const [detailsActivity, setDetailsActivity] = useState<ClientActivity | null>(null);
+  const [detailsClient, setDetailsClient] = useState<Client | null>(null);
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [installmentAmounts, setInstallmentAmounts] = useState<{ [key: string]: number | string }>({});
@@ -506,7 +507,11 @@ const ActivityLog = forwardRef<unknown, ActivityLogProps>(({ bookings, contracts
             contractId: contract.id,
         });
     } else if (booking) {
-         form.reset({
+        const itemUnitPrice = booking.amount;
+        const itemQuantity = 1;
+        const itemAmount = itemUnitPrice * itemQuantity;
+
+        form.reset({
             clientName: booking.artistName,
             phone: booking.phone || '',
             paymentType: booking.amount > 0 ? "Direct" : "Échéancier",
@@ -514,9 +519,9 @@ const ActivityLog = forwardRef<unknown, ActivityLogProps>(({ bookings, contracts
             items: [{
                 description: `Paiement Réservation: ${booking.projectName} (${booking.service})`,
                 category: "Réservation Studio",
-                quantity: 1, // Treat the whole booking as one item
-                unitPrice: booking.amount,
-                amount: booking.amount,
+                quantity: itemQuantity,
+                unitPrice: itemUnitPrice,
+                amount: itemAmount,
                 startTime: '',
                 endTime: ''
             }],
@@ -987,7 +992,12 @@ const ActivityLog = forwardRef<unknown, ActivityLogProps>(({ bookings, contracts
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={() => { setDetailsActivity(activity); setDetailsDialogOpen(true); }}>
+                                            <DropdownMenuItem onClick={() => { 
+                                                const client = clients.find(c => c.name === activity.clientName || (activity.phone && c.phone === activity.phone));
+                                                setDetailsClient(client || null);
+                                                setDetailsActivity(activity); 
+                                                setDetailsDialogOpen(true); 
+                                            }}>
                                                 <Eye className="mr-2 h-4 w-4" /> Voir les détails
                                             </DropdownMenuItem>
                                             {isInstallmentAndUnpaid && (
@@ -1079,7 +1089,12 @@ const ActivityLog = forwardRef<unknown, ActivityLogProps>(({ bookings, contracts
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
-                                                            {relatedActivities.length > 0 && <DropdownMenuItem onClick={() => { setDetailsActivity(relatedActivities[0]); setDetailsDialogOpen(true); }}>
+                                                            {relatedActivities.length > 0 && <DropdownMenuItem onClick={() => { 
+                                                                const client = clients.find(c => c.name === booking.artistName || (booking.phone && c.phone === booking.phone));
+                                                                setDetailsClient(client || null);
+                                                                setDetailsActivity(relatedActivities[0]); 
+                                                                setDetailsDialogOpen(true); 
+                                                            }}>
                                                                 <Eye className="mr-2 h-4 w-4" /> Voir la facture
                                                             </DropdownMenuItem>}
                                                             {totalPaid > 0 && <DropdownMenuItem className="text-red-500" onClick={() => handleCancelPayment(booking.id)}>
@@ -1144,6 +1159,11 @@ const ActivityLog = forwardRef<unknown, ActivityLogProps>(({ bookings, contracts
                                 <div className="flex justify-between"><span>Montant Versé:</span> <span className="font-medium">{detailsActivity.paidAmount?.toLocaleString('fr-FR')} FCFA</span></div>
                                 <div className="flex justify-between font-bold text-red-600"><span>Montant Restant:</span> <span>{detailsActivity.remainingAmount?.toLocaleString('fr-FR')} FCFA</span></div>
                              </div>
+                        )}
+                        {detailsClient && (
+                            <div className="text-sm text-gray-700">
+                                <p className="flex items-center gap-2"><strong>Points de fidélité:</strong> <span className="font-bold flex items-center gap-1">{detailsClient.loyaltyPoints} <Star className="h-4 w-4 text-yellow-500"/></span></p>
+                            </div>
                         )}
                         <Separator className="bg-gray-300"/>
                         <div className="flex justify-end font-bold text-lg text-black">
