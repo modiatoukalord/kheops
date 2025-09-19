@@ -1056,21 +1056,22 @@ const ActivityLog = forwardRef<unknown, ActivityLogProps>(({ bookings, contracts
                                                 )}
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                {!isFullyPaid ? (
-                                                    <div className="flex items-center gap-2 justify-end">
-                                                      <Input
-                                                        type="number"
-                                                        placeholder="Montant"
-                                                        className="w-32 h-9"
-                                                        value={installmentAmounts[booking.id] || ''}
-                                                        onChange={(e) => handleInstallmentAmountChange(booking.id, e.target.value)}
-                                                      />
-                                                      <Button size="sm" onClick={() => handleBookingPayment(booking)}>
-                                                        <HandCoins className="mr-2 h-4 w-4"/>
-                                                        Encaisser
-                                                      </Button>
-                                                    </div>
-                                                ) : (
+                                                 <div className="flex items-center gap-2 justify-end">
+                                                    {!isFullyPaid ? (
+                                                        <>
+                                                            <Input
+                                                                type="number"
+                                                                placeholder="Montant"
+                                                                className="w-32 h-9"
+                                                                value={installmentAmounts[booking.id] || ''}
+                                                                onChange={(e) => handleInstallmentAmountChange(booking.id, e.target.value)}
+                                                            />
+                                                            <Button size="sm" onClick={() => handleBookingPayment(booking)}>
+                                                                <HandCoins className="mr-2 h-4 w-4"/>
+                                                                Encaisser
+                                                            </Button>
+                                                        </>
+                                                    ) : null}
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
                                                             <Button variant="ghost" size="icon">
@@ -1078,16 +1079,16 @@ const ActivityLog = forwardRef<unknown, ActivityLogProps>(({ bookings, contracts
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
-                                                             {relatedActivities[0] && <DropdownMenuItem onClick={() => { setDetailsActivity(relatedActivities[0]); setDetailsDialogOpen(true); }}>
-                                                                <Eye className="mr-2 h-4 w-4" /> Voir le reçu
+                                                            {relatedActivities.length > 0 && <DropdownMenuItem onClick={() => { setDetailsActivity(relatedActivities[0]); setDetailsDialogOpen(true); }}>
+                                                                <Eye className="mr-2 h-4 w-4" /> Voir la facture
                                                             </DropdownMenuItem>}
-                                                            <DropdownMenuItem className="text-red-500" onClick={() => handleCancelPayment(booking.id)}>
+                                                            {totalPaid > 0 && <DropdownMenuItem className="text-red-500" onClick={() => handleCancelPayment(booking.id)}>
                                                                 <Ban className="mr-2 h-4 w-4"/>
                                                                 Annuler le paiement
-                                                            </DropdownMenuItem>
+                                                            </DropdownMenuItem>}
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
-                                                )}
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                     )})
@@ -1251,7 +1252,3 @@ const ActivityLog = forwardRef<unknown, ActivityLogProps>(({ bookings, contracts
 
 ActivityLog.displayName = "ActivityLog";
 export default ActivityLog;
-
-    
-
-    
