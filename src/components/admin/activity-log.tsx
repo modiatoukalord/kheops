@@ -384,7 +384,7 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], clients = [], onAddT
         if (contractId && onContractPaid) {
           onContractPaid(contractId);
         }
-        if (bookingId) {
+        if (bookingId && paymentType !== 'Échéancier') {
             onUpdateBookingStatus(bookingId, 'Payé');
         }
     } catch (error) {
@@ -513,6 +513,9 @@ const ActivityLog = forwardRef(({ bookings, contracts = [], clients = [], onAddT
           if (activityForInstallment.contractId && newRemainingAmount <= 0 && onContractPaid) {
             onContractPaid(activityForInstallment.contractId);
           }
+           if (activityForInstallment.bookingId && newRemainingAmount <= 0) {
+              onUpdateBookingStatus(activityForInstallment.bookingId, 'Payé');
+            }
       } catch (error) {
           console.error("Error updating document: ", error);
           toast({ title: "Erreur", description: "Impossible d'enregistrer le paiement.", variant: "destructive" });
