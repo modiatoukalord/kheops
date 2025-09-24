@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, forwardRef, useImperativeHandle, useRef, useEffect } from "react";
@@ -419,10 +418,11 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
   const ViewComponent = activeView !== 'dashboard' ? adminViews[activeView].component : null;
   const currentTitle = activeView !== 'dashboard' ? adminViews[activeView].title : "PANNEAU D'ADMINISTRATION";
   const viewProps = activeView !== 'dashboard' ? adminViews[activeView].props : {};
+  const isDashboardVisible = activeView === 'dashboard' && !isMobile;
 
   return (
     <div className="space-y-8">
-      {activeView === 'dashboard' ? (
+      {isDashboardVisible ? (
          <header>
             <h1 className="text-3xl font-bold text-primary font-headline tracking-wider">{currentTitle}</h1>
             <p className="text-muted-foreground">Gestion et administration de la plateforme KHEOPS.</p>
@@ -438,7 +438,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
                         <h1 className="text-xl font-bold text-primary font-headline tracking-wider">{currentTitle}</h1>
                       </div>
                  </div>
-                  {!isMobile && currentCategory && (
+                  {currentCategory && (
                     <nav className="flex items-center gap-2">
                         <TooltipProvider>
                          {currentCategory.sections.map(section => (
@@ -464,7 +464,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
         </header>
       )}
 
-      {activeView === 'dashboard' ? (
+      {isDashboardVisible ? (
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {adminCategories.map((category) => (
             <div key={category.title} className={`p-6 rounded-xl shadow-lg ${category.color}`}>
@@ -493,3 +493,5 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
 
 AdminHub.displayName = "AdminHub";
 export default AdminHub;
+
+    
