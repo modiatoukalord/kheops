@@ -15,6 +15,7 @@ import { fr } from "date-fns/locale";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 
 type CulturalContent = Pick<Content, 'title' | 'type' | 'imageUrl'> & { description: string; hint: string };
 
@@ -122,36 +123,50 @@ export default function CultureHub({ content, events, onEventRegistration }: Cul
           <BookOpen className="w-8 h-8 text-accent" />
           <h2 className="text-3xl font-semibold font-headline">Catalogue de Contenus</h2>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {culturalContent.map((item) => {
-            const Icon = categoryIcons[item.type];
-            return (
-                <Card key={item.title} className="bg-card border-border/50 flex flex-col justify-between overflow-hidden group transition-all duration-300 hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-1">
-                  <div className="aspect-[4/3] overflow-hidden">
-                      <Image 
-                        src={item.imageUrl}
-                        alt={`Image pour ${item.title}`}
-                        width={400}
-                        height={300}
-                        data-ai-hint={item.hint}
-                        className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-110"
-                      />
+        <Carousel
+          opts={{
+            align: "start",
+            loop: culturalContent.length > 4,
+          }}
+          className="w-full"
+        >
+          <CarouselContent className="-ml-4">
+            {culturalContent.map((item, index) => {
+              const Icon = categoryIcons[item.type];
+              return (
+                <CarouselItem key={index} className="pl-4 md:basis-1/2 lg:basis-1/4">
+                  <div className="p-1">
+                    <Card className="bg-card border-border/50 flex flex-col justify-between overflow-hidden group transition-all duration-300 hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-1 h-full">
+                      <div className="aspect-[4/3] overflow-hidden">
+                          <Image 
+                            src={item.imageUrl}
+                            alt={`Image pour ${item.title}`}
+                            width={400}
+                            height={300}
+                            data-ai-hint={item.hint}
+                            className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-110"
+                          />
+                      </div>
+                      <CardContent className="p-4 space-y-2 text-center flex flex-col flex-grow">
+                          <Badge variant="secondary" className="text-accent-foreground bg-accent/20 border-accent/50 w-fit mx-auto flex items-center gap-1.5">
+                            {Icon && <Icon className="h-3.5 w-3.5"/>}
+                            {item.type}
+                          </Badge>
+                          <CardTitle className="text-lg font-semibold text-primary-foreground">{item.title}</CardTitle>
+                          <CardDescription className="text-muted-foreground text-sm flex-grow">{item.description}</CardDescription>
+                          <Button variant="outline" className="w-full mt-2 border-primary/50 text-primary hover:bg-primary/10" onClick={() => handleDiscover(item.title)}>
+                          Découvrir
+                          </Button>
+                      </CardContent>
+                    </Card>
                   </div>
-                  <CardContent className="p-4 space-y-2 text-center flex flex-col flex-grow">
-                      <Badge variant="secondary" className="text-accent-foreground bg-accent/20 border-accent/50 w-fit mx-auto flex items-center gap-1.5">
-                        {Icon && <Icon className="h-3.5 w-3.5"/>}
-                        {item.type}
-                      </Badge>
-                      <CardTitle className="text-lg font-semibold text-primary-foreground">{item.title}</CardTitle>
-                      <CardDescription className="text-muted-foreground text-sm flex-grow">{item.description}</CardDescription>
-                      <Button variant="outline" className="w-full mt-2 border-primary/50 text-primary hover:bg-primary/10" onClick={() => handleDiscover(item.title)}>
-                      Découvrir
-                      </Button>
-                  </CardContent>
-                </Card>
-            )
-          })}
-        </div>
+                </CarouselItem>
+              )
+            })}
+          </CarouselContent>
+          <CarouselPrevious className="hidden sm:flex" />
+          <CarouselNext className="hidden sm:flex"/>
+        </Carousel>
       </section>
 
       <section>
