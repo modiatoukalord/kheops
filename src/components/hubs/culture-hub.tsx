@@ -32,6 +32,7 @@ const categoryIcons: { [key in Content['type']]: React.ElementType } = {
     Film: Film,
     "Jeu de société": Puzzle,
     "Projet Studio": () => null,
+    "Produit Wear": () => null,
 };
 
 
@@ -48,7 +49,7 @@ export default function CultureHub({ content, events, onEventRegistration }: Cul
   const [selectedEvent, setSelectedEvent] = useState<AppEvent | null>(null);
 
   const culturalContent: CulturalContent[] = content
-    .filter(c => c.status === "Publié" && c.type !== 'Projet Studio')
+    .filter(c => c.status === "Publié" && c.type !== 'Projet Studio' && c.type !== 'Produit Wear')
     .map((c, index) => ({
         title: c.title,
         type: c.type,
@@ -64,8 +65,8 @@ export default function CultureHub({ content, events, onEventRegistration }: Cul
 
   const handleMembership = () => {
     toast({
-      title: "Adhésion Bientôt Disponible",
-      description: "Revenez bientôt pour rejoindre la communauté KHEOPS !",
+      title: "Fonctionnalité à venir",
+      description: "L'adhésion membre n'est pas encore disponible.",
     });
   };
 
@@ -123,6 +124,7 @@ export default function CultureHub({ content, events, onEventRegistration }: Cul
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {culturalContent.map((item) => {
+            const Icon = categoryIcons[item.type];
             return (
                 <Card key={item.title} className="bg-card border-border/50 flex flex-col justify-between overflow-hidden group transition-all duration-300 hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-1">
                   <div className="aspect-[4/3] overflow-hidden">
@@ -136,7 +138,10 @@ export default function CultureHub({ content, events, onEventRegistration }: Cul
                       />
                   </div>
                   <CardContent className="p-4 space-y-2 text-center flex flex-col flex-grow">
-                      <Badge variant="secondary" className="text-accent-foreground bg-accent/20 border-accent/50 w-fit mx-auto">{item.type}</Badge>
+                      <Badge variant="secondary" className="text-accent-foreground bg-accent/20 border-accent/50 w-fit mx-auto flex items-center gap-1.5">
+                        {Icon && <Icon className="h-3.5 w-3.5"/>}
+                        {item.type}
+                      </Badge>
                       <CardTitle className="text-lg font-semibold text-primary-foreground">{item.title}</CardTitle>
                       <CardDescription className="text-muted-foreground text-sm flex-grow">{item.description}</CardDescription>
                       <Button variant="outline" className="w-full mt-2 border-primary/50 text-primary hover:bg-primary/10" onClick={() => handleDiscover(item.title)}>
