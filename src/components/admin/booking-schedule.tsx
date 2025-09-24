@@ -8,7 +8,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, PlusCircle, CheckCircle2, XCircle, Clock, Calendar as CalendarIcon, GripVertical, DiscAlbum, Pencil, Minus, Plus, User, FileText, Server, Eye, Phone, Trash2, Edit, FileSignature, AlertCircle } from "lucide-react";
+import { MoreHorizontal, PlusCircle, CheckCircle2, XCircle, Clock, Calendar as CalendarIcon, GripVertical, DiscAlbum, Pencil, Minus, Plus, User, FileText, Server, Eye, Phone, Trash2, Edit, FileSignature, AlertCircle, BookOpen } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,12 +35,12 @@ import { servicesWithPrices, calculatePrice } from "@/lib/pricing";
 
 export type Booking = {
   id: string;
-  artistName: string;
-  projectName: string;
-  projectType: "Single" | "Mixtape" | "Album" | "Autre";
+  artistName: string; // Doubles as client name for culture bookings
+  projectName: string; // Doubles as item title for culture bookings
+  projectType: "Single" | "Mixtape" | "Album" | "Autre" | "Studio" | "Culture";
   date: Date; // For single, this is the date. For multi-track, could be start date or first date.
   timeSlot: string; // Same as above.
-  service: string;
+  service: string; // Can be studio service or 'Achat'/'Emprunt'
   status: "Confirmé" | "En attente" | "Annulé" | "Payé";
   amount: number;
   phone?: string;
@@ -156,7 +156,7 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
   };
   
   const handleBookingSubmit = async (data: BookingFormValues) => {
-    let projectType: Booking['projectType'] = 'Autre';
+    let projectType: Booking['projectType'] = 'Studio';
     if (data.tracks.length === 1) {
         projectType = 'Single';
     } else if (data.tracks.length > 1 && data.tracks.length <= 5) {
@@ -228,11 +228,13 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
     setBookingDialogOpen(true);
   };
   
-  const bookingsForSelectedDate = bookings.filter(booking => 
+  const studioBookings = useMemo(() => bookings.filter(b => b.projectType !== 'Culture'), [bookings]);
+
+  const bookingsForSelectedDate = studioBookings.filter(booking => 
     selectedDate ? format(booking.date, 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd') : true
   ).sort((a,b) => a.timeSlot.localeCompare(b.timeSlot));
 
-  const confirmedBookings = bookings.filter(b => b.status === "Confirmé").sort((a, b) => a.date.getTime() - b.date.getTime());
+  const confirmedBookings = studioBookings.filter(b => b.status === "Confirmé").sort((a, b) => a.date.getTime() - b.date.getTime());
 
   return (
     <div className="space-y-6">
@@ -494,8 +496,8 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
               {selectedBooking && (
                   <div className="grid gap-4 py-4">
                       <div className="grid grid-cols-2 gap-4">
-                          <div><Label className="text-muted-foreground">Artiste</Label><p>{selectedBooking.artistName}</p></div>
-                          <div><Label className="text-muted-foreground">Projet</Label><p>{selectedBooking.projectName}</p></div>
+                          <div><Label className="text-muted-foreground">{selectedBooking.projectType === 'Culture' ? 'Client' : 'Artiste'}</Label><p>{selectedBooking.artistName}</p></div>
+                          <div><Label className="text-muted-foreground">{selectedBooking.projectType === 'Culture' ? 'Produit' : 'Projet'}</Label><p>{selectedBooking.projectName}</p></div>
                           <div><Label className="text-muted-foreground">Type</Label><p>{selectedBooking.projectType}</p></div>
                           <div><Label className="text-muted-foreground">Service</Label><p>{selectedBooking.service}</p></div>
                           {selectedBooking.phone && <div><Label className="text-muted-foreground">Téléphone</Label><p className="flex items-center gap-2"><Phone className="h-3 w-3" />{selectedBooking.phone}</p></div>}
@@ -504,7 +506,7 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
 
                       <Separator className="my-2" />
 
-                      {selectedBooking.tracks && selectedBooking.tracks.length > 0 && (
+                      {selectedBooking.tracks && selectedBooking.tracks.length > 0 ? (
                           <div>
                               <h4 className="font-semibold mb-2">Sessions d'enregistrement</h4>
                               <div className="space-y-2 max-h-48 overflow-y-auto">
@@ -520,6 +522,14 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
                                   ))}
                               </div>
                           </div>
+                      ) : (
+                        <div>
+                            <h4 className="font-semibold mb-2 flex items-center gap-2">
+                                {selectedBooking.projectType === 'Culture' ? <BookOpen className="h-4 w-4" /> : <DiscAlbum className="h-4 w-4" />}
+                                Détails de la demande
+                            </h4>
+                            <p className="text-sm text-muted-foreground">Demande pour le produit culturel "{selectedBooking.projectName}" par {selectedBooking.artistName}.</p>
+                        </div>
                       )}
                   </div>
               )}

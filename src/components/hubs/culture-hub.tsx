@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState } from "react";
@@ -17,6 +18,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Separator } from "@/components/ui/separator";
+import BookingChat from '@/components/hubs/booking-chat';
+import { Booking } from '@/components/admin/booking-schedule';
 
 const categoryIcons: { [key in Content['type']]?: React.ElementType } = {
     Livre: BookOpen,
@@ -30,16 +33,19 @@ const categoryIcons: { [key in Content['type']]?: React.ElementType } = {
 interface CultureHubProps {
     content: Content[];
     events: AppEvent[];
+    bookings: Booking[]; // Add bookings to props for chat component
     onEventRegistration: (registrationData: { eventId: string; eventName: string; participantName: string; participantPhone: string; }) => void;
+    onAddBooking: (booking: Omit<Booking, 'id' | 'status'>) => void;
 }
 
 
-export default function CultureHub({ content, events, onEventRegistration }: CultureHubProps) {
+export default function CultureHub({ content, events, bookings, onEventRegistration, onAddBooking }: CultureHubProps) {
   const { toast } = useToast();
   const [isRegisterOpen, setRegisterOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<AppEvent | null>(null);
   const [selectedContent, setSelectedContent] = useState<Content | null>(null);
-
+  const [isChatOpen, setChatOpen] = useState(false);
+  const [chatPrefill, setChatPrefill] = useState<Partial<Booking>>({});
 
   const culturalContent: Content[] = content
     .filter(c => c.status === "Publié" && c.type !== 'Projet Studio' && c.type !== 'Produit Wear')
@@ -92,6 +98,17 @@ export default function CultureHub({ content, events, onEventRegistration }: Cul
 
   const handleDiscover = (contentItem: Content) => {
     setSelectedContent(contentItem);
+  };
+
+  const handleBookingRequest = () => {
+    if (!selectedContent) return;
+    setChatPrefill({
+      projectName: selectedContent.title, // Use projectName for item title
+      service: 'Emprunt/Achat',
+      amount: Number(selectedContent.author) || 0, // Assuming author field stores price for wear/culture items
+    });
+    setChatOpen(true);
+    setSelectedContent(null);
   };
 
   return (
@@ -250,11 +267,7 @@ export default function CultureHub({ content, events, onEventRegistration }: Cul
                 </p>
               </div>
               <DialogFooter>
-                <Button
-                  onClick={() => {
-                    toast({ title: "Bientôt disponible", description: "L'achat ou l'emprunt de contenu sera bientôt possible."});
-                  }}
-                >
+                <Button onClick={handleBookingRequest}>
                   Emprunter / Acheter
                 </Button>
               </DialogFooter>
@@ -262,8 +275,15 @@ export default function CultureHub({ content, events, onEventRegistration }: Cul
           )}
         </DialogContent>
       </Dialog>
+
+      <BookingChat 
+        isOpen={isChatOpen} 
+        onOpenChange={setChatOpen} 
+        onBookingSubmit={onAddBooking}
+        bookings={bookings}
+        bookingType="culture"
+        prefilledData={chatPrefill}
+      />
     </div>
   );
 }
-
-    

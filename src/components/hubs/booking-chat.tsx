@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
@@ -20,6 +21,7 @@ import { Booking } from '@/components/admin/booking-schedule';
 import { servicesWithPrices, calculatePrice } from '@/lib/pricing';
 
 type BookingData = Omit<Booking, 'id' | 'status'>;
+type BookingType = 'studio' | 'culture';
 
 const availableTimeSlots = ["09:00 - 11:00", "11:00 - 13:00", "14:00 - 16:00", "16:00 - 18:00", "18:00 - 20:00"];
 
@@ -28,6 +30,8 @@ interface BookingChatProps {
   onOpenChange: (isOpen: boolean) => void;
   onBookingSubmit: (data: BookingData) => void;
   bookings: Booking[];
+  bookingType?: BookingType;
+  prefilledData?: Partial<BookingData>;
 }
 
 type Message = {
@@ -36,50 +40,51 @@ type Message = {
   id: number;
 };
 
-const initialQuestions = [
-  "Bonjour ! Je suis l'assistant de réservation KHEOPS. Pour commencer, quel est votre nom d'artiste ?", // 0
-  "Enchanté ! Quel est le nom de votre projet ?", // 1
-  "Super. Quel type de projet est-ce ?", // 2: select: Single, Mixtape, Album
-  "Quelle prestation vous intéresse ?", // 3: select: Prise de voix, Prise de voix + Mix, Full-package
-  "Quelle date vous arrangerait pour commencer ?", // 4: calendar
-  "À quel créneau horaire ?", // 5: select with disabled slots (Single only)
-  "Parfait. Un dernier détail : votre numéro de téléphone pour la confirmation ?", // 6
-  "Merci ! Votre demande de réservation a été enregistrée. Nous vous contacterons bientôt pour confirmer." // 7
-];
+const questions = {
+  studio: [
+    "Bonjour ! Je suis l'assistant KHEOPS. Pour commencer, quel est votre nom d'artiste ?", // 0
+    "Enchanté ! Quel est le nom de votre projet ?", // 1
+    "Super. Quel type de projet est-ce ?", // 2: select: Single, Mixtape, Album
+    "Quelle prestation vous intéresse ?", // 3: select
+    "Quelle date vous arrangerait pour commencer ?", // 4: calendar
+    "À quel créneau horaire ?", // 5: select with disabled slots
+    "Parfait. Un dernier détail : votre numéro de téléphone pour la confirmation ?", // 6
+    "Merci ! Votre demande a été enregistrée. Nous vous contacterons bientôt." // 7
+  ],
+  culture: [
+    "Bonjour ! Pour réserver ou acheter ce produit, quel est votre nom ?", // 0
+    "Parfait ! Quel est votre numéro de téléphone pour la confirmation ?", // 1
+    "Merci ! Votre demande a été enregistrée. Nous vous contacterons bientôt." // 2
+  ]
+};
 
-export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit, bookings }: BookingChatProps) {
+export default function BookingChat({ 
+    isOpen, 
+    onOpenChange, 
+    onBookingSubmit, 
+    bookings, 
+    bookingType = 'studio',
+    prefilledData = {}
+}: BookingChatProps) {
   const [step, setStep] = useState(0);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [formData, setFormData] = useState<Partial<BookingData>>({
-    artistName: '',
-    projectName: '',
-    projectType: 'Autre',
-    service: '',
-    date: new Date(),
-    timeSlot: '',
-    phone: '',
-    amount: 0,
-  });
+  const [formData, setFormData] = useState<Partial<BookingData>>({});
   const [inputValue, setInputValue] = useState('');
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const initialQuestions = questions[bookingType];
 
   useEffect(() => {
     if (isOpen) {
       setMessages([{ sender: 'bot', content: initialQuestions[0], id: Date.now() }]);
       setStep(0);
       setFormData({
-        artistName: '',
-        projectName: '',
-        projectType: 'Autre',
-        service: '',
-        date: new Date(),
-        timeSlot: '',
-        phone: '',
-        amount: 0,
+        ...prefilledData,
+        date: prefilledData.date || new Date(),
       });
+      setInputValue('');
     }
-  }, [isOpen]);
+  }, [isOpen, bookingType, prefilledData]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -101,23 +106,28 @@ export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit, boo
     let currentStep = step;
     const newFormData = { ...formData };
     
-    // Update form data based on current step
-    switch (currentStep) {
-        case 0: newFormData.artistName = answer; break;
-        case 1: newFormData.projectName = answer; break;
-        case 2: newFormData.projectType = answer; break;
-        case 3: newFormData.service = answer; break;
-        case 4: newFormData.date = new Date(answer); break;
-        case 5: newFormData.timeSlot = answer; break;
-        case 6: newFormData.phone = answer; break;
+    if (bookingType === 'studio') {
+        switch (currentStep) {
+            case 0: newFormData.artistName = answer; break;
+            case 1: newFormData.projectName = answer; break;
+            case 2: newFormData.projectType = answer; break;
+            case 3: newFormData.service = answer; break;
+            case 4: newFormData.date = new Date(answer); break;
+            case 5: newFormData.timeSlot = answer; break;
+            case 6: newFormData.phone = answer; break;
+        }
+    } else { // culture booking
+        switch (currentStep) {
+            case 0: newFormData.artistName = answer; break;
+            case 1: newFormData.phone = answer; break;
+        }
     }
     setFormData(newFormData);
 
     let nextStep = currentStep + 1;
     
-    // Skip timeslot question for non-singles
-    if (currentStep === 4 && newFormData.projectType !== 'Single') {
-      nextStep = 6; // Skip to phone number
+    if (bookingType === 'studio' && currentStep === 4 && newFormData.projectType !== 'Single') {
+      nextStep = 6; // Skip timeslot question for non-singles
     }
     
     if (nextStep < initialQuestions.length -1) {
@@ -127,9 +137,13 @@ export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit, boo
       }, 500);
     } else {
         const finalBookingData: BookingData = { 
+            projectType: bookingType === 'studio' ? 'Studio' : 'Culture',
             ...newFormData,
-            amount: calculatePrice(newFormData.service as string, 1),
-            tracks: [{ name: newFormData.projectName as string, date: newFormData.date as Date, timeSlot: newFormData.timeSlot as string }]
+            amount: bookingType === 'studio' ? calculatePrice(newFormData.service as string, 1) : 0,
+            tracks: bookingType === 'studio' ? [{ name: newFormData.projectName as string, date: newFormData.date as Date, timeSlot: newFormData.timeSlot as string }] : [],
+            date: newFormData.date || new Date(),
+            service: newFormData.service || 'Emprunt',
+            timeSlot: newFormData.timeSlot || 'N/A'
         } as BookingData;
 
         onBookingSubmit(finalBookingData);
@@ -138,7 +152,7 @@ export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit, boo
             setMessages(prev => [...prev, { sender: 'bot', content: initialQuestions[initialQuestions.length -1], id: Date.now() + 1 }]);
             setStep(nextStep);
              toast({
-                title: "Réservation Envoyée !",
+                title: "Demande Envoyée !",
                 description: "Nous avons bien reçu votre demande. Confirmation à venir.",
             });
         }, 500);
@@ -157,102 +171,103 @@ export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit, boo
   const bookedSlots = formData.date ? getBookedSlotsForDate(formData.date) : [];
 
   const renderCurrentInput = () => {
-    if (step >= initialQuestions.length -1 ) return null;
+    if (step >= initialQuestions.length - 1 ) return null;
 
-    switch (step) {
-      case 2: // Project Type
-        return (
-          <Select onValueChange={(value: Booking['projectType']) => handleNextStep(value)}>
-            <SelectTrigger className="w-full"><SelectValue placeholder="Choisir un type..." /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Single">Single</SelectItem>
-              <SelectItem value="Mixtape">Mixtape</SelectItem>
-              <SelectItem value="Album">Album</SelectItem>
-              <SelectItem value="Autre">Autre</SelectItem>
-            </SelectContent>
-          </Select>
-        );
-      case 3: // Service
-        return (
-          <Select onValueChange={(value) => handleNextStep(value)}>
-            <SelectTrigger className="w-full"><SelectValue placeholder="Choisir une prestation..." /></SelectTrigger>
-            <SelectContent>
-              {Object.keys(servicesWithPrices).map(service => (
-                <SelectItem key={service} value={service}>{service}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        );
-      case 4: // Date
-        return (
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formData.date && "text-muted-foreground")}>
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {formData.date ? format(formData.date, "PPP", { locale: fr }) : <span>Choisir une date</span>}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={formData.date}
-                onSelect={(date) => {
-                    if (date) {
-                         const displayDate = <div className="flex items-center gap-2"><CalendarIcon className="h-4 w-4"/><span>{format(date, "PPP", { locale: fr })}</span></div>;
-                         handleNextStep(date.toISOString(), displayDate);
-                    }
-                }}
-                initialFocus
-                locale={fr}
-              />
-            </PopoverContent>
-          </Popover>
-        );
-       case 5: // Time Slot
-        return (
-          <Select
-            onValueChange={(value) => handleNextStep(value)}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Choisir un créneau..." />
-            </SelectTrigger>
-            <SelectContent>
-              {availableTimeSlots.map((slot) => (
-                <SelectItem
-                  key={slot}
-                  value={slot}
-                  disabled={bookedSlots.includes(slot)}
-                >
-                  {slot} {bookedSlots.includes(slot) && "(Indisponible)"}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        );
-      case 0:
-      case 1:
-      case 6:
-        return (
-          <form
+    if (bookingType === 'studio') {
+        switch (step) {
+        case 2: // Project Type
+            return (
+            <Select onValueChange={(value: Booking['projectType']) => handleNextStep(value)}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Choisir un type..." /></SelectTrigger>
+                <SelectContent>
+                <SelectItem value="Single">Single</SelectItem>
+                <SelectItem value="Mixtape">Mixtape</SelectItem>
+                <SelectItem value="Album">Album</SelectItem>
+                <SelectItem value="Autre">Autre</SelectItem>
+                </SelectContent>
+            </Select>
+            );
+        case 3: // Service
+            return (
+            <Select onValueChange={(value) => handleNextStep(value)}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Choisir une prestation..." /></SelectTrigger>
+                <SelectContent>
+                {Object.keys(servicesWithPrices).map(service => (
+                    <SelectItem key={service} value={service}>{service}</SelectItem>
+                ))}
+                </SelectContent>
+            </Select>
+            );
+        case 4: // Date
+            return (
+            <Popover>
+                <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formData.date && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {formData.date ? format(formData.date, "PPP", { locale: fr }) : <span>Choisir une date</span>}
+                </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                <Calendar
+                    mode="single"
+                    selected={formData.date}
+                    onSelect={(date) => {
+                        if (date) {
+                            const displayDate = <div className="flex items-center gap-2"><CalendarIcon className="h-4 w-4"/><span>{format(date, "PPP", { locale: fr })}</span></div>;
+                            handleNextStep(date.toISOString(), displayDate);
+                        }
+                    }}
+                    initialFocus
+                    locale={fr}
+                />
+                </PopoverContent>
+            </Popover>
+            );
+        case 5: // Time Slot
+            return (
+            <Select
+                onValueChange={(value) => handleNextStep(value)}
+            >
+                <SelectTrigger className="w-full">
+                <SelectValue placeholder="Choisir un créneau..." />
+                </SelectTrigger>
+                <SelectContent>
+                {availableTimeSlots.map((slot) => (
+                    <SelectItem
+                    key={slot}
+                    value={slot}
+                    disabled={bookedSlots.includes(slot)}
+                    >
+                    {slot} {bookedSlots.includes(slot) && "(Indisponible)"}
+                    </SelectItem>
+                ))}
+                </SelectContent>
+            </Select>
+            );
+        }
+    }
+
+    // Default text input for other steps or 'culture' booking type
+    const isTel = (bookingType === 'studio' && step === 6) || (bookingType === 'culture' && step === 1);
+    
+    return (
+        <form
             onSubmit={(e) => {
-              e.preventDefault();
-              if (inputValue.trim()) handleNextStep(inputValue);
+            e.preventDefault();
+            if (inputValue.trim()) handleNextStep(inputValue);
             }}
             className="flex items-center gap-2"
-          >
+        >
             <Input
-              type={step === 6 ? 'tel' : 'text'}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Écrivez votre réponse..."
-              autoFocus
+                type={isTel ? 'tel' : 'text'}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                placeholder="Écrivez votre réponse..."
+                autoFocus
             />
             <Button type="submit" size="icon" disabled={!inputValue.trim()}><Send className="h-4 w-4" /></Button>
-          </form>
-        );
-      default:
-        return null;
-    }
+        </form>
+    );
   };
 
   return (
@@ -263,7 +278,8 @@ export default function BookingChat({ isOpen, onOpenChange, onBookingSubmit, boo
             <Bot className="text-primary"/> Assistant de Réservation
           </DialogTitle>
           <DialogDescription>
-            Répondez aux questions pour planifier votre session en studio.
+            {bookingType === 'culture' && formData.projectName ? `Pour "${formData.projectName}". ` : ''}
+            Répondez aux questions pour planifier votre session.
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="h-80 w-full pr-4" ref={scrollAreaRef}>

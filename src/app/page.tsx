@@ -359,7 +359,7 @@ function HomePageContent() {
   const ActiveComponent = hubComponents[activeHub];
 
   const componentProps: { [key: string]: any } = {
-    culture: { content, events, onEventRegistration: handleEventRegistration },
+    culture: { content, events, onEventRegistration: handleEventRegistration, bookings, onAddBooking: handleAddBooking },
     studio: { bookings, onAddBooking: handleAddBooking, content },
     wear: { content },
     admin: { 
