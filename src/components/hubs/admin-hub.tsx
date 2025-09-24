@@ -287,7 +287,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
         description: `Abonnement - ${subscriber.name}`,
         type: "Revenu",
         category: "Abonnement",
-        amount: parseFloat(subscriber.amount.replace(/\s/g, '').replace('FCFA', '')),
+        amount: parseFloat(subscriber.amount.replace(/\s/g, '').replace(',', '.')),
         status: "Complété"
     };
     onAddTransaction(newTransaction);
@@ -418,74 +418,103 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
   const ViewComponent = activeView !== 'dashboard' ? adminViews[activeView].component : null;
   const currentTitle = activeView !== 'dashboard' ? adminViews[activeView].title : "PANNEAU D'ADMINISTRATION";
   const viewProps = activeView !== 'dashboard' ? adminViews[activeView].props : {};
-  const isDashboardVisible = activeView === 'dashboard' && !isMobile;
+  const isDashboardVisible = activeView === 'dashboard';
 
   return (
     <div className="space-y-8">
-      {isDashboardVisible ? (
-         <header>
-            <h1 className="text-3xl font-bold text-primary font-headline tracking-wider">{currentTitle}</h1>
-            <p className="text-muted-foreground">Gestion et administration de la plateforme KHEOPS.</p>
-         </header>
-      ) : (
-        <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 -mx-4 -mt-8 mb-8 px-4">
-             <div className="container flex h-16 items-center justify-between mx-auto">
-                 <div className="flex items-center gap-4">
-                     <Button variant="outline" size="icon" onClick={handleBack}>
-                         <ArrowLeft className="h-5 w-5" />
-                     </Button>
-                      <div>
-                        <h1 className="text-xl font-bold text-primary font-headline tracking-wider">{currentTitle}</h1>
-                      </div>
-                 </div>
-                  {currentCategory && (
-                    <nav className="flex items-center gap-2">
-                        <TooltipProvider>
-                         {currentCategory.sections.map(section => (
-                            <Tooltip key={`${section.view}-${section.title}`}>
-                                <TooltipTrigger asChild>
-                                    <Button 
-                                        variant={activeView === section.view ? "secondary" : "ghost"} 
-                                        size="icon" 
-                                        onClick={() => setActiveView(section.view)}
-                                    >
-                                        <section.icon className="h-5 w-5" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>{section.title}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                         ))}
-                        </TooltipProvider>
-                    </nav>
-                  )}
-             </div>
-        </header>
-      )}
-
-      {isDashboardVisible ? (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {adminCategories.map((category) => (
-            <div key={category.title} className={`p-6 rounded-xl shadow-lg ${category.color}`}>
-              <h2 className="text-2xl font-bold font-headline mb-4 text-white">{category.title}</h2>
-              <div className="grid grid-cols-2 gap-4">
-                {category.sections.map((section) => (
-                    <button
-                        key={`${section.view}-${section.title}`}
-                        onClick={() => handleAction(section.view)}
-                        className="flex flex-col items-center justify-center p-4 bg-black/20 rounded-lg text-center text-white/90 hover:bg-black/40 transition-colors duration-200"
-                    >
-                        <section.icon className="h-8 w-8 mb-2" />
-                        <span className="text-sm font-medium">{section.title}</span>
-                    </button>
-                ))}
+      {activeView === 'dashboard' && isMobile ? (
+        // Mobile dashboard - list view
+        <>
+          <header>
+            <h1 className="text-3xl font-bold text-primary font-headline tracking-wider">Administration</h1>
+            <p className="text-muted-foreground">Gestion de la plateforme KHEOPS.</p>
+          </header>
+          <div className="space-y-6">
+            {adminCategories.map((category) => (
+              <div key={category.title}>
+                <h2 className="text-lg font-semibold font-headline mb-2 text-primary">{category.title}</h2>
+                <div className="grid grid-cols-2 gap-4">
+                  {category.sections.map((section) => (
+                      <button
+                          key={`${section.view}-${section.title}`}
+                          onClick={() => handleAction(section.view)}
+                          className="flex flex-col items-center justify-center p-4 bg-card rounded-lg text-center text-card-foreground shadow-sm hover:bg-card/80 transition-colors duration-200"
+                      >
+                          <section.icon className="h-7 w-7 mb-2 text-accent" />
+                          <span className="text-sm font-medium">{section.title}</span>
+                      </button>
+                  ))}
+                </div>
               </div>
+            ))}
+          </div>
+        </>
+      ) : activeView === 'dashboard' && !isMobile ? (
+         // Desktop dashboard - grid view
+         <>
+            <header>
+                <h1 className="text-3xl font-bold text-primary font-headline tracking-wider">{currentTitle}</h1>
+                <p className="text-muted-foreground">Gestion et administration de la plateforme KHEOPS.</p>
+            </header>
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+              {adminCategories.map((category) => (
+                <div key={category.title} className={`p-6 rounded-xl shadow-lg ${category.color}`}>
+                  <h2 className="text-2xl font-bold font-headline mb-4 text-white">{category.title}</h2>
+                  <div className="grid grid-cols-2 gap-4">
+                    {category.sections.map((section) => (
+                        <button
+                            key={`${section.view}-${section.title}`}
+                            onClick={() => handleAction(section.view)}
+                            className="flex flex-col items-center justify-center p-4 bg-black/20 rounded-lg text-center text-white/90 hover:bg-black/40 transition-colors duration-200"
+                        >
+                            <section.icon className="h-8 w-8 mb-2" />
+                            <span className="text-sm font-medium">{section.title}</span>
+                        </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+         </>
       ) : (
-         ViewComponent && <ViewComponent {...viewProps as any} />
+        // Inner view (not dashboard)
+        <>
+            <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 -mx-4 -mt-8 mb-8 px-4">
+                 <div className="container flex h-16 items-center justify-between mx-auto">
+                     <div className="flex items-center gap-4">
+                         <Button variant="outline" size="icon" onClick={handleBack}>
+                             <ArrowLeft className="h-5 w-5" />
+                         </Button>
+                          <div>
+                            <h1 className="text-xl font-bold text-primary font-headline tracking-wider">{currentTitle}</h1>
+                          </div>
+                     </div>
+                      {currentCategory && (
+                        <nav className="hidden sm:flex items-center gap-2">
+                            <TooltipProvider>
+                             {currentCategory.sections.map(section => (
+                                <Tooltip key={`${section.view}-${section.title}`}>
+                                    <TooltipTrigger asChild>
+                                        <Button 
+                                            variant={activeView === section.view ? "secondary" : "ghost"} 
+                                            size="icon" 
+                                            onClick={() => setActiveView(section.view)}
+                                        >
+                                            <section.icon className="h-5 w-5" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>{section.title}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                             ))}
+                            </TooltipProvider>
+                        </nav>
+                      )}
+                 </div>
+            </header>
+            {ViewComponent && <ViewComponent {...viewProps as any} />}
+        </>
       )}
     </div>
   );
