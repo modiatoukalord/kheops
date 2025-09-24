@@ -37,7 +37,7 @@ export default function StudioHub({ bookings, onAddBooking, content }: StudioHub
     .map((c, i) => ({
       title: c.title,
       artist: c.author,
-      coverUrl: `https://picsum.photos/seed/studio${i+1}/600/600`,
+      coverUrl: c.imageUrl || `https://picsum.photos/seed/studio${i+1}/600/600`,
       hint: projectHints[c.title] || 'music album',
     }));
     

@@ -63,6 +63,8 @@ import {
   BookCopy,
   DiscAlbum,
   UploadCloud,
+  Shirt,
+  DollarSign,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -71,8 +73,8 @@ export const initialContent: Content[] = [];
 export type Content = {
     id: string;
     title: string;
-    type: "Livre" | "Article" | "Manga" | "Film" | "Jeu de société" | "Projet Studio";
-    author: string;
+    type: "Livre" | "Article" | "Manga" | "Film" | "Jeu de société" | "Projet Studio" | "Produit Wear";
+    author: string; // Doubles as price for "Produit Wear"
     status: "Publié" | "Brouillon";
     lastUpdated: string;
     imageUrl?: string;
@@ -93,6 +95,7 @@ const typeConfig: { [key in ContentType]: { icon: React.ElementType, label: stri
   Film: { icon: Film, label: "Film" },
   "Jeu de société": { icon: Puzzle, label: "Jeu de société" },
   "Projet Studio": { icon: DiscAlbum, label: "Projet Studio" },
+  "Produit Wear": { icon: Shirt, label: "Produit Wear" },
 };
 
 interface ContentManagementProps {
@@ -110,6 +113,7 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
   const [typeFilters, setTypeFilters] = useState<ContentType[]>([]);
   const [statusFilters, setStatusFilters] = useState<ContentStatus[]>([]);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [selectedType, setSelectedType] = useState<ContentType>('Article');
 
   const handleAddContent = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -120,7 +124,7 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
     const newContent: Omit<Content, 'id'> = {
       title,
       type,
-      author: formData.get("author") as string,
+      author: formData.get("author") as string, // This is also used for price
       status: "Brouillon",
       lastUpdated: new Date().toISOString().split("T")[0],
       imageUrl: previewImage || undefined,
@@ -181,7 +185,7 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
           <div>
             <CardTitle>Gestion des Contenus</CardTitle>
             <CardDescription>
-              Ajoutez, modifiez ou supprimez des livres, articles, films, mangas et jeux.
+              Ajoutez, modifiez ou supprimez des livres, articles, produits et autres contenus.
             </CardDescription>
           </div>
           <div className="flex items-center gap-2 w-full md:w-auto">
@@ -266,26 +270,31 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                        <Label htmlFor="author">Auteur / Créateur</Label>
-                        <Input
-                            id="author"
-                            name="author"
-                            placeholder="Nom du créateur"
-                            required
-                        />
+                          <Label htmlFor="type">Type de contenu</Label>
+                          <Select name="type" required defaultValue={selectedType} onValueChange={(value) => setSelectedType(value as ContentType)}>
+                              <SelectTrigger>
+                              <SelectValue placeholder="Sélectionner un type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                              {Object.entries(typeConfig).map(([key, { label }]) => (
+                                <SelectItem key={key} value={key}>{label}</SelectItem>
+                              ))}
+                              </SelectContent>
+                          </Select>
                         </div>
                         <div className="space-y-2">
-                        <Label htmlFor="type">Type de contenu</Label>
-                        <Select name="type" required defaultValue="Article">
-                            <SelectTrigger>
-                            <SelectValue placeholder="Sélectionner un type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                            {Object.entries(typeConfig).map(([key, { label }]) => (
-                              <SelectItem key={key} value={key}>{label}</SelectItem>
-                            ))}
-                            </SelectContent>
-                        </Select>
+                          <Label htmlFor="author">{selectedType === 'Produit Wear' ? 'Prix' : 'Auteur / Créateur'}</Label>
+                          <div className="relative">
+                            {selectedType === 'Produit Wear' && <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
+                            <Input
+                                id="author"
+                                name="author"
+                                placeholder={selectedType === 'Produit Wear' ? 'Ex: 25000' : 'Nom du créateur'}
+                                type={selectedType === 'Produit Wear' ? 'number' : 'text'}
+                                className={selectedType === 'Produit Wear' ? 'pl-10' : ''}
+                                required
+                            />
+                          </div>
                         </div>
                     </div>
                     <div className="space-y-2">
@@ -322,7 +331,7 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
               <TableRow>
                 <TableHead>Titre</TableHead>
                 <TableHead className="hidden sm:table-cell">Type</TableHead>
-                <TableHead className="hidden md:table-cell">Auteur/Créateur</TableHead>
+                <TableHead className="hidden md:table-cell">Auteur/Prix</TableHead>
                 <TableHead>Statut</TableHead>
                 <TableHead className="hidden md:table-cell">
                   Dernière mise à jour
@@ -345,7 +354,7 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        {item.author}
+                        {item.type === 'Produit Wear' ? `${Number(item.author).toLocaleString('fr-FR')} FCFA` : item.author}
                       </TableCell>
                       <TableCell>
                         <Badge variant={statusInfo.variant}>

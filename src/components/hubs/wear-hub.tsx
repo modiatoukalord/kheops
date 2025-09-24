@@ -1,45 +1,17 @@
 
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { ArrowRight } from "lucide-react";
+import type { Content } from "@/components/admin/content-management";
 
-const featuredProducts = [
-  {
-    name: "T-Shirt Origine KHEOPS",
-    price: "25 000 FCFA",
-    imageUrl: "https://picsum.photos/seed/kheops1/600/800",
-    hint: "black t-shirt"
-  },
-  {
-    name: "Hoodie Héritage Pyramide",
-    price: "45 000 FCFA",
-    imageUrl: "https://picsum.photos/seed/kheops2/600/800",
-    hint: "black hoodie"
-  },
-  {
-    name: "Casquette Ankh Urbain",
-    price: "15 000 FCFA",
-    imageUrl: "https://picsum.photos/seed/kheops3/600/800",
-    hint: "black cap"
-  },
-  {
-    name: "Veste Scribe Moderne",
-    price: "60 000 FCFA",
-    imageUrl: "https://picsum.photos/seed/kheops4/600/800",
-    hint: "tech wear jacket"
-  },
-    {
-    name: "T-Shirt Nil Blanc",
-    price: "25 000 FCFA",
-    imageUrl: "https://picsum.photos/seed/kheops5/600/800",
-    hint: "white t-shirt"
-  },
-];
+interface WearHubProps {
+    content: Content[];
+}
 
 const categories = [
   {
@@ -59,7 +31,17 @@ const categories = [
   },
 ];
 
-export default function WearHub() {
+export default function WearHub({ content }: WearHubProps) {
+  
+  const featuredProducts = content
+    .filter(c => c.type === 'Produit Wear' && c.status === 'Publié')
+    .map((c, i) => ({
+      name: c.title,
+      price: `${Number(c.author).toLocaleString('fr-FR')} FCFA`,
+      imageUrl: c.imageUrl || `https://picsum.photos/seed/wear${i+1}/600/800`,
+      hint: c.title.toLowerCase().split(' ').slice(0, 2).join(' '),
+    }));
+
   return (
     <div className="space-y-16">
       <header className="text-center space-y-4 py-12 bg-card rounded-lg">
