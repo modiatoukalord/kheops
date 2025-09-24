@@ -268,7 +268,7 @@ export default function CultureHub({ content, events, bookings, onEventRegistrat
               </div>
               <DialogFooter>
                 <Button onClick={handleBookingRequest}>
-                  Emprunter / Acheter
+                  Réserver
                 </Button>
               </DialogFooter>
             </>
