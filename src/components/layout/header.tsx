@@ -1,7 +1,9 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Pyramid, LogIn } from "lucide-react";
 
 interface HeaderProps {
@@ -11,6 +13,7 @@ interface HeaderProps {
 
 export default function Header({ activeHub, setActiveHub }: HeaderProps) {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const navItems = [
     { id: "culture", label: "Culture Hub" },
     { id: "studio", label: "Studio" },
@@ -35,20 +38,23 @@ export default function Header({ activeHub, setActiveHub }: HeaderProps) {
           </span>
         </div>
 
-        <nav className="flex items-center space-x-2 lg:space-x-4 mx-auto">
-          {navItems.map((item) => (
-            <Button
-              key={item.id}
-              variant={activeHub === item.id ? "secondary" : "ghost"}
-              onClick={() => setActiveHub(item.id as "culture" | "studio" | "wear" | "admin")}
-              className={`font-semibold transition-all duration-200 ${activeHub === item.id ? "text-primary scale-105" : ""}`}
-            >
-              {item.label}
-            </Button>
-          ))}
-        </nav>
+        {!isMobile && (
+            <nav className="flex items-center space-x-2 lg:space-x-4 mx-auto">
+            {navItems.map((item) => (
+                <Button
+                key={item.id}
+                variant={activeHub === item.id ? "secondary" : "ghost"}
+                onClick={() => setActiveHub(item.id as "culture" | "studio" | "wear" | "admin")}
+                className={`font-semibold transition-all duration-200 ${activeHub === item.id ? "text-primary scale-105" : ""}`}
+                >
+                {item.label}
+                </Button>
+            ))}
+            </nav>
+        )}
 
-        <div className="flex items-center">
+
+        <div className="flex items-center ml-auto">
           <Button
             variant="outline"
             className="border-primary text-primary hover:bg-primary/10 hover:text-primary"

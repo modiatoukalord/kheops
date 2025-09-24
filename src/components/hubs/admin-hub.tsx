@@ -24,6 +24,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, updateDoc, doc, addDoc, deleteDoc, Timestamp, orderBy, writeBatch, getDocs, where } from "firebase/firestore";
 import type { Subscriber } from "@/components/admin/user-management";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 
 type AdminView = "dashboard" | "clients" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities" | "platforms" | "fixed-costs" | "pricing" | "hr" | "org-chart";
@@ -131,6 +132,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
   const [loyaltyPointValue, setLoyaltyPointValue] = useState(100); // Default to 100 FCFA per point
 
   const activityLogRef = useRef<{ openDialog: (data: any) => void }>(null);
+  const isMobile = useIsMobile();
 
   useImperativeHandle(ref, () => ({
     setActiveView
@@ -436,7 +438,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
                         <h1 className="text-xl font-bold text-primary font-headline tracking-wider">{currentTitle}</h1>
                       </div>
                  </div>
-                  {currentCategory && (
+                  {!isMobile && currentCategory && (
                     <nav className="flex items-center gap-2">
                         <TooltipProvider>
                          {currentCategory.sections.map(section => (
@@ -491,4 +493,3 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
 
 AdminHub.displayName = "AdminHub";
 export default AdminHub;
-

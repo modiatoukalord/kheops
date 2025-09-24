@@ -18,6 +18,8 @@ import { Subscriber } from "@/components/admin/user-management";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, getDocs, query, orderBy, Timestamp, onSnapshot, doc, updateDoc, deleteDoc, writeBatch, deleteField } from "firebase/firestore";
 import { Employee } from "@/components/admin/human-resources-management";
+import BottomNav from "@/components/layout/bottom-nav";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 
 type Hubs = {
@@ -54,6 +56,7 @@ function HomePageContent() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const adminHubRef = useRef<{ setActiveView: (view: any) => void }>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
       const hub = searchParams.get('hub');
@@ -374,11 +377,14 @@ function HomePageContent() {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       {showMainHeader && <Header activeHub={activeHub} setActiveHub={handleSetActiveHub} />}
-      <main className="flex-grow container mx-auto px-4 py-8">
+      <main className="flex-grow container mx-auto px-4 py-8 mb-16 md:mb-0">
         <div className="animate-fade-in">
           {ActiveComponent && <ActiveComponent {...componentProps[activeHub]} />}
         </div>
       </main>
+      {isMobile && showMainHeader && (
+        <BottomNav activeHub={activeHub} setActiveHub={handleSetActiveHub} />
+      )}
     </div>
   );
 }
