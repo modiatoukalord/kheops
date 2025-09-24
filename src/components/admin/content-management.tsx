@@ -121,16 +121,19 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
     const title = formData.get("title") as string;
     const type = formData.get("type") as Content["type"];
 
-    const newContent: Omit<Content, 'id'> = {
+    const newContent: Partial<Omit<Content, 'id'>> = {
       title,
       type,
       author: formData.get("author") as string, // This is also used for price
       status: "Brouillon",
       lastUpdated: new Date().toISOString().split("T")[0],
-      imageUrl: previewImage || undefined,
     };
 
-    await onAddContent(newContent);
+    if (previewImage) {
+        newContent.imageUrl = previewImage;
+    }
+
+    await onAddContent(newContent as Omit<Content, 'id'>);
     toast({
       title: "Contenu Ajouté",
       description: `Le contenu "${title}" a été ajouté comme brouillon.`,
