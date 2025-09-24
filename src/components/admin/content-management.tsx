@@ -121,6 +121,7 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
     const formData = new FormData(event.currentTarget);
     const title = formData.get("title") as string;
     const type = formData.get("type") as Content["type"];
+    const summary = formData.get("summary") as string;
 
     const newContent: Partial<Omit<Content, 'id'>> = {
       title,
@@ -128,8 +129,11 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
       author: formData.get("author") as string, // This is also used for price
       status: "Brouillon",
       lastUpdated: new Date().toISOString().split("T")[0],
-      summary: formData.get("summary") as string || undefined,
     };
+    
+    if (summary) {
+        newContent.summary = summary;
+    }
 
     if (previewImage) {
         newContent.imageUrl = previewImage;
@@ -419,5 +423,7 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
     </Card>
   );
 }
+
+    
 
     
