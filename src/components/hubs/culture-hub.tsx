@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { BookOpen, CalendarDays, BookCopy, FileText, Film, Puzzle, User, Phone } from "lucide-react";
+import { BookOpen, CalendarDays, BookCopy, FileText, Film, Puzzle, User, Phone, X, Info } from "lucide-react";
 import type { Content } from "@/components/admin/content-management";
 import type { AppEvent } from "@/components/admin/event-management";
 import { format } from "date-fns";
@@ -16,24 +16,14 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { Separator } from "@/components/ui/separator";
 
-type CulturalContent = Pick<Content, 'title' | 'type' | 'imageUrl'> & { description: string; hint: string };
-
-const placeholderDescriptions: { [key: string]: string } = {
-  "Le Labyrinthe d'Osiris": "Plongez dans un thriller mystique au cœur de l'Égypte ancienne.",
-  "Pharaoh's Legacy Vol. 1": "Une aventure épique où des lycéens réveillent un pouvoir ancestral.",
-  "Les Chroniques de Thot": "Découvrez les secrets de la sagesse et de la magie égyptienne.",
-  "L'art du Hiéroglyphe": "Une analyse approfondie de l'écriture sacrée des pharaons.",
-};
-
-const categoryIcons: { [key in Content['type']]: React.ElementType } = {
+const categoryIcons: { [key in Content['type']]?: React.ElementType } = {
     Livre: BookOpen,
     Manga: BookCopy,
     Article: FileText,
     Film: Film,
     "Jeu de société": Puzzle,
-    "Projet Studio": () => null,
-    "Produit Wear": () => null,
 };
 
 
@@ -48,15 +38,14 @@ export default function CultureHub({ content, events, onEventRegistration }: Cul
   const { toast } = useToast();
   const [isRegisterOpen, setRegisterOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<AppEvent | null>(null);
+  const [selectedContent, setSelectedContent] = useState<Content | null>(null);
 
-  const culturalContent: CulturalContent[] = content
+
+  const culturalContent: Content[] = content
     .filter(c => c.status === "Publié" && c.type !== 'Projet Studio' && c.type !== 'Produit Wear')
     .map((c, index) => ({
-        title: c.title,
-        type: c.type,
-        description: placeholderDescriptions[c.title] || `Découvrez le contenu de ${c.title}.`,
+        ...c,
         imageUrl: c.imageUrl || `https://picsum.photos/seed/culture${index}/400/300`,
-        hint: c.title.toLowerCase().split(' ').slice(0,2).join(' ')
     }));
     
   const upcomingEvents = events
@@ -101,11 +90,8 @@ export default function CultureHub({ content, events, onEventRegistration }: Cul
     }
   };
 
-  const handleDiscover = (contentTitle: string) => {
-    toast({
-      title: "Contenu à venir",
-      description: `Le contenu pour "${contentTitle}" sera bientôt disponible.`,
-    });
+  const handleDiscover = (contentItem: Content) => {
+    setSelectedContent(contentItem);
   };
 
   return (
@@ -134,16 +120,16 @@ export default function CultureHub({ content, events, onEventRegistration }: Cul
             {culturalContent.map((item, index) => {
               const Icon = categoryIcons[item.type];
               return (
-                <CarouselItem key={index} className="pl-4 md:basis-1/2 lg:basis-1/4">
+                <CarouselItem key={item.id} className="pl-4 md:basis-1/2 lg:basis-1/4">
                   <div className="p-1">
                     <Card className="bg-card border-border/50 flex flex-col justify-between overflow-hidden group transition-all duration-300 hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-1 h-full">
                       <div className="aspect-[4/3] overflow-hidden">
                           <Image 
-                            src={item.imageUrl}
+                            src={item.imageUrl!}
                             alt={`Image pour ${item.title}`}
                             width={400}
                             height={300}
-                            data-ai-hint={item.hint}
+                            data-ai-hint={item.title.toLowerCase().split(' ').slice(0,2).join(' ')}
                             className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-110"
                           />
                       </div>
@@ -153,8 +139,8 @@ export default function CultureHub({ content, events, onEventRegistration }: Cul
                             {item.type}
                           </Badge>
                           <CardTitle className="text-lg font-semibold text-primary-foreground">{item.title}</CardTitle>
-                          <CardDescription className="text-muted-foreground text-sm flex-grow">{item.description}</CardDescription>
-                          <Button variant="outline" className="w-full mt-2 border-primary/50 text-primary hover:bg-primary/10" onClick={() => handleDiscover(item.title)}>
+                          <CardDescription className="text-muted-foreground text-sm flex-grow line-clamp-3">{(item as any).summary || `Découvrez le contenu fascinant de "${item.title}" par ${item.author}.`}</CardDescription>
+                          <Button variant="outline" className="w-full mt-2 border-primary/50 text-primary hover:bg-primary/10" onClick={() => handleDiscover(item)}>
                           Découvrir
                           </Button>
                       </CardContent>
@@ -237,6 +223,47 @@ export default function CultureHub({ content, events, onEventRegistration }: Cul
               </form>
           </DialogContent>
       </Dialog>
+      
+       <Dialog open={!!selectedContent} onOpenChange={(open) => !open && setSelectedContent(null)}>
+        <DialogContent className="max-w-2xl">
+          {selectedContent && (
+            <>
+              <DialogHeader>
+                <div className="aspect-[16/9] rounded-t-lg overflow-hidden -mx-6 -mt-6">
+                    <Image
+                        src={selectedContent.imageUrl!}
+                        alt={`Image pour ${selectedContent.title}`}
+                        width={800}
+                        height={450}
+                        className="object-cover w-full h-full"
+                    />
+                </div>
+                <DialogTitle className="pt-4 text-2xl">{selectedContent.title}</DialogTitle>
+                <DialogDescription>
+                  Par {selectedContent.author}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                <Badge variant="secondary" className="mb-4">{selectedContent.type}</Badge>
+                <p className="text-muted-foreground">
+                    {(selectedContent as any).summary || `Aucun résumé disponible pour ce contenu.`}
+                </p>
+              </div>
+              <DialogFooter>
+                <Button
+                  onClick={() => {
+                    toast({ title: "Bientôt disponible", description: "L'achat ou l'emprunt de contenu sera bientôt possible."});
+                  }}
+                >
+                  Emprunter / Acheter
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
+    

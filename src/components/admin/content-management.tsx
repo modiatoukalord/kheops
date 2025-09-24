@@ -78,6 +78,7 @@ export type Content = {
     status: "Publié" | "Brouillon";
     lastUpdated: string;
     imageUrl?: string;
+    summary?: string;
 };
 type ContentStatus = Content["status"];
 type ContentType = Content["type"];
@@ -127,6 +128,7 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
       author: formData.get("author") as string, // This is also used for price
       status: "Brouillon",
       lastUpdated: new Date().toISOString().split("T")[0],
+      summary: formData.get("summary") as string || undefined,
     };
 
     if (previewImage) {
@@ -417,3 +419,5 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
     </Card>
   );
 }
+
+    
