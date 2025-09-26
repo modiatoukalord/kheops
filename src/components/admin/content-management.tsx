@@ -174,6 +174,15 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
         description: `Le contenu a été marqué comme ${status.toLowerCase()}.`
     })
   };
+  
+  const handleCategoryChange = async (id: string, wearCategory: Content['wearCategory']) => {
+    await onUpdateContent(id, { wearCategory, lastUpdated: new Date().toISOString().split("T")[0] });
+     toast({
+        title: "Catégorie mise à jour",
+        description: `La catégorie a été mise à jour.`,
+        duration: 2000,
+    })
+  }
 
   const handleDelete = async (id: string) => {
     if (window.confirm("Êtes-vous sûr de vouloir supprimer ce contenu ?")) {
@@ -362,12 +371,11 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
             <TableHeader>
               <TableRow>
                 <TableHead>Titre</TableHead>
-                <TableHead className="hidden sm:table-cell">Type</TableHead>
-                <TableHead className="hidden md:table-cell">Auteur/Prix</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Catégorie</TableHead>
+                <TableHead>Auteur/Prix</TableHead>
                 <TableHead>Statut</TableHead>
-                <TableHead className="hidden md:table-cell">
-                  Dernière mise à jour
-                </TableHead>
+                <TableHead>Dernière màj</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -379,13 +387,30 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
                   return (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.title}</TableCell>
-                      <TableCell className="hidden sm:table-cell">
+                      <TableCell>
                         <div className="flex items-center gap-2">
                            <typeInfo.icon className="h-4 w-4 text-muted-foreground" />
                            {typeInfo.label}
                         </div>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">
+                       <TableCell>
+                        {item.type === 'Produit Wear' ? (
+                          <Select
+                            value={item.wearCategory}
+                            onValueChange={(value) => handleCategoryChange(item.id, value as Content['wearCategory'])}
+                          >
+                            <SelectTrigger className="w-[150px] h-8 text-xs">
+                              <SelectValue placeholder="Choisir..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {wearCategories.map(cat => <SelectItem key={cat!} value={cat!} className="text-xs">{cat}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
                         {item.type === 'Produit Wear' ? `${Number(item.author).toLocaleString('fr-FR')} FCFA` : item.author}
                       </TableCell>
                       <TableCell>
@@ -394,11 +419,10 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
                           {item.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">
+                      <TableCell>
                         {new Date(item.lastUpdated).toLocaleDateString("fr-FR", {
                           day: "numeric",
-                          month: "long",
-                          year: "numeric",
+                          month: "short",
                         })}
                       </TableCell>
                       <TableCell className="text-right">
@@ -434,7 +458,7 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
+                  <TableCell colSpan={7} className="h-24 text-center">
                     Aucun contenu trouvé.
                   </TableCell>
                 </TableRow>
@@ -446,5 +470,7 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
     </Card>
   );
 }
+
+    
 
     
