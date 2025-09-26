@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import {
   Card,
   CardHeader,
@@ -65,6 +66,7 @@ import {
   UploadCloud,
   Shirt,
   DollarSign,
+  ImageIcon,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -345,9 +347,12 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
                            <Input id="image" name="image" type="file" onChange={handleImageChange} accept="image/*" />
                            <p className="text-xs text-muted-foreground mt-1">Téléversez l'image pour le contenu.</p>
                          </div>
-                         {previewImage && (
-                             // eslint-disable-next-line @next/next/no-img-element
-                             <img src={previewImage} alt="Aperçu" className="h-16 w-16 object-cover rounded-md border" />
+                         {previewImage ? (
+                             <Image src={previewImage} alt="Aperçu" width={64} height={64} className="h-16 w-16 object-cover rounded-md border" />
+                         ) : (
+                            <div className="h-16 w-16 bg-muted rounded-md border flex items-center justify-center">
+                                <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                            </div>
                          )}
                       </div>
                     </div>
@@ -371,6 +376,7 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
             <TableHeader>
               <TableRow>
                 <TableHead>Titre</TableHead>
+                <TableHead>Image</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Catégorie</TableHead>
                 <TableHead>Auteur/Prix</TableHead>
@@ -387,6 +393,15 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
                   return (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.title}</TableCell>
+                      <TableCell>
+                          {item.imageUrl ? (
+                              <Image src={item.imageUrl} alt={item.title} width={40} height={40} className="rounded-md object-cover h-10 w-10 border"/>
+                          ) : (
+                            <div className="h-10 w-10 bg-muted rounded-md border flex items-center justify-center">
+                                <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                          )}
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                            <typeInfo.icon className="h-4 w-4 text-muted-foreground" />
@@ -458,7 +473,7 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
+                  <TableCell colSpan={8} className="h-24 text-center">
                     Aucun contenu trouvé.
                   </TableCell>
                 </TableRow>
