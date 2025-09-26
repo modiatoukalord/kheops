@@ -50,12 +50,11 @@ export default function WearHub({ content }: WearHubProps) {
   const productsByCategory = useMemo(() => {
     const grouped: { [key: string]: typeof wearProducts } = {};
     wearProducts.forEach(product => {
-      if (product.category) {
-        if (!grouped[product.category]) {
-          grouped[product.category] = [];
-        }
-        grouped[product.category].push(product);
+      const category = product.category || 'Autres';
+      if (!grouped[category]) {
+        grouped[category] = [];
       }
+      grouped[category].push(product);
     });
     return grouped;
   }, [wearProducts]);
