@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Image from 'next/image';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,7 +13,7 @@ interface WearHubProps {
     content: Content[];
 }
 
-const categories = [
+const staticCategories = [
   {
     name: "T-Shirts",
     imageUrl: "https://picsum.photos/seed/cat1/800/600",
@@ -33,14 +33,32 @@ const categories = [
 
 export default function WearHub({ content }: WearHubProps) {
   
-  const featuredProducts = content
-    .filter(c => c.type === 'Produit Wear' && c.status === 'Publié')
-    .map((c, i) => ({
-      name: c.title,
-      price: `${Number(c.author).toLocaleString('fr-FR')} FCFA`,
-      imageUrl: c.imageUrl || `https://picsum.photos/seed/wear${i+1}/600/800`,
-      hint: c.title.toLowerCase().split(' ').slice(0, 2).join(' '),
-    }));
+  const wearProducts = useMemo(() => 
+    content
+      .filter(c => c.type === 'Produit Wear' && c.status === 'Publié')
+      .map((c, i) => ({
+        id: c.id,
+        name: c.title,
+        price: `${Number(c.author).toLocaleString('fr-FR')} FCFA`,
+        imageUrl: c.imageUrl || `https://picsum.photos/seed/wear${i+1}/600/800`,
+        hint: c.title.toLowerCase().split(' ').slice(0, 2).join(' '),
+        category: c.wearCategory,
+      })), [content]);
+
+  const featuredProducts = wearProducts.slice(0, 5);
+
+  const productsByCategory = useMemo(() => {
+    const grouped: { [key: string]: typeof wearProducts } = {};
+    wearProducts.forEach(product => {
+      if (product.category) {
+        if (!grouped[product.category]) {
+          grouped[product.category] = [];
+        }
+        grouped[product.category].push(product);
+      }
+    });
+    return grouped;
+  }, [wearProducts]);
 
   return (
     <div className="space-y-16">
@@ -56,67 +74,82 @@ export default function WearHub({ content }: WearHubProps) {
         </Button>
       </header>
 
-      <section>
-        <h2 className="text-3xl font-semibold font-headline text-center mb-8">Nouveautés</h2>
-        <Carousel
-          opts={{
-            align: "start",
-            loop: true,
-          }}
-          className="w-full max-w-6xl mx-auto"
-        >
-          <CarouselContent>
-            {featuredProducts.map((product, index) => (
-              <CarouselItem key={index} className="md:basis-1/2 lg:basis-1/3">
-                <div className="p-1">
-                  <Card className="overflow-hidden border-border/50 group">
-                    <CardContent className="p-0">
-                       <div className="aspect-[3/4] overflow-hidden">
-                         <Image
-                            src={product.imageUrl}
-                            alt={`Image de ${product.name}`}
-                            width={600}
-                            height={800}
-                            data-ai-hint={product.hint}
-                            className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
-                          />
-                       </div>
-                       <div className="p-4 bg-card">
-                         <h3 className="font-semibold text-lg">{product.name}</h3>
-                         <p className="text-primary font-bold">{product.price}</p>
-                       </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-          <CarouselPrevious className="hidden sm:flex"/>
-          <CarouselNext className="hidden sm:flex"/>
-        </Carousel>
-      </section>
+      {featuredProducts.length > 0 && (
+        <section>
+          <h2 className="text-3xl font-semibold font-headline text-center mb-8">Nouveautés</h2>
+          <Carousel
+            opts={{
+              align: "start",
+              loop: featuredProducts.length > 3,
+            }}
+            className="w-full max-w-6xl mx-auto"
+          >
+            <CarouselContent>
+              {featuredProducts.map((product, index) => (
+                <CarouselItem key={index} className="md:basis-1/2 lg:basis-1/3">
+                  <div className="p-1">
+                    <Card className="overflow-hidden border-border/50 group">
+                      <CardContent className="p-0">
+                         <div className="aspect-[3/4] overflow-hidden">
+                           <Image
+                              src={product.imageUrl}
+                              alt={`Image de ${product.name}`}
+                              width={600}
+                              height={800}
+                              data-ai-hint={product.hint}
+                              className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
+                            />
+                         </div>
+                         <div className="p-4 bg-card">
+                           <h3 className="font-semibold text-lg">{product.name}</h3>
+                           <p className="text-primary font-bold">{product.price}</p>
+                         </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <CarouselPrevious className="hidden sm:flex"/>
+            <CarouselNext className="hidden sm:flex"/>
+          </Carousel>
+        </section>
+      )}
 
-      <section>
-        <h2 className="text-3xl font-semibold font-headline text-center mb-8">Catégories</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {categories.map((category) => (
-                <Card key={category.name} className="relative overflow-hidden group border-border/50">
-                    <Image 
-                        src={category.imageUrl}
-                        alt={`Image pour la catégorie ${category.name}`}
-                        width={800}
-                        height={600}
-                        data-ai-hint={category.hint}
-                        className="object-cover w-full h-full aspect-[4/3] transition-transform duration-500 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                        <h3 className="text-white text-3xl font-bold font-headline tracking-wider">{category.name}</h3>
+      {Object.keys(productsByCategory).length > 0 && (
+        <section>
+          <h2 className="text-3xl font-semibold font-headline text-center mb-8">Catégories</h2>
+          <div className="space-y-12">
+              {Object.entries(productsByCategory).map(([category, products]) => (
+                  <div key={category}>
+                    <h3 className="text-2xl font-semibold mb-6">{category}</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                        {products.map((product) => (
+                            <div key={product.id} className="group">
+                            <Card className="overflow-hidden border-border/50">
+                                <Image
+                                src={product.imageUrl}
+                                alt={`Pochette de ${product.name}`}
+                                width={600}
+                                height={800}
+                                className="object-cover aspect-[3/4] transition-transform duration-300 group-hover:scale-105"
+                                data-ai-hint={product.hint}
+                                />
+                            </Card>
+                            <div className="mt-2 text-center md:text-left">
+                                <p className="font-semibold text-foreground">{product.name}</p>
+                                <p className="text-sm text-primary">{product.price}</p>
+                            </div>
+                            </div>
+                        ))}
                     </div>
-                     <a href="#" className="absolute inset-0" aria-label={`Voir la catégorie ${category.name}`}></a>
-                </Card>
-            ))}
-        </div>
-      </section>
+                  </div>
+              ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
+
+    

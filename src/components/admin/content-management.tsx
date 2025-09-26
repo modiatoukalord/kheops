@@ -79,6 +79,7 @@ export type Content = {
     lastUpdated: string;
     imageUrl?: string;
     summary?: string;
+    wearCategory?: "T-Shirts" | "Hoodies & Sweats" | "Accessoires";
 };
 type ContentStatus = Content["status"];
 type ContentType = Content["type"];
@@ -98,6 +99,8 @@ const typeConfig: { [key in ContentType]: { icon: React.ElementType, label: stri
   "Projet Studio": { icon: DiscAlbum, label: "Projet Studio" },
   "Produit Wear": { icon: Shirt, label: "Produit Wear" },
 };
+
+const wearCategories: Content['wearCategory'][] = ["T-Shirts", "Hoodies & Sweats", "Accessoires"];
 
 interface ContentManagementProps {
   content: Content[];
@@ -122,6 +125,7 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
     const title = formData.get("title") as string;
     const type = formData.get("type") as Content["type"];
     const summary = formData.get("summary") as string;
+    const wearCategory = formData.get("wearCategory") as Content["wearCategory"];
 
     const newContent: Partial<Omit<Content, 'id'>> = {
       title,
@@ -137,6 +141,10 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
 
     if (previewImage) {
         newContent.imageUrl = previewImage;
+    }
+
+    if (type === 'Produit Wear' && wearCategory) {
+        newContent.wearCategory = wearCategory;
     }
 
     await onAddContent(newContent as Omit<Content, 'id'>);
@@ -306,6 +314,21 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
                           </div>
                         </div>
                     </div>
+                    {selectedType === 'Produit Wear' && (
+                        <div className="space-y-2">
+                            <Label htmlFor="wearCategory">Catégorie Wear</Label>
+                            <Select name="wearCategory" required>
+                                <SelectTrigger>
+                                <SelectValue placeholder="Sélectionner une catégorie" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                {wearCategories.map(category => (
+                                    <SelectItem key={category} value={category!}>{category}</SelectItem>
+                                ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
                     <div className="space-y-2">
                       <Label htmlFor="image">Image de couverture</Label>
                       <div className="flex items-center gap-4">
@@ -423,7 +446,5 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
     </Card>
   );
 }
-
-    
 
     
