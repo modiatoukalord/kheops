@@ -1,11 +1,11 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Home from '../page'; // Assuming your main page component is here
 
-export default function AdminPage() {
+function AdminPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -24,4 +24,12 @@ export default function AdminPage() {
   
   // Render your main page component. It will be quickly replaced by the redirect.
   return <Home />;
+}
+
+export default function AdminPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <AdminPageContent />
+        </Suspense>
+    )
 }
