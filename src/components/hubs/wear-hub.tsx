@@ -44,8 +44,8 @@ export default function WearHub({ content }: WearHubProps) {
 
   return (
     <div className="space-y-16">
-      <header className="text-center space-y-4 py-12 bg-card rounded-lg">
-        <h1 className="text-6xl font-bold text-primary font-headline tracking-widest">
+      <header className="text-center space-y-4 py-8 md:py-12 bg-card rounded-lg">
+        <h1 className="text-4xl md:text-6xl font-bold text-primary font-headline tracking-widest">
           KHEOPS WEAR
         </h1>
         <p className="mt-4 text-xl font-semibold text-foreground/80 max-w-2xl mx-auto">
