@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useEffect, useRef, Suspense } from "react";
@@ -397,7 +396,7 @@ function HomePageContent() {
 
   const componentProps: { [key: string]: any } = {
     culture: { content, events, onEventRegistration: handleEventRegistration, bookings, onAddBooking: handleAddBooking },
-    studio: { bookings, onAddBooking: handleAddBooking, content },
+    studio: { bookings, onAddBooking: handleAddBooking, content, events },
     wear: { content, bookings, onAddBooking: handleAddBooking, onAddToCart: handleAddToCart },
     admin: { 
         content, onAddContent: handleAddContent, onUpdateContent: handleUpdateContent, onDeleteContent: handleDeleteContent,
@@ -442,3 +441,5 @@ export default function Home() {
     </Suspense>
   )
 }
+
+    
