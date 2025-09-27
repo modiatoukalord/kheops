@@ -36,6 +36,8 @@ export default function WearHub({ content, bookings, onAddBooking }: WearHubProp
   const [selectedProduct, setSelectedProduct] = useState<WearProduct | null>(null);
   const [isChatOpen, setChatOpen] = useState(false);
   const [chatPrefill, setChatPrefill] = useState<Partial<Booking>>({});
+  const [isLightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxImageUrl, setLightboxImageUrl] = useState('');
 
   const wearProducts: WearProduct[] = useMemo(() => 
     content
@@ -78,6 +80,11 @@ export default function WearHub({ content, bookings, onAddBooking }: WearHubProp
     });
     setChatOpen(true);
     setSelectedProduct(null);
+  };
+
+  const handleImageClick = (imageUrl: string) => {
+    setLightboxImageUrl(imageUrl);
+    setLightboxOpen(true);
   };
 
 
@@ -200,7 +207,7 @@ export default function WearHub({ content, bookings, onAddBooking }: WearHubProp
                             <Carousel className="w-full">
                                 <CarouselContent>
                                     {selectedProduct.imageUrls.map((url, index) => (
-                                        <CarouselItem key={index}>
+                                        <CarouselItem key={index} onClick={() => handleImageClick(url)} className="cursor-pointer">
                                             <div className="aspect-[3/4] overflow-hidden md:rounded-tr-lg">
                                                 <Image src={url} alt={`Image ${index + 1} de ${selectedProduct.name}`} width={600} height={800} className="object-cover w-full h-full" />
                                             </div>
@@ -226,6 +233,12 @@ export default function WearHub({ content, bookings, onAddBooking }: WearHubProp
         </DialogContent>
       </Dialog>
       
+      <Dialog open={isLightboxOpen} onOpenChange={setLightboxOpen}>
+        <DialogContent className="max-w-5xl h-[90vh] p-2 bg-transparent border-0 flex items-center justify-center">
+            <Image src={lightboxImageUrl} alt="Image en plein écran" layout="fill" objectFit="contain" className="p-4" />
+        </DialogContent>
+      </Dialog>
+
       <BookingChat 
         isOpen={isChatOpen} 
         onOpenChange={setChatOpen} 

@@ -45,6 +45,8 @@ export default function CultureHub({ content, events, bookings, onEventRegistrat
   const [selectedContent, setSelectedContent] = useState<Content | null>(null);
   const [isChatOpen, setChatOpen] = useState(false);
   const [chatPrefill, setChatPrefill] = useState<Partial<Booking>>({});
+  const [isLightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxImageUrl, setLightboxImageUrl] = useState('');
 
   const culturalContent: Content[] = content
     .filter(c => c.status === "Publié" && c.type !== 'Projet Studio' && c.type !== 'Produit Wear')
@@ -107,6 +109,11 @@ export default function CultureHub({ content, events, bookings, onEventRegistrat
     });
     setChatOpen(true);
     setSelectedContent(null);
+  };
+
+  const handleImageClick = (imageUrl: string) => {
+    setLightboxImageUrl(imageUrl);
+    setLightboxOpen(true);
   };
 
   return (
@@ -254,7 +261,7 @@ export default function CultureHub({ content, events, bookings, onEventRegistrat
                   <Carousel>
                     <CarouselContent>
                       {selectedContent.imageUrls.map((url, index) => (
-                        <CarouselItem key={index}>
+                        <CarouselItem key={index} onClick={() => handleImageClick(url)} className="cursor-pointer">
                            <div className="aspect-video overflow-hidden rounded-lg border">
                             <Image
                                 src={url}
@@ -287,6 +294,12 @@ export default function CultureHub({ content, events, bookings, onEventRegistrat
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={isLightboxOpen} onOpenChange={setLightboxOpen}>
+        <DialogContent className="max-w-5xl h-[90vh] p-2 bg-transparent border-0 flex items-center justify-center">
+            <Image src={lightboxImageUrl} alt="Image en plein écran" layout="fill" objectFit="contain" className="p-4" />
         </DialogContent>
       </Dialog>
 
