@@ -19,13 +19,6 @@ const services = [
     { name: "Production complète", description: "De la composition à la piste finale.", icon: DiscAlbum },
 ];
 
-const projectHints: { [key: string]: string } = {
-  "Chroniques de l'Aube": "album cover",
-  "Single 'Mirage'": "desert mirage",
-  "Projet 'Nouvelle Vague'": "ocean wave",
-  "Maquette 'Djadja 2'": "pop music",
-};
-
 interface StudioHubProps {
   bookings: Booking[];
   onAddBooking: (booking: Omit<Booking, 'id' | 'status'>) => void;
@@ -35,15 +28,6 @@ interface StudioHubProps {
 
 export default function StudioHub({ bookings, onAddBooking, content, events }: StudioHubProps) {
   const [isChatOpen, setChatOpen] = useState(false);
-  
-  const recentProjects = content
-    .filter(c => c.type === 'Projet Studio' && c.status === 'Publié')
-    .map((c, i) => ({
-      title: c.title,
-      artist: c.author,
-      coverUrl: (c.imageUrls && c.imageUrls[0]) || `https://picsum.photos/seed/studio${i+1}/600/600`,
-      hint: projectHints[c.title] || 'music album',
-    }));
 
   const upcomingEvents = events
     .filter(event => (event.endDate || event.startDate) >= new Date())
@@ -73,30 +57,6 @@ export default function StudioHub({ bookings, onAddBooking, content, events }: S
                   </Card>
               ))}
           </div>
-      </section>
-
-      <section>
-        <h2 className="text-3xl font-semibold font-headline text-center mb-8">Projets Récents</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {recentProjects.map((project) => (
-            <div key={project.title} className="group">
-              <Card className="overflow-hidden border-border/50">
-                <Image
-                  src={project.coverUrl}
-                  alt={`Pochette de ${project.title}`}
-                  width={600}
-                  height={600}
-                  className="object-cover aspect-square transition-transform duration-300 group-hover:scale-105"
-                  data-ai-hint={project.hint}
-                />
-              </Card>
-              <div className="mt-2 text-center">
-                <p className="font-semibold text-foreground">{project.title}</p>
-                <p className="text-sm text-muted-foreground">{project.artist}</p>
-              </div>
-            </div>
-          ))}
-        </div>
       </section>
       
       <section>
@@ -169,5 +129,3 @@ export default function StudioHub({ bookings, onAddBooking, content, events }: S
     </div>
   );
 }
-
-    
