@@ -4,7 +4,7 @@
 import { useState, forwardRef, useImperativeHandle, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home, Wallet, Cog, DollarSign, Clipboard, MicVocal, GanttChart, UserCog, Tag, ShoppingCart } from "lucide-react";
+import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home, Wallet, Cog, DollarSign, Clipboard, MicVocal, GanttChart, UserCog, Tag, ShoppingCart, BookOpen } from "lucide-react";
 import ClientManagement, { Client, Reward } from "@/components/admin/client-management";
 import ContentManagement, { Content } from "@/components/admin/content-management";
 import BookingSchedule, { Booking } from "@/components/admin/booking-schedule";
@@ -25,9 +25,10 @@ import { collection, onSnapshot, query, updateDoc, doc, addDoc, deleteDoc, Times
 import type { Subscriber } from "@/components/admin/user-management";
 import { useIsMobile } from "@/hooks/use-mobile";
 import WearOrders from "@/components/admin/wear-orders";
+import CultureReservations from "@/components/admin/culture-reservations";
 
 
-type AdminView = "dashboard" | "clients" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities" | "platforms" | "fixed-costs" | "pricing" | "hr" | "org-chart" | "wear-orders";
+type AdminView = "dashboard" | "clients" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities" | "platforms" | "fixed-costs" | "pricing" | "hr" | "org-chart" | "wear-orders" | "culture-reservations";
 
 export type { Contract, Payout };
 
@@ -77,6 +78,7 @@ const adminCategories: AdminCategory[] = [
             { title: "Clients", icon: Users, view: "clients" },
             { title: "Réservations Studio", icon: CalendarCheck, view: "bookings" },
             { title: "Commandes Wear", icon: ShoppingCart, view: "wear-orders" },
+            { title: "Réservations Culture", icon: BookOpen, view: "culture-reservations" },
             { title: "Contrats", icon: FileSignature, view: "contracts" },
             { title: "Personnel", icon: Briefcase, view: "hr" },
         ]
@@ -393,6 +395,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
     content: { component: ContentManagement, title: "Gestion des Contenus", props: { content, onAddContent, onUpdateContent, onDeleteContent } },
     bookings: { component: BookingSchedule, title: "Planning des Réservations", props: { bookings, onAddBooking, onUpdateBookingStatus, onCreateContract: handleCreateContractFromBooking } },
     "wear-orders": { component: WearOrders, title: "Commandes Wear", props: { bookings, onUpdateBookingStatus } },
+    "culture-reservations": { component: CultureReservations, title: "Réservations Culture", props: { bookings, onUpdateBookingStatus } },
     settings: { component: SiteSettings, title: "Paramètres du Site", props: {} },
     events: { component: EventManagement, title: "Gestion des Événements", props: { events, onAddEvent, onUpdateEvent, onDeleteEvent } },
     financial: { component: FinancialManagement, title: "Rapport Financier", props: { transactions, onAddTransaction } },
@@ -525,3 +528,5 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
 
 AdminHub.displayName = "AdminHub";
 export default AdminHub;
+
+  

@@ -40,7 +40,7 @@ export type Booking = {
   projectType: "Single" | "Mixtape" | "Album" | "Autre" | "Studio" | "Culture" | "Wear";
   date: Date; // For single, this is the date. For multi-track, could be start date or first date.
   timeSlot: string; // Same as above.
-  service: string; // Can be studio service or 'Achat'/'Emprunt'
+  service: string | "Achat" | "Emprunt/Achat" | "Achat Multiple";
   status: "Confirmé" | "En attente" | "Annulé" | "Payé" | "Expédiée";
   amount: number;
   phone?: string;
@@ -543,3 +543,5 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
     </div>
   );
 }
+
+  
