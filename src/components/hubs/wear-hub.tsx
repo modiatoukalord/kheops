@@ -267,7 +267,7 @@ export default function WearHub({ content, bookings, onAddBooking, onAddToCart }
         onOpenChange={setChatOpen} 
         onBookingSubmit={onAddBooking}
         bookings={bookings}
-        bookingType="culture"
+        bookingType="wear"
         prefilledData={chatPrefill}
       />
     </div>

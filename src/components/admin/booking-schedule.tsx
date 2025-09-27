@@ -37,7 +37,7 @@ export type Booking = {
   id: string;
   artistName: string; // Doubles as client name for culture bookings
   projectName: string; // Doubles as item title for culture bookings
-  projectType: "Single" | "Mixtape" | "Album" | "Autre" | "Studio" | "Culture";
+  projectType: "Single" | "Mixtape" | "Album" | "Autre" | "Studio" | "Culture" | "Wear";
   date: Date; // For single, this is the date. For multi-track, could be start date or first date.
   timeSlot: string; // Same as above.
   service: string; // Can be studio service or 'Achat'/'Emprunt'
@@ -229,7 +229,7 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
     setBookingDialogOpen(true);
   };
   
-  const studioBookings = useMemo(() => bookings.filter(b => b.projectType !== 'Culture'), [bookings]);
+  const studioBookings = useMemo(() => bookings.filter(b => b.projectType !== 'Culture' && b.projectType !== 'Wear'), [bookings]);
 
   const bookingsForSelectedDate = studioBookings.filter(booking => 
     selectedDate ? format(booking.date, 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd') : true

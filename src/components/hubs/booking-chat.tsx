@@ -21,7 +21,7 @@ import { Booking } from '@/components/admin/booking-schedule';
 import { servicesWithPrices, calculatePrice } from '@/lib/pricing';
 
 type BookingData = Omit<Booking, 'id' | 'status'>;
-type BookingType = 'studio' | 'culture';
+type BookingType = 'studio' | 'culture' | 'wear';
 
 const availableTimeSlots = ["09:00 - 11:00", "11:00 - 13:00", "14:00 - 16:00", "16:00 - 18:00", "18:00 - 20:00"];
 
@@ -55,6 +55,11 @@ const questions = {
     "Bonjour ! Pour réserver ou acheter ce produit, quel est votre nom ?", // 0
     "Parfait ! Quel est votre numéro de téléphone pour la confirmation ?", // 1
     "Merci ! Votre demande a été enregistrée. Nous vous contacterons bientôt." // 2
+  ],
+  wear: [
+    "Bonjour ! Pour commander ce produit, quel est votre nom ?", // 0
+    "Parfait ! Quel est votre numéro de téléphone pour la confirmation ?", // 1
+    "Merci ! Votre commande a été enregistrée. Nous vous contacterons bientôt." // 2
   ]
 };
 
@@ -116,7 +121,7 @@ export default function BookingChat({
             case 5: newFormData.timeSlot = answer; break;
             case 6: newFormData.phone = answer; break;
         }
-    } else { // culture booking
+    } else { // culture or wear booking
         switch (currentStep) {
             case 0: newFormData.artistName = answer; break;
             case 1: newFormData.phone = answer; break;
@@ -137,12 +142,12 @@ export default function BookingChat({
       }, 500);
     } else {
         const finalBookingData: BookingData = { 
-            projectType: bookingType === 'studio' ? 'Studio' : 'Culture',
+            projectType: bookingType,
             ...newFormData,
-            amount: bookingType === 'studio' ? calculatePrice(newFormData.service as string, 1) : 0,
+            amount: bookingType === 'studio' ? calculatePrice(newFormData.service as string, 1) : (prefilledData.amount || 0),
             tracks: bookingType === 'studio' ? [{ name: newFormData.projectName as string, date: newFormData.date as Date, timeSlot: newFormData.timeSlot as string }] : [],
             date: newFormData.date || new Date(),
-            service: newFormData.service || 'Emprunt',
+            service: newFormData.service || 'Emprunt/Achat',
             timeSlot: newFormData.timeSlot || 'N/A'
         } as BookingData;
 
@@ -247,8 +252,8 @@ export default function BookingChat({
         }
     }
 
-    // Default text input for other steps or 'culture' booking type
-    const isTel = (bookingType === 'studio' && step === 6) || (bookingType === 'culture' && step === 1);
+    // Default text input for other steps or 'culture'/'wear' booking type
+    const isTel = (bookingType === 'studio' && step === 6) || ((bookingType === 'culture' || bookingType === 'wear') && step === 1);
     
     return (
         <form
@@ -278,8 +283,8 @@ export default function BookingChat({
             <Bot className="text-primary"/> Assistant de Réservation
           </DialogTitle>
           <DialogDescription>
-            {bookingType === 'culture' && formData.projectName ? `Pour "${formData.projectName}". ` : ''}
-            Répondez aux questions pour planifier votre session.
+            {bookingType !== 'studio' && formData.projectName ? `Pour "${formData.projectName}". ` : ''}
+            Répondez aux questions pour planifier votre session ou commande.
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="h-80 w-full pr-4" ref={scrollAreaRef}>

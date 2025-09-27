@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useMemo } from "react";
@@ -30,7 +31,7 @@ export default function WearOrders({ bookings, onUpdateBookingStatus }: WearOrde
   const { toast } = useToast();
 
   const wearOrders = useMemo(() => 
-    bookings.filter(b => b.projectType === 'Culture')
+    bookings.filter(b => b.projectType === 'Wear')
             .sort((a, b) => b.date.getTime() - a.date.getTime()), 
   [bookings]);
 
