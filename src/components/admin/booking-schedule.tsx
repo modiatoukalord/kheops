@@ -41,7 +41,7 @@ export type Booking = {
   date: Date; // For single, this is the date. For multi-track, could be start date or first date.
   timeSlot: string; // Same as above.
   service: string; // Can be studio service or 'Achat'/'Emprunt'
-  status: "Confirmé" | "En attente" | "Annulé" | "Payé";
+  status: "Confirmé" | "En attente" | "Annulé" | "Payé" | "Expédiée";
   amount: number;
   phone?: string;
   tracks?: { name: string; date: Date; timeSlot: string }[];
@@ -53,6 +53,7 @@ const bookingStatusConfig = {
   "En attente": { variant: "secondary", icon: Clock, color: "text-yellow-500" },
   "Annulé": { variant: "destructive", icon: XCircle, color: "text-red-500" },
   "Payé": { variant: "default", icon: CheckCircle2, color: "bg-green-500/80 text-white" },
+  "Expédiée": { variant: "default", icon: CheckCircle2, color: "bg-blue-500/80 text-white" },
 };
 
 
@@ -380,8 +381,8 @@ export default function BookingSchedule({ bookings, onAddBooking, onUpdateBookin
                                   <p className="text-sm text-muted-foreground flex items-center gap-2">
                                      <DiscAlbum className="w-3 h-3"/> {booking.projectName}
                                   </p>
-                                  <Badge variant={statusInfo.variant} className={booking.status === 'Payé' ? statusInfo.color : ''}>
-                                      <statusInfo.icon className={`mr-1.5 h-3 w-3 ${booking.status !== 'Payé' ? statusInfo.color : ''}`} />
+                                  <Badge variant={statusInfo.variant} className={booking.status === 'Payé' || booking.status === 'Expédiée' ? statusInfo.color : ''}>
+                                      <statusInfo.icon className={`mr-1.5 h-3 w-3 ${booking.status !== 'Payé' && booking.status !== 'Expédiée' ? statusInfo.color : ''}`} />
                                       {booking.status}
                                   </Badge>
                              </div>

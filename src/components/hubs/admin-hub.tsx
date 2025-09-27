@@ -4,7 +4,7 @@
 import { useState, forwardRef, useImperativeHandle, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home, Wallet, Cog, DollarSign, Clipboard, MicVocal, GanttChart, UserCog, Tag } from "lucide-react";
+import { Users, FileText, CalendarCheck, Settings, ArrowLeft, CalendarPlus, Landmark, FileSignature, Briefcase, Activity, Youtube, Home, Wallet, Cog, DollarSign, Clipboard, MicVocal, GanttChart, UserCog, Tag, ShoppingCart } from "lucide-react";
 import ClientManagement, { Client, Reward } from "@/components/admin/client-management";
 import ContentManagement, { Content } from "@/components/admin/content-management";
 import BookingSchedule, { Booking } from "@/components/admin/booking-schedule";
@@ -24,9 +24,10 @@ import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, updateDoc, doc, addDoc, deleteDoc, Timestamp, orderBy, writeBatch, getDocs, where } from "firebase/firestore";
 import type { Subscriber } from "@/components/admin/user-management";
 import { useIsMobile } from "@/hooks/use-mobile";
+import WearOrders from "@/components/admin/wear-orders";
 
 
-type AdminView = "dashboard" | "clients" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities" | "platforms" | "fixed-costs" | "pricing" | "hr" | "org-chart";
+type AdminView = "dashboard" | "clients" | "content" | "bookings" | "settings" | "events" | "financial" | "contracts" | "activities" | "platforms" | "fixed-costs" | "pricing" | "hr" | "org-chart" | "wear-orders";
 
 export type { Contract, Payout };
 
@@ -74,7 +75,8 @@ const adminCategories: AdminCategory[] = [
         color: "bg-blue-600/80 text-blue-50",
         sections: [
             { title: "Clients", icon: Users, view: "clients" },
-            { title: "Réservations", icon: CalendarCheck, view: "bookings" },
+            { title: "Réservations Studio", icon: CalendarCheck, view: "bookings" },
+            { title: "Commandes Wear", icon: ShoppingCart, view: "wear-orders" },
             { title: "Contrats", icon: FileSignature, view: "contracts" },
             { title: "Personnel", icon: Briefcase, view: "hr" },
         ]
@@ -287,7 +289,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
         description: `Abonnement - ${subscriber.name}`,
         type: "Revenu",
         category: "Abonnement",
-        amount: parseFloat(subscriber.amount.replace(/\s/g, '').replace(',', '.')),
+        amount: parseFloat(subscriber.amount.replace(/\s/g, '').replace('FCFA', '')),
         status: "Complété"
     };
     onAddTransaction(newTransaction);
@@ -390,6 +392,7 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
     clients: { component: ClientManagement, title: "Gestion des Clients", props: { subscribers, activities, rewards, clients, onGrantReward: handleGrantReward, onAddTransaction: onAddTransaction, onAddSubscriber: handleAddSubscriber, onUpdateSubscriber, onDeleteSubscriber, onValidateSubscription: handleValidateSubscription, onRenewSubscriber: handleRenewSubscriber } },
     content: { component: ContentManagement, title: "Gestion des Contenus", props: { content, onAddContent, onUpdateContent, onDeleteContent } },
     bookings: { component: BookingSchedule, title: "Planning des Réservations", props: { bookings, onAddBooking, onUpdateBookingStatus, onCreateContract: handleCreateContractFromBooking } },
+    "wear-orders": { component: WearOrders, title: "Commandes Wear", props: { bookings, onUpdateBookingStatus } },
     settings: { component: SiteSettings, title: "Paramètres du Site", props: {} },
     events: { component: EventManagement, title: "Gestion des Événements", props: { events, onAddEvent, onUpdateEvent, onDeleteEvent } },
     financial: { component: FinancialManagement, title: "Rapport Financier", props: { transactions, onAddTransaction } },
@@ -522,5 +525,3 @@ const AdminHub = forwardRef<any, AdminHubProps>(({
 
 AdminHub.displayName = "AdminHub";
 export default AdminHub;
-
-    
