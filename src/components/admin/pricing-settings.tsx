@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { DollarSign, Percent, Music, Tag, PlusCircle, Edit, Trash2, Palette, FileSignature, Gem, Star } from "lucide-react";
+import { DollarSign, Percent, Music, Tag, PlusCircle, Edit, Trash2, Palette, FileSignature, Gem, Star, Shirt } from "lucide-react";
 import { KHEOPS_MEMBER_FEE, servicesWithPrices } from "@/lib/pricing";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -35,6 +35,13 @@ export type ContractTypeConfig = {
     color: string;
 };
 
+export type WearCategory = {
+    id: string;
+    name: string;
+    icon: string;
+    color: string;
+};
+
 const tailwindColors = ["slate", "gray", "zinc", "neutral", "stone", "red", "orange", "amber", "yellow", "lime", "green", "emerald", "teal", "cyan", "sky", "blue", "indigo", "violet", "purple", "fuchsia", "pink", "rose"];
 
 export default function PricingSettings() {
@@ -43,10 +50,13 @@ export default function PricingSettings() {
   const [memberFee, setMemberFee] = useState(KHEOPS_MEMBER_FEE);
   const [activityCategories, setActivityCategories] = useState<ActivityCategory[]>([]);
   const [contractTypes, setContractTypes] = useState<ContractTypeConfig[]>([]);
+  const [wearCategories, setWearCategories] = useState<WearCategory[]>([]);
   const [isCategoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [isContractTypeDialogOpen, setContractTypeDialogOpen] = useState(false);
+  const [isWearCategoryDialogOpen, setWearCategoryDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<ActivityCategory | null>(null);
   const [editingContractType, setEditingContractType] = useState<ContractTypeConfig | null>(null);
+  const [editingWearCategory, setEditingWearCategory] = useState<WearCategory | null>(null);
   const [loyaltyPointValue, setLoyaltyPointValue] = useState(1000); // 1 point for every 1000 FCFA
   const [loyaltyTiers, setLoyaltyTiers] = useState({
     Argent: 5,
@@ -64,9 +74,14 @@ export default function PricingSettings() {
         setContractTypes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ContractTypeConfig)));
     });
     
+    const unsubWearCategories = onSnapshot(collection(db, "wearCategories"), (snapshot) => {
+        setWearCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WearCategory)));
+    });
+    
     return () => {
         unsubActivityCategories();
         unsubContractTypes();
+        unsubWearCategories();
     };
   }, []);
 
@@ -174,6 +189,48 @@ export default function PricingSettings() {
         }
     }
   };
+  
+  const handleWearCategoryFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const wearCategoryData = {
+        name: formData.get("name") as string,
+        icon: formData.get("icon") as string,
+        color: formData.get("color") as string,
+    };
+
+    try {
+        if (editingWearCategory) {
+            const catRef = doc(db, "wearCategories", editingWearCategory.id);
+            await updateDoc(catRef, wearCategoryData);
+            toast({ title: "Catégorie Wear Modifiée" });
+        } else {
+            await addDoc(collection(db, "wearCategories"), wearCategoryData);
+            toast({ title: "Catégorie Wear Ajoutée" });
+        }
+        setWearCategoryDialogOpen(false);
+        setEditingWearCategory(null);
+    } catch (error) {
+        console.error("Error saving wear category: ", error);
+        toast({ title: "Erreur", description: "Impossible d'enregistrer la catégorie.", variant: "destructive" });
+    }
+  };
+
+  const handleOpenWearCategoryDialog = (category: WearCategory | null) => {
+    setEditingWearCategory(category);
+    setWearCategoryDialogOpen(true);
+  };
+
+  const handleDeleteWearCategory = async (categoryId: string) => {
+    if (window.confirm("Êtes-vous sûr de vouloir supprimer cette catégorie ?")) {
+        try {
+            await deleteDoc(doc(db, "wearCategories", categoryId));
+            toast({ title: "Catégorie Wear Supprimée", variant: "destructive" });
+        } catch (error) {
+             toast({ title: "Erreur", description: "Impossible de supprimer la catégorie.", variant: "destructive" });
+        }
+    }
+  };
 
 
   const getCategoryColorClass = (color: string) => {
@@ -186,6 +243,7 @@ export default function PricingSettings() {
         <TabsTrigger value="studio">Tarifs & Abonnements</TabsTrigger>
         <TabsTrigger value="categories">Catégories d'Activité</TabsTrigger>
         <TabsTrigger value="contract-types">Types de Contrat</TabsTrigger>
+        <TabsTrigger value="wear-categories">Catégories Wear</TabsTrigger>
         <TabsTrigger value="loyalty">Fidélité</TabsTrigger>
       </TabsList>
 
@@ -448,6 +506,98 @@ export default function PricingSettings() {
                                         <Edit className="h-4 w-4" />
                                     </Button>
                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/20" onClick={() => handleDeleteContractType(cat.id)}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                                <Icon className="h-8 w-8" />
+                                <span className="font-bold text-center">{cat.name}</span>
+                            </div>
+                        )
+                    })}
+                </div>
+            </CardContent>
+        </Card>
+      </TabsContent>
+      <TabsContent value="wear-categories">
+        <Card>
+            <CardHeader>
+                <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="flex-shrink-0 bg-teal-500/20 text-teal-500 p-3 rounded-full">
+                            <Shirt className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <CardTitle>Catégories Wear</CardTitle>
+                            <CardDescription>Gérez les catégories pour les produits de la boutique Wear.</CardDescription>
+                        </div>
+                    </div>
+                    <Dialog open={isWearCategoryDialogOpen} onOpenChange={(isOpen) => { if(!isOpen) setEditingWearCategory(null); setWearCategoryDialogOpen(isOpen); }}>
+                        <DialogTrigger asChild>
+                            <Button onClick={() => handleOpenWearCategoryDialog(null)}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Ajouter une catégorie
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <form onSubmit={handleWearCategoryFormSubmit}>
+                                <DialogHeader>
+                                    <DialogTitle>{editingWearCategory ? "Modifier la catégorie" : "Nouvelle Catégorie Wear"}</DialogTitle>
+                                </DialogHeader>
+                                <div className="grid gap-4 py-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="wc-name">Nom</Label>
+                                        <Input id="wc-name" name="name" defaultValue={editingWearCategory?.name} required />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="wc-icon">Icône</Label>
+                                            <Select name="icon" defaultValue={editingWearCategory?.icon} required>
+                                                <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
+                                                <SelectContent>
+                                                    {iconList.map(iconName => {
+                                                        const Icon = iconMap[iconName];
+                                                        return <SelectItem key={iconName} value={iconName}><Icon className="mr-2 h-4 w-4 inline-block"/> {iconName}</SelectItem>
+                                                    })}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                         <div className="space-y-2">
+                                            <Label htmlFor="wc-color">Couleur</Label>
+                                            <Select name="color" defaultValue={editingWearCategory?.color} required>
+                                                <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
+                                                <SelectContent>
+                                                    {tailwindColors.map(color => (
+                                                        <SelectItem key={color} value={color}>
+                                                            <div className="flex items-center gap-2">
+                                                                <div className={`h-4 w-4 rounded-full bg-${color}-500`}></div>
+                                                                {color}
+                                                            </div>
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <DialogFooter>
+                                    <Button type="submit">{editingWearCategory ? "Enregistrer" : "Ajouter"}</Button>
+                                </DialogFooter>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {wearCategories.map(cat => {
+                        const Icon = iconMap[cat.icon as keyof typeof iconMap] || Shirt;
+                        return (
+                            <div key={cat.id} className={`p-4 rounded-lg flex flex-col items-center justify-center gap-2 relative group border ${getCategoryColorClass(cat.color)}`}>
+                                <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/20" onClick={() => handleOpenWearCategoryDialog(cat)}>
+                                        <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/20" onClick={() => handleDeleteWearCategory(cat.id)}>
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </div>

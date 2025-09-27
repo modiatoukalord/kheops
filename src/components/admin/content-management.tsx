@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   Card,
@@ -69,6 +69,10 @@ import {
   ImageIcon,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { db } from "@/lib/firebase";
+import { collection, onSnapshot } from "firebase/firestore";
+import type { WearCategory } from "@/components/admin/pricing-settings";
+
 
 export const initialContent: Content[] = [];
 
@@ -81,7 +85,7 @@ export type Content = {
     lastUpdated: string;
     imageUrl?: string;
     summary?: string;
-    wearCategory?: "T-Shirts" | "Hoodies & Sweats" | "Accessoires";
+    wearCategory?: string;
 };
 type ContentStatus = Content["status"];
 type ContentType = Content["type"];
@@ -102,8 +106,6 @@ const typeConfig: { [key in ContentType]: { icon: React.ElementType, label: stri
   "Produit Wear": { icon: Shirt, label: "Produit Wear" },
 };
 
-const wearCategories: Content['wearCategory'][] = ["T-Shirts", "Hoodies & Sweats", "Accessoires"];
-
 interface ContentManagementProps {
   content: Content[];
   onAddContent: (content: Omit<Content, 'id'>) => Promise<void>;
@@ -120,15 +122,21 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
   const [statusFilters, setStatusFilters] = useState<ContentStatus[]>([]);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<ContentType>('Article');
+  const [wearCategories, setWearCategories] = useState<WearCategory[]>([]);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "wearCategories"), (snapshot) => {
+      setWearCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WearCategory)));
+    });
+    return () => unsub();
+  }, []);
 
   const handleAddContent = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const title = formData.get("title") as string;
     const type = formData.get("type") as Content["type"];
-    const summary = formData.get("summary") as string;
-    const wearCategory = formData.get("wearCategory") as Content["wearCategory"];
-
+    
     const newContent: Partial<Omit<Content, 'id'>> = {
       title,
       type,
@@ -137,6 +145,7 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
       lastUpdated: new Date().toISOString().split("T")[0],
     };
     
+    const summary = formData.get("summary") as string;
     if (summary) {
         newContent.summary = summary;
     }
@@ -145,6 +154,7 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
         newContent.imageUrl = previewImage;
     }
 
+    const wearCategory = formData.get("wearCategory") as Content["wearCategory"];
     if (type === 'Produit Wear' && wearCategory) {
         newContent.wearCategory = wearCategory;
     }
@@ -334,7 +344,7 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
                                 </SelectTrigger>
                                 <SelectContent>
                                 {wearCategories.map(category => (
-                                    <SelectItem key={category} value={category!}>{category}</SelectItem>
+                                    <SelectItem key={category.id} value={category.name}>{category.name}</SelectItem>
                                 ))}
                                 </SelectContent>
                             </Select>
@@ -412,13 +422,13 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
                         {item.type === 'Produit Wear' ? (
                           <Select
                             value={item.wearCategory}
-                            onValueChange={(value) => handleCategoryChange(item.id, value as Content['wearCategory'])}
+                            onValueChange={(value) => handleCategoryChange(item.id, value)}
                           >
                             <SelectTrigger className="w-[150px] h-8 text-xs">
                               <SelectValue placeholder="Choisir..." />
                             </SelectTrigger>
                             <SelectContent>
-                              {wearCategories.map(cat => <SelectItem key={cat!} value={cat!} className="text-xs">{cat}</SelectItem>)}
+                              {wearCategories.map(cat => <SelectItem key={cat.id} value={cat.name} className="text-xs">{cat.name}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         ) : (
@@ -485,7 +495,3 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
     </Card>
   );
 }
-
-    
-
-    
