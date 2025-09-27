@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Badge } from '@/components/ui/badge';
 import BookingChat from '@/components/hubs/booking-chat';
 import { Booking } from '@/components/admin/booking-schedule';
+import { useToast } from '@/hooks/use-toast';
 
 interface WearHubProps {
     content: Content[];
@@ -38,6 +39,7 @@ export default function WearHub({ content, bookings, onAddBooking }: WearHubProp
   const [chatPrefill, setChatPrefill] = useState<Partial<Booking>>({});
   const [isLightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImageUrl, setLightboxImageUrl] = useState('');
+  const { toast } = useToast();
 
   const wearProducts: WearProduct[] = useMemo(() => 
     content
@@ -194,10 +196,13 @@ export default function WearHub({ content, bookings, onAddBooking }: WearHubProp
                                 {selectedProduct.summary || "La description de ce produit est à venir. Contactez-nous pour plus d'informations."}
                             </p>
                         </div>
-                        <DialogFooter className="mt-6">
-                            <Button size="lg" className="w-full" onClick={handleBookingRequest}>
+                        <DialogFooter className="mt-6 grid grid-cols-2 gap-4">
+                            <Button size="lg" variant="outline" onClick={() => toast({ title: "Bientôt disponible", description: "Le panier n'est pas encore fonctionnel." })}>
                                 <ShoppingCart className="mr-2 h-5 w-5"/>
-                                Ajouter au Panier & Réserver
+                                Ajouter au Panier
+                            </Button>
+                            <Button size="lg" className="w-full" onClick={handleBookingRequest}>
+                                Réserver
                             </Button>
                         </DialogFooter>
                     </div>
