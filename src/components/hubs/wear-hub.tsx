@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useMemo } from 'react';
@@ -13,17 +14,19 @@ import { Badge } from '@/components/ui/badge';
 import BookingChat from '@/components/hubs/booking-chat';
 import { Booking } from '@/components/admin/booking-schedule';
 import { useToast } from '@/hooks/use-toast';
+import { CartItem } from '@/components/cart/cart-sheet';
 
 interface WearHubProps {
     content: Content[];
     bookings: Booking[];
     onAddBooking: (booking: Omit<Booking, 'id' | 'status'>) => void;
+    onAddToCart: (product: Omit<CartItem, 'quantity'>) => void;
 }
 
 type WearProduct = {
     id: string;
     name: string;
-    price: string;
+    price: number;
     imageUrl: string;
     imageUrls?: string[];
     hint: string;
@@ -32,7 +35,7 @@ type WearProduct = {
 };
 
 
-export default function WearHub({ content, bookings, onAddBooking }: WearHubProps) {
+export default function WearHub({ content, bookings, onAddBooking, onAddToCart }: WearHubProps) {
   
   const [selectedProduct, setSelectedProduct] = useState<WearProduct | null>(null);
   const [isChatOpen, setChatOpen] = useState(false);
@@ -47,7 +50,7 @@ export default function WearHub({ content, bookings, onAddBooking }: WearHubProp
       .map((c, i) => ({
         id: c.id,
         name: c.title,
-        price: `${Number(c.author).toLocaleString('fr-FR')} FCFA`,
+        price: Number(c.author),
         imageUrl: (c.imageUrls && c.imageUrls[0]) || `https://picsum.photos/seed/wear${i+1}/600/800`,
         imageUrls: c.imageUrls,
         hint: c.title.toLowerCase().split(' ').slice(0, 2).join(' '),
@@ -78,7 +81,7 @@ export default function WearHub({ content, bookings, onAddBooking }: WearHubProp
     setChatPrefill({
       projectName: selectedProduct.name,
       service: 'Achat',
-      amount: parseFloat(selectedProduct.price.replace(/[^\d]/g, '')),
+      amount: selectedProduct.price,
     });
     setChatOpen(true);
     setSelectedProduct(null);
@@ -132,7 +135,7 @@ export default function WearHub({ content, bookings, onAddBooking }: WearHubProp
                          </div>
                          <div className="p-4 bg-card">
                            <h3 className="font-semibold text-lg">{product.name}</h3>
-                           <p className="text-primary font-bold">{product.price}</p>
+                           <p className="text-primary font-bold">{product.price.toLocaleString('fr-FR')} FCFA</p>
                          </div>
                       </CardContent>
                     </Card>
@@ -168,7 +171,7 @@ export default function WearHub({ content, bookings, onAddBooking }: WearHubProp
                             </Card>
                             <div className="mt-2 text-center md:text-left">
                                 <p className="font-semibold text-foreground">{product.name}</p>
-                                <p className="text-sm text-primary">{product.price}</p>
+                                <p className="text-sm text-primary">{product.price.toLocaleString('fr-FR')} FCFA</p>
                             </div>
                             </div>
                         ))}
@@ -191,13 +194,13 @@ export default function WearHub({ content, bookings, onAddBooking }: WearHubProp
                         <div className="flex-grow">
                              <Badge variant="secondary" className="mb-2">{selectedProduct.category}</Badge>
                             <h2 className="text-3xl font-bold mb-2">{selectedProduct.name}</h2>
-                            <p className="text-2xl font-bold text-primary mb-4">{selectedProduct.price}</p>
+                            <p className="text-2xl font-bold text-primary mb-4">{selectedProduct.price.toLocaleString('fr-FR')} FCFA</p>
                             <p className="text-muted-foreground text-sm">
                                 {selectedProduct.summary || "La description de ce produit est à venir. Contactez-nous pour plus d'informations."}
                             </p>
                         </div>
-                        <DialogFooter className="mt-6 grid grid-cols-2 gap-4">
-                            <Button size="lg" variant="outline" onClick={() => toast({ title: "Bientôt disponible", description: "Le panier n'est pas encore fonctionnel." })}>
+                        <DialogFooter className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Button size="lg" variant="outline" onClick={() => onAddToCart({ id: selectedProduct.id, name: selectedProduct.name, price: selectedProduct.price, imageUrl: selectedProduct.imageUrl })}>
                                 <ShoppingCart className="mr-2 h-5 w-5"/>
                                 Ajouter au Panier
                             </Button>
@@ -240,8 +243,8 @@ export default function WearHub({ content, bookings, onAddBooking }: WearHubProp
       
       <Dialog open={isLightboxOpen} onOpenChange={setLightboxOpen}>
         <DialogContent className="max-w-5xl h-[90vh] p-2 bg-transparent border-0 flex items-center justify-center">
-            <DialogHeader>
-                <DialogTitle className="sr-only">Image en plein écran</DialogTitle>
+            <DialogHeader className="sr-only">
+                <DialogTitle>Image en plein écran</DialogTitle>
             </DialogHeader>
             <Image src={lightboxImageUrl} alt="Image en plein écran" layout="fill" objectFit="contain" className="p-4" />
         </DialogContent>

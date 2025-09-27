@@ -4,14 +4,17 @@
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Pyramid, LogIn } from "lucide-react";
+import { Pyramid, LogIn, ShoppingCart } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface HeaderProps {
   activeHub: string;
   setActiveHub: (hub: "culture" | "studio" | "wear" | "admin") => void;
+  cartCount: number;
+  onCartClick: () => void;
 }
 
-export default function Header({ activeHub, setActiveHub }: HeaderProps) {
+export default function Header({ activeHub, setActiveHub, cartCount, onCartClick }: HeaderProps) {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const navItems = [
@@ -54,7 +57,20 @@ export default function Header({ activeHub, setActiveHub }: HeaderProps) {
         )}
 
 
-        <div className="flex items-center ml-auto">
+        <div className="flex items-center ml-auto gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative"
+            onClick={onCartClick}
+          >
+            <ShoppingCart className="h-5 w-5" />
+            {cartCount > 0 && (
+              <Badge variant="destructive" className="absolute -top-2 -right-2 h-5 w-5 justify-center rounded-full p-0">
+                {cartCount}
+              </Badge>
+            )}
+          </Button>
           <Button
             variant="outline"
             className="border-primary text-primary hover:bg-primary/10 hover:text-primary"

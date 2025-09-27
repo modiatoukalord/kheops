@@ -20,6 +20,9 @@ import { collection, addDoc, getDocs, query, orderBy, Timestamp, onSnapshot, doc
 import { Employee } from "@/components/admin/human-resources-management";
 import BottomNav from "@/components/layout/bottom-nav";
 import { useIsMobile } from "@/hooks/use-mobile";
+import CartSheet from "@/components/cart/cart-sheet";
+import { CartItem } from "@/components/cart/cart-sheet";
+import { useToast } from "@/hooks/use-toast";
 
 
 type Hubs = {
@@ -55,8 +58,11 @@ function HomePageContent() {
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [isCartOpen, setCartOpen] = useState(false);
   const adminHubRef = useRef<{ setActiveView: (view: any) => void }>(null);
   const isMobile = useIsMobile();
+  const { toast } = useToast();
 
   useEffect(() => {
       const hub = searchParams.get('hub');
@@ -354,6 +360,37 @@ function HomePageContent() {
         console.error("Error deleting employee: ", error);
     }
   };
+  
+    const handleAddToCart = (product: Omit<CartItem, 'quantity'>) => {
+        setCart(prevCart => {
+            const existingItem = prevCart.find(item => item.id === product.id);
+            if (existingItem) {
+                return prevCart.map(item =>
+                    item.id === product.id
+                        ? { ...item, quantity: item.quantity + 1 }
+                        : item
+                );
+            } else {
+                return [...prevCart, { ...product, quantity: 1 }];
+            }
+        });
+        toast({
+            title: "Ajouté au panier",
+            description: `${product.name} a été ajouté à votre panier.`,
+        });
+    };
+
+    const handleUpdateCartQuantity = (productId: string, quantity: number) => {
+        setCart(prevCart =>
+            prevCart.map(item =>
+                item.id === productId ? { ...item, quantity } : item
+            ).filter(item => item.quantity > 0)
+        );
+    };
+
+    const handleRemoveFromCart = (productId: string) => {
+        setCart(prevCart => prevCart.filter(item => item.id !== productId));
+    };
 
 
   const ActiveComponent = hubComponents[activeHub];
@@ -361,7 +398,7 @@ function HomePageContent() {
   const componentProps: { [key: string]: any } = {
     culture: { content, events, onEventRegistration: handleEventRegistration, bookings, onAddBooking: handleAddBooking },
     studio: { bookings, onAddBooking: handleAddBooking, content },
-    wear: { content, bookings, onAddBooking: handleAddBooking },
+    wear: { content, bookings, onAddBooking: handleAddBooking, onAddToCart: handleAddToCart },
     admin: { 
         content, onAddContent: handleAddContent, onUpdateContent: handleUpdateContent, onDeleteContent: handleDeleteContent,
         events, onAddEvent: handleAddEvent, onUpdateEvent: handleUpdateEvent, onDeleteEvent: handleDeleteEvent,
@@ -376,7 +413,7 @@ function HomePageContent() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
-      {showMainHeader && <Header activeHub={activeHub} setActiveHub={handleSetActiveHub} />}
+      {showMainHeader && <Header activeHub={activeHub} setActiveHub={handleSetActiveHub} cartCount={cart.length} onCartClick={() => setCartOpen(true)} />}
       <main className="flex-grow container mx-auto px-4 py-8 mb-16 md:mb-0">
         <div className="animate-fade-in">
           {ActiveComponent && <ActiveComponent {...componentProps[activeHub]} />}
@@ -385,6 +422,14 @@ function HomePageContent() {
       {isMobile && showMainHeader && (
         <BottomNav activeHub={activeHub} setActiveHub={handleSetActiveHub} />
       )}
+      <CartSheet 
+        isOpen={isCartOpen}
+        onOpenChange={setCartOpen}
+        cartItems={cart}
+        onUpdateQuantity={handleUpdateCartQuantity}
+        onRemoveItem={handleRemoveFromCart}
+        onCheckout={onAddBooking}
+      />
     </div>
   );
 }
