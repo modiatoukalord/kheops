@@ -333,7 +333,7 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
         <div className="space-y-2">
             <Label htmlFor="image">Images</Label>
             <Input id="image" name="image" type="file" onChange={handleImageChange} accept="image/*" multiple />
-            <p className="text-xs text-muted-foreground mt-1">Téléversez une ou plusieurs images pour le contenu.</p>
+            <p className="text-xs text-muted-foreground mt-1">plusieurs images peuvent etre televerser pour le même élement.</p>
             {previewImages.length > 0 && (
             <div className="mt-2 grid grid-cols-4 gap-2">
                 {previewImages.map((image, index) => (

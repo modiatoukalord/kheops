@@ -1,13 +1,13 @@
 
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { BookOpen, CalendarDays, BookCopy, FileText, Film, Puzzle, User, Phone, X, Info } from "lucide-react";
+import { BookOpen, CalendarDays, BookCopy, FileText, Film, Puzzle, User, Phone, X, Info, Newspaper, ArrowRight } from "lucide-react";
 import type { Content } from "@/components/admin/content-management";
 import type { AppEvent } from "@/components/admin/event-management";
 import { format } from "date-fns";
@@ -48,12 +48,14 @@ export default function CultureHub({ content, events, bookings, onEventRegistrat
   const [isLightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImageUrl, setLightboxImageUrl] = useState('');
 
-  const culturalContent: Content[] = content
-    .filter(c => c.status === "Publié" && c.type !== 'Projet Studio' && c.type !== 'Produit Wear')
-    .map((c, index) => ({
-        ...c,
-    }));
-    
+  const { articles, otherCulturalContent } = useMemo(() => {
+    const publishedContent = content.filter(c => c.status === "Publié" && c.type !== 'Projet Studio' && c.type !== 'Produit Wear');
+    return {
+      articles: publishedContent.filter(c => c.type === 'Article'),
+      otherCulturalContent: publishedContent.filter(c => c.type !== 'Article')
+    };
+  }, [content]);
+
   const upcomingEvents = events
     .filter(event => (event.endDate || event.startDate) >= new Date())
     .sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
@@ -126,56 +128,92 @@ export default function CultureHub({ content, events, bookings, onEventRegistrat
         </Button>
       </header>
 
-      <section>
-        <div className="flex items-center gap-4 mb-6">
-          <BookOpen className="w-8 h-8 text-accent" />
-          <h2 className="text-3xl font-semibold font-headline">Catalogue de Contenus</h2>
-        </div>
-        <Carousel
-          opts={{
-            align: "start",
-            loop: culturalContent.length > 4,
-          }}
-          className="w-full"
-        >
-          <CarouselContent className="-ml-4">
-            {culturalContent.map((item, index) => {
-              const Icon = categoryIcons[item.type];
-              return (
-                <CarouselItem key={item.id} className="pl-4 md:basis-1/2 lg:basis-1/4">
-                  <div className="p-1">
-                    <Card className="bg-card border-border/50 flex flex-col justify-between overflow-hidden group transition-all duration-300 hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-1 h-full">
-                      <div className="aspect-[4/3] overflow-hidden">
-                          <Image 
-                            src={(item.imageUrls && item.imageUrls[0]) || `https://picsum.photos/seed/culture${index}/400/300`}
-                            alt={`Image pour ${item.title}`}
-                            width={400}
-                            height={300}
-                            data-ai-hint={item.title.toLowerCase().split(' ').slice(0,2).join(' ')}
-                            className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-110"
-                          />
-                      </div>
-                      <CardContent className="p-4 space-y-2 text-center flex flex-col flex-grow">
-                          <Badge variant="secondary" className="text-accent-foreground bg-accent/20 border-accent/50 w-fit mx-auto flex items-center gap-1.5">
-                            {Icon && <Icon className="h-3.5 w-3.5"/>}
-                            {item.type}
-                          </Badge>
-                          <CardTitle className="text-lg font-semibold text-primary-foreground">{item.title}</CardTitle>
-                          <CardDescription className="text-muted-foreground text-sm flex-grow line-clamp-3">{(item as any).summary || `Découvrez le contenu fascinant de "${item.title}" par ${item.author}.`}</CardDescription>
-                          <Button variant="outline" className="w-full mt-2 border-primary/50 text-primary hover:bg-primary/10" onClick={() => handleDiscover(item)}>
-                          Découvrir
-                          </Button>
-                      </CardContent>
+      {articles.length > 0 && (
+        <section>
+            <div className="flex items-center gap-4 mb-6">
+                <Newspaper className="w-8 h-8 text-accent" />
+                <h2 className="text-3xl font-semibold font-headline">Blog & Articles</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {articles.map((item, index) => (
+                    <Card key={item.id} className="bg-card border-border/50 flex flex-col justify-between overflow-hidden group transition-all duration-300 hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-1">
+                        <div className="aspect-[16/9] overflow-hidden">
+                             <Image 
+                                src={(item.imageUrls && item.imageUrls[0]) || `https://picsum.photos/seed/article${index}/400/225`}
+                                alt={`Image pour ${item.title}`}
+                                width={400}
+                                height={225}
+                                data-ai-hint={item.title.toLowerCase().split(' ').slice(0,2).join(' ')}
+                                className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-110"
+                            />
+                        </div>
+                        <CardContent className="p-4 space-y-2 flex flex-col flex-grow">
+                            <CardTitle className="text-xl font-semibold text-primary-foreground">{item.title}</CardTitle>
+                             <CardDescription className="text-sm text-muted-foreground">Par {item.author} - {new Date(item.lastUpdated).toLocaleDateString("fr-FR", { day: 'numeric', month: 'long', year: 'numeric' })}</CardDescription>
+                            <p className="text-muted-foreground text-sm flex-grow line-clamp-3 pt-2">{item.summary || `Découvrez le contenu fascinant de "${item.title}".`}</p>
+                            <Button variant="outline" className="w-full mt-2 border-primary/50 text-primary hover:bg-primary/10" onClick={() => handleDiscover(item)}>
+                                Lire la suite <ArrowRight className="ml-2 h-4 w-4" />
+                            </Button>
+                        </CardContent>
                     </Card>
-                  </div>
-                </CarouselItem>
-              )
-            })}
-          </CarouselContent>
-          <CarouselPrevious className="hidden sm:flex" />
-          <CarouselNext className="hidden sm:flex"/>
-        </Carousel>
-      </section>
+                ))}
+            </div>
+        </section>
+      )}
+
+      {otherCulturalContent.length > 0 && (
+          <section>
+            <div className="flex items-center gap-4 mb-6">
+              <BookOpen className="w-8 h-8 text-accent" />
+              <h2 className="text-3xl font-semibold font-headline">Catalogue Culturel</h2>
+            </div>
+            <Carousel
+              opts={{
+                align: "start",
+                loop: otherCulturalContent.length > 4,
+              }}
+              className="w-full"
+            >
+              <CarouselContent className="-ml-4">
+                {otherCulturalContent.map((item, index) => {
+                  const Icon = categoryIcons[item.type];
+                  return (
+                    <CarouselItem key={item.id} className="pl-4 md:basis-1/2 lg:basis-1/4">
+                      <div className="p-1">
+                        <Card className="bg-card border-border/50 flex flex-col justify-between overflow-hidden group transition-all duration-300 hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-1 h-full">
+                          <div className="aspect-[4/3] overflow-hidden">
+                              <Image 
+                                src={(item.imageUrls && item.imageUrls[0]) || `https://picsum.photos/seed/culture${index}/400/300`}
+                                alt={`Image pour ${item.title}`}
+                                width={400}
+                                height={300}
+                                data-ai-hint={item.title.toLowerCase().split(' ').slice(0,2).join(' ')}
+                                className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-110"
+                              />
+                          </div>
+                          <CardContent className="p-4 space-y-2 text-center flex flex-col flex-grow">
+                              <Badge variant="secondary" className="text-accent-foreground bg-accent/20 border-accent/50 w-fit mx-auto flex items-center gap-1.5">
+                                {Icon && <Icon className="h-3.5 w-3.5"/>}
+                                {item.type}
+                              </Badge>
+                              <CardTitle className="text-lg font-semibold text-primary-foreground">{item.title}</CardTitle>
+                              <CardDescription className="text-muted-foreground text-sm flex-grow line-clamp-3">{item.summary || `Découvrez le contenu fascinant de "${item.title}" par ${item.author}.`}</CardDescription>
+                              <Button variant="outline" className="w-full mt-2 border-primary/50 text-primary hover:bg-primary/10" onClick={() => handleDiscover(item)}>
+                              Découvrir
+                              </Button>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </CarouselItem>
+                  )
+                })}
+              </CarouselContent>
+              <CarouselPrevious className="hidden sm:flex" />
+              <CarouselNext className="hidden sm:flex"/>
+            </Carousel>
+          </section>
+      )}
+
 
       <section>
         <div className="flex items-center gap-4 mb-6">
@@ -283,7 +321,7 @@ export default function CultureHub({ content, events, bookings, onEventRegistrat
                  <div className="space-y-4">
                      <Badge variant="secondary">{selectedContent.type}</Badge>
                     <p className="text-muted-foreground text-sm">
-                        {(selectedContent as any).summary || `Aucun résumé disponible pour ce contenu.`}
+                        {selectedContent.summary || `Aucun résumé disponible pour ce contenu.`}
                     </p>
                  </div>
               </div>
@@ -299,7 +337,7 @@ export default function CultureHub({ content, events, bookings, onEventRegistrat
       
       <Dialog open={isLightboxOpen} onOpenChange={setLightboxOpen}>
         <DialogContent className="max-w-5xl h-[90vh] p-2 bg-transparent border-0 flex items-center justify-center">
-            <DialogHeader>
+             <DialogHeader>
                 <DialogTitle className="sr-only">Image en plein écran</DialogTitle>
             </DialogHeader>
             <Image src={lightboxImageUrl} alt="Image en plein écran" layout="fill" objectFit="contain" className="p-4" />
