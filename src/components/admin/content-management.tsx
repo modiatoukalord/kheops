@@ -117,7 +117,9 @@ interface ContentManagementProps {
 
 export default function ContentManagement({ content, onAddContent, onUpdateContent, onDeleteContent }: ContentManagementProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [isDialogOpen, setDialogOpen] = useState(false);
+  const [isAddDialogOpen, setAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingContent, setEditingContent] = useState<Content | null>(null);
   const { toast } = useToast();
   const [typeFilters, setTypeFilters] = useState<ContentType[]>([]);
   const [statusFilters, setStatusFilters] = useState<ContentStatus[]>([]);
@@ -131,6 +133,13 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
     });
     return () => unsub();
   }, []);
+  
+  useEffect(() => {
+    if (editingContent) {
+        setSelectedType(editingContent.type);
+        setPreviewImages(editingContent.imageUrls || []);
+    }
+  }, [editingContent]);
 
   const handleAddContent = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -165,8 +174,48 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
       title: "Contenu Ajouté",
       description: `Le contenu "${title}" a été ajouté comme brouillon.`,
     });
-    setDialogOpen(false);
+    setAddDialogOpen(false);
     setPreviewImages([]);
+  };
+
+  const handleEditContent = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editingContent) return;
+
+    const formData = new FormData(event.currentTarget);
+    const title = formData.get("title") as string;
+    const type = formData.get("type") as Content["type"];
+    
+    const updatedContent: Partial<Omit<Content, 'id'>> = {
+      title,
+      type,
+      author: formData.get("author") as string,
+      lastUpdated: new Date().toISOString().split("T")[0],
+      imageUrls: previewImages,
+      summary: formData.get("summary") as string || '',
+    };
+    
+    const wearCategory = formData.get("wearCategory") as Content["wearCategory"];
+    if (type === 'Produit Wear' && wearCategory) {
+        updatedContent.wearCategory = wearCategory;
+    } else {
+        updatedContent.wearCategory = ''; // Or remove field logic
+    }
+    
+    await onUpdateContent(editingContent.id, updatedContent);
+    toast({
+      title: "Contenu Modifié",
+      description: `Le contenu "${title}" a été mis à jour.`,
+    });
+
+    setEditDialogOpen(false);
+    setEditingContent(null);
+    setPreviewImages([]);
+  };
+  
+  const handleOpenEditDialog = (item: Content) => {
+    setEditingContent(item);
+    setEditDialogOpen(true);
   };
   
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -229,6 +278,82 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
 
     return matchesSearch && matchesType && matchesStatus;
   });
+  
+  const renderFormContent = (isEditing: boolean) => {
+    const defaultValues = isEditing ? editingContent : null;
+    return (
+        <div className="grid gap-4 py-4">
+        <div className="space-y-2">
+            <Label htmlFor="title">Titre</Label>
+            <Input id="title" name="title" placeholder="Titre du contenu" required defaultValue={defaultValues?.title} />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+            <Label htmlFor="type">Type de contenu</Label>
+            <Select name="type" required defaultValue={selectedType} onValueChange={(value) => setSelectedType(value as ContentType)}>
+                <SelectTrigger><SelectValue placeholder="Sélectionner un type" /></SelectTrigger>
+                <SelectContent>
+                {Object.entries(typeConfig).map(([key, { label }]) => (
+                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                ))}
+                </SelectContent>
+            </Select>
+            </div>
+            <div className="space-y-2">
+            <Label htmlFor="author">{selectedType === 'Produit Wear' ? 'Prix' : 'Auteur / Créateur'}</Label>
+            <div className="relative">
+                {selectedType === 'Produit Wear' && <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
+                <Input
+                    id="author"
+                    name="author"
+                    placeholder={selectedType === 'Produit Wear' ? 'Ex: 25000' : 'Nom du créateur'}
+                    type={selectedType === 'Produit Wear' ? 'number' : 'text'}
+                    className={selectedType === 'Produit Wear' ? 'pl-10' : ''}
+                    required
+                    defaultValue={defaultValues?.author}
+                />
+            </div>
+            </div>
+        </div>
+        {selectedType === 'Produit Wear' && (
+            <div className="space-y-2">
+                <Label htmlFor="wearCategory">Catégorie Wear</Label>
+                <Select name="wearCategory" defaultValue={defaultValues?.wearCategory}>
+                    <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner une catégorie" />
+                    </SelectTrigger>
+                    <SelectContent>
+                    {wearCategories.map(category => (
+                        <SelectItem key={category.id} value={category.name}>{category.name}</SelectItem>
+                    ))}
+                    </SelectContent>
+                </Select>
+            </div>
+        )}
+        <div className="space-y-2">
+            <Label htmlFor="image">Images</Label>
+            <Input id="image" name="image" type="file" onChange={handleImageChange} accept="image/*" multiple />
+            <p className="text-xs text-muted-foreground mt-1">Téléversez une ou plusieurs images pour le contenu.</p>
+            {previewImages.length > 0 && (
+            <div className="mt-2 grid grid-cols-4 gap-2">
+                {previewImages.map((image, index) => (
+                    <div key={index} className="relative group">
+                        <Image src={image} alt={`Aperçu ${index+1}`} width={100} height={100} className="h-24 w-24 object-cover rounded-md border" />
+                        <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100" onClick={() => handleRemoveImage(index)}>
+                            <X className="h-3 w-3" />
+                        </Button>
+                    </div>
+                ))}
+            </div>
+            )}
+        </div>
+            <div className="space-y-2">
+            <Label htmlFor="summary">Résumé (Optionnel)</Label>
+            <Textarea id="summary" name="summary" placeholder="Bref résumé du contenu..." defaultValue={defaultValues?.summary}/>
+        </div>
+        </div>
+    )
+  };
 
   return (
     <Card>
@@ -295,7 +420,7 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setPreviewImages([]); setDialogOpen(isOpen); }}>
+            <Dialog open={isAddDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setPreviewImages([]); setAddDialogOpen(isOpen); }}>
               <DialogTrigger asChild>
                 <Button>
                   <PlusCircle className="mr-2 h-4 w-4" />
@@ -310,84 +435,25 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
                       Remplissez les informations pour créer une nouvelle oeuvre.
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="title">Titre</Label>
-                      <Input
-                        id="title"
-                        name="title"
-                        placeholder="Titre du contenu"
-                        required
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="type">Type de contenu</Label>
-                          <Select name="type" required defaultValue={selectedType} onValueChange={(value) => setSelectedType(value as ContentType)}>
-                              <SelectTrigger>
-                              <SelectValue placeholder="Sélectionner un type" />
-                              </SelectTrigger>
-                              <SelectContent>
-                              {Object.entries(typeConfig).map(([key, { label }]) => (
-                                <SelectItem key={key} value={key}>{label}</SelectItem>
-                              ))}
-                              </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="author">{selectedType === 'Produit Wear' ? 'Prix' : 'Auteur / Créateur'}</Label>
-                          <div className="relative">
-                            {selectedType === 'Produit Wear' && <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
-                            <Input
-                                id="author"
-                                name="author"
-                                placeholder={selectedType === 'Produit Wear' ? 'Ex: 25000' : 'Nom du créateur'}
-                                type={selectedType === 'Produit Wear' ? 'number' : 'text'}
-                                className={selectedType === 'Produit Wear' ? 'pl-10' : ''}
-                                required
-                            />
-                          </div>
-                        </div>
-                    </div>
-                    {selectedType === 'Produit Wear' && (
-                        <div className="space-y-2">
-                            <Label htmlFor="wearCategory">Catégorie Wear</Label>
-                            <Select name="wearCategory" required>
-                                <SelectTrigger>
-                                <SelectValue placeholder="Sélectionner une catégorie" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                {wearCategories.map(category => (
-                                    <SelectItem key={category.id} value={category.name}>{category.name}</SelectItem>
-                                ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    )}
-                    <div className="space-y-2">
-                      <Label htmlFor="image">Images</Label>
-                      <Input id="image" name="image" type="file" onChange={handleImageChange} accept="image/*" multiple />
-                      <p className="text-xs text-muted-foreground mt-1">Téléversez une ou plusieurs images pour le contenu.</p>
-                      {previewImages.length > 0 && (
-                        <div className="mt-2 grid grid-cols-4 gap-2">
-                            {previewImages.map((image, index) => (
-                                <div key={index} className="relative group">
-                                    <Image src={image} alt={`Aperçu ${index+1}`} width={100} height={100} className="h-24 w-24 object-cover rounded-md border" />
-                                    <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100" onClick={() => handleRemoveImage(index)}>
-                                        <X className="h-3 w-3" />
-                                    </Button>
-                                </div>
-                            ))}
-                        </div>
-                      )}
-                    </div>
-                     <div className="space-y-2">
-                      <Label htmlFor="summary">Résumé (Optionnel)</Label>
-                      <Textarea id="summary" name="summary" placeholder="Bref résumé du contenu..." />
-                    </div>
-                  </div>
+                  {renderFormContent(false)}
                   <DialogFooter>
                     <Button type="submit">Ajouter comme Brouillon</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+            <Dialog open={isEditDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) { setPreviewImages([]); setEditingContent(null); } setEditDialogOpen(isOpen); }}>
+              <DialogContent className="sm:max-w-[525px]">
+                <form onSubmit={handleEditContent}>
+                  <DialogHeader>
+                    <DialogTitle>Modifier le contenu</DialogTitle>
+                    <DialogDescription>
+                      Mettez à jour les informations pour "{editingContent?.title}".
+                    </DialogDescription>
+                  </DialogHeader>
+                  {renderFormContent(true)}
+                  <DialogFooter>
+                    <Button type="submit">Enregistrer les modifications</Button>
                   </DialogFooter>
                 </form>
               </DialogContent>
@@ -477,7 +543,7 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
                               <Eye className="mr-2 h-4 w-4" />
                               Prévisualiser
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOpenEditDialog(item)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Modifier
                             </DropdownMenuItem>
