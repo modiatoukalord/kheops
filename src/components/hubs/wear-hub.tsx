@@ -40,7 +40,7 @@ export default function WearHub({ content }: WearHubProps) {
         id: c.id,
         name: c.title,
         price: `${Number(c.author).toLocaleString('fr-FR')} FCFA`,
-        imageUrl: c.imageUrl || `https://picsum.photos/seed/wear${i+1}/600/800`,
+        imageUrl: (c.imageUrls && c.imageUrls[0]) || `https://picsum.photos/seed/wear${i+1}/600/800`,
         hint: c.title.toLowerCase().split(' ').slice(0, 2).join(' '),
         category: c.wearCategory,
       })), [content]);
@@ -150,5 +150,3 @@ export default function WearHub({ content }: WearHubProps) {
     </div>
   );
 }
-
-    

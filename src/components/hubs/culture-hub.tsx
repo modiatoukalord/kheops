@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState } from "react";
@@ -51,7 +50,7 @@ export default function CultureHub({ content, events, bookings, onEventRegistrat
     .filter(c => c.status === "Publié" && c.type !== 'Projet Studio' && c.type !== 'Produit Wear')
     .map((c, index) => ({
         ...c,
-        imageUrl: c.imageUrl || `https://picsum.photos/seed/culture${index}/400/300`,
+        imageUrl: (c.imageUrls && c.imageUrls[0]) || `https://picsum.photos/seed/culture${index}/400/300`,
     }));
     
   const upcomingEvents = events
@@ -142,7 +141,7 @@ export default function CultureHub({ content, events, bookings, onEventRegistrat
                     <Card className="bg-card border-border/50 flex flex-col justify-between overflow-hidden group transition-all duration-300 hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-1 h-full">
                       <div className="aspect-[4/3] overflow-hidden">
                           <Image 
-                            src={item.imageUrl!}
+                            src={(item.imageUrls && item.imageUrls[0]) || `https://picsum.photos/seed/culture${index}/400/300`}
                             alt={`Image pour ${item.title}`}
                             width={400}
                             height={300}
@@ -246,15 +245,17 @@ export default function CultureHub({ content, events, bookings, onEventRegistrat
           {selectedContent && (
             <>
               <DialogHeader>
+                {selectedContent.imageUrls && selectedContent.imageUrls[0] &&
                 <div className="aspect-[16/9] rounded-t-lg overflow-hidden -mx-6 -mt-6">
                     <Image
-                        src={selectedContent.imageUrl!}
+                        src={selectedContent.imageUrls[0]}
                         alt={`Image pour ${selectedContent.title}`}
                         width={800}
                         height={450}
                         className="object-cover w-full h-full"
                     />
                 </div>
+                }
                 <DialogTitle className="pt-4 text-2xl">{selectedContent.title}</DialogTitle>
                 <DialogDescription>
                   Par {selectedContent.author}

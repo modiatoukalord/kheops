@@ -67,6 +67,7 @@ import {
   Shirt,
   DollarSign,
   ImageIcon,
+  X,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { db } from "@/lib/firebase";
@@ -83,7 +84,7 @@ export type Content = {
     author: string; // Doubles as price for "Produit Wear"
     status: "Publié" | "Brouillon";
     lastUpdated: string;
-    imageUrl?: string;
+    imageUrls?: string[];
     summary?: string;
     wearCategory?: string;
 };
@@ -120,7 +121,7 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
   const { toast } = useToast();
   const [typeFilters, setTypeFilters] = useState<ContentType[]>([]);
   const [statusFilters, setStatusFilters] = useState<ContentStatus[]>([]);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewImages, setPreviewImages] = useState<string[]>([]);
   const [selectedType, setSelectedType] = useState<ContentType>('Article');
   const [wearCategories, setWearCategories] = useState<WearCategory[]>([]);
 
@@ -144,14 +145,14 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
       status: "Brouillon",
       lastUpdated: new Date().toISOString().split("T")[0],
     };
+
+    if (previewImages.length > 0) {
+      newContent.imageUrls = previewImages;
+    }
     
     const summary = formData.get("summary") as string;
     if (summary) {
         newContent.summary = summary;
-    }
-
-    if (previewImage) {
-        newContent.imageUrl = previewImage;
     }
 
     const wearCategory = formData.get("wearCategory") as Content["wearCategory"];
@@ -165,19 +166,32 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
       description: `Le contenu "${title}" a été ajouté comme brouillon.`,
     });
     setDialogOpen(false);
-    setPreviewImage(null);
+    setPreviewImages([]);
   };
   
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    const files = event.target.files;
+    if (files) {
+      const fileArray = Array.from(files);
+      const newImages: string[] = [];
+
+      fileArray.forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          newImages.push(reader.result as string);
+          if (newImages.length === fileArray.length) {
+            setPreviewImages(prev => [...prev, ...newImages]);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
     }
   };
+
+  const handleRemoveImage = (index: number) => {
+    setPreviewImages(prev => prev.filter((_, i) => i !== index));
+  };
+
 
   const handleStatusChange = async (id: string, status: ContentStatus) => {
     await onUpdateContent(id, { status, lastUpdated: new Date().toISOString().split("T")[0] });
@@ -281,7 +295,7 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setPreviewImage(null); setDialogOpen(isOpen); }}>
+            <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setPreviewImages([]); setDialogOpen(isOpen); }}>
               <DialogTrigger asChild>
                 <Button>
                   <PlusCircle className="mr-2 h-4 w-4" />
@@ -351,20 +365,21 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
                         </div>
                     )}
                     <div className="space-y-2">
-                      <Label htmlFor="image">Image de couverture</Label>
-                      <div className="flex items-center gap-4">
-                         <div className="w-full">
-                           <Input id="image" name="image" type="file" onChange={handleImageChange} accept="image/*" />
-                           <p className="text-xs text-muted-foreground mt-1">Téléversez l'image pour le contenu.</p>
-                         </div>
-                         {previewImage ? (
-                             <Image src={previewImage} alt="Aperçu" width={64} height={64} className="h-16 w-16 object-cover rounded-md border" />
-                         ) : (
-                            <div className="h-16 w-16 bg-muted rounded-md border flex items-center justify-center">
-                                <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                            </div>
-                         )}
-                      </div>
+                      <Label htmlFor="image">Images</Label>
+                      <Input id="image" name="image" type="file" onChange={handleImageChange} accept="image/*" multiple />
+                      <p className="text-xs text-muted-foreground mt-1">Téléversez une ou plusieurs images pour le contenu.</p>
+                      {previewImages.length > 0 && (
+                        <div className="mt-2 grid grid-cols-4 gap-2">
+                            {previewImages.map((image, index) => (
+                                <div key={index} className="relative group">
+                                    <Image src={image} alt={`Aperçu ${index+1}`} width={100} height={100} className="h-24 w-24 object-cover rounded-md border" />
+                                    <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100" onClick={() => handleRemoveImage(index)}>
+                                        <X className="h-3 w-3" />
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
+                      )}
                     </div>
                      <div className="space-y-2">
                       <Label htmlFor="summary">Résumé (Optionnel)</Label>
@@ -404,8 +419,8 @@ export default function ContentManagement({ content, onAddContent, onUpdateConte
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.title}</TableCell>
                       <TableCell>
-                          {item.imageUrl ? (
-                              <Image src={item.imageUrl} alt={item.title} width={40} height={40} className="rounded-md object-cover h-10 w-10 border"/>
+                          {item.imageUrls && item.imageUrls.length > 0 ? (
+                              <Image src={item.imageUrls[0]} alt={item.title} width={40} height={40} className="rounded-md object-cover h-10 w-10 border"/>
                           ) : (
                             <div className="h-10 w-10 bg-muted rounded-md border flex items-center justify-center">
                                 <ImageIcon className="h-5 w-5 text-muted-foreground" />
