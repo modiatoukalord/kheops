@@ -299,6 +299,9 @@ export default function CultureHub({ content, events, bookings, onEventRegistrat
       
       <Dialog open={isLightboxOpen} onOpenChange={setLightboxOpen}>
         <DialogContent className="max-w-5xl h-[90vh] p-2 bg-transparent border-0 flex items-center justify-center">
+            <DialogHeader>
+                <DialogTitle className="sr-only">Image en plein écran</DialogTitle>
+            </DialogHeader>
             <Image src={lightboxImageUrl} alt="Image en plein écran" layout="fill" objectFit="contain" className="p-4" />
         </DialogContent>
       </Dialog>
