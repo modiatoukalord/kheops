@@ -50,7 +50,6 @@ export default function CultureHub({ content, events, bookings, onEventRegistrat
     .filter(c => c.status === "Publié" && c.type !== 'Projet Studio' && c.type !== 'Produit Wear')
     .map((c, index) => ({
         ...c,
-        imageUrl: (c.imageUrls && c.imageUrls[0]) || `https://picsum.photos/seed/culture${index}/400/300`,
     }));
     
   const upcomingEvents = events
@@ -241,33 +240,47 @@ export default function CultureHub({ content, events, bookings, onEventRegistrat
       </Dialog>
       
        <Dialog open={!!selectedContent} onOpenChange={(open) => !open && setSelectedContent(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl p-0">
           {selectedContent && (
             <>
-              <DialogHeader>
-                {selectedContent.imageUrls && selectedContent.imageUrls[0] &&
-                <div className="aspect-[16/9] rounded-t-lg overflow-hidden -mx-6 -mt-6">
-                    <Image
-                        src={selectedContent.imageUrls[0]}
-                        alt={`Image pour ${selectedContent.title}`}
-                        width={800}
-                        height={450}
-                        className="object-cover w-full h-full"
-                    />
-                </div>
-                }
-                <DialogTitle className="pt-4 text-2xl">{selectedContent.title}</DialogTitle>
+              <DialogHeader className="p-6 pb-0">
+                <DialogTitle className="text-2xl">{selectedContent.title}</DialogTitle>
                 <DialogDescription>
                   Par {selectedContent.author}
                 </DialogDescription>
               </DialogHeader>
-              <div className="py-4">
-                <Badge variant="secondary" className="mb-4">{selectedContent.type}</Badge>
-                <p className="text-muted-foreground">
-                    {(selectedContent as any).summary || `Aucun résumé disponible pour ce contenu.`}
-                </p>
+              <div className="grid gap-4 py-4 md:grid-cols-2 md:gap-8 px-6">
+                {selectedContent.imageUrls && selectedContent.imageUrls.length > 0 && (
+                  <Carousel>
+                    <CarouselContent>
+                      {selectedContent.imageUrls.map((url, index) => (
+                        <CarouselItem key={index}>
+                           <div className="aspect-video overflow-hidden rounded-lg border">
+                            <Image
+                                src={url}
+                                alt={`Image ${index + 1} pour ${selectedContent.title}`}
+                                width={600}
+                                height={400}
+                                className="object-cover w-full h-full"
+                            />
+                           </div>
+                        </CarouselItem>
+                      ))}
+                    </CarouselContent>
+                     {selectedContent.imageUrls.length > 1 && <>
+                        <CarouselPrevious className="left-2" />
+                        <CarouselNext className="right-2" />
+                     </>}
+                  </Carousel>
+                )}
+                 <div className="space-y-4">
+                     <Badge variant="secondary">{selectedContent.type}</Badge>
+                    <p className="text-muted-foreground text-sm">
+                        {(selectedContent as any).summary || `Aucun résumé disponible pour ce contenu.`}
+                    </p>
+                 </div>
               </div>
-              <DialogFooter>
+              <DialogFooter className="p-6 pt-4 border-t">
                 <Button onClick={handleBookingRequest}>
                   Réserver
                 </Button>

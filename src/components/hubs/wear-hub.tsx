@@ -4,36 +4,40 @@
 import React, { useState, useMemo } from 'react';
 import Image from 'next/image';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ShoppingCart, X } from "lucide-react";
 import type { Content } from "@/components/admin/content-management";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import BookingChat from '@/components/hubs/booking-chat';
+import { Booking } from '@/components/admin/booking-schedule';
 
 interface WearHubProps {
     content: Content[];
+    bookings: Booking[];
+    onAddBooking: (booking: Omit<Booking, 'id' | 'status'>) => void;
 }
 
-const staticCategories = [
-  {
-    name: "T-Shirts",
-    imageUrl: "https://picsum.photos/seed/cat1/800/600",
-    hint: "t-shirt collection"
-  },
-  {
-    name: "Hoodies & Sweats",
-    imageUrl: "https://picsum.photos/seed/cat2/800/600",
-    hint: "hoodie streetwear"
-  },
-  {
-    name: "Accessoires",
-    imageUrl: "https://picsum.photos/seed/cat3/800/600",
-    hint: "streetwear accessories"
-  },
-];
+type WearProduct = {
+    id: string;
+    name: string;
+    price: string;
+    imageUrl: string;
+    imageUrls?: string[];
+    hint: string;
+    category?: string;
+    summary?: string;
+};
 
-export default function WearHub({ content }: WearHubProps) {
+
+export default function WearHub({ content, bookings, onAddBooking }: WearHubProps) {
   
-  const wearProducts = useMemo(() => 
+  const [selectedProduct, setSelectedProduct] = useState<WearProduct | null>(null);
+  const [isChatOpen, setChatOpen] = useState(false);
+  const [chatPrefill, setChatPrefill] = useState<Partial<Booking>>({});
+
+  const wearProducts: WearProduct[] = useMemo(() => 
     content
       .filter(c => c.type === 'Produit Wear' && c.status === 'Publié')
       .map((c, i) => ({
@@ -41,8 +45,10 @@ export default function WearHub({ content }: WearHubProps) {
         name: c.title,
         price: `${Number(c.author).toLocaleString('fr-FR')} FCFA`,
         imageUrl: (c.imageUrls && c.imageUrls[0]) || `https://picsum.photos/seed/wear${i+1}/600/800`,
+        imageUrls: c.imageUrls,
         hint: c.title.toLowerCase().split(' ').slice(0, 2).join(' '),
         category: c.wearCategory,
+        summary: c.summary,
       })), [content]);
 
   const featuredProducts = wearProducts.slice(0, 5);
@@ -58,6 +64,22 @@ export default function WearHub({ content }: WearHubProps) {
     });
     return grouped;
   }, [wearProducts]);
+
+  const handleProductClick = (product: WearProduct) => {
+    setSelectedProduct(product);
+  };
+  
+  const handleBookingRequest = () => {
+    if (!selectedProduct) return;
+    setChatPrefill({
+      projectName: selectedProduct.name,
+      service: 'Achat',
+      amount: parseFloat(selectedProduct.price.replace(/[^\d]/g, '')),
+    });
+    setChatOpen(true);
+    setSelectedProduct(null);
+  };
+
 
   return (
     <div className="space-y-16">
@@ -86,8 +108,8 @@ export default function WearHub({ content }: WearHubProps) {
             <CarouselContent>
               {featuredProducts.map((product, index) => (
                 <CarouselItem key={index} className="md:basis-1/2 lg:basis-1/3">
-                  <div className="p-1">
-                    <Card className="overflow-hidden border-border/50 group">
+                  <div className="p-1" onClick={() => handleProductClick(product)}>
+                    <Card className="overflow-hidden border-border/50 group cursor-pointer">
                       <CardContent className="p-0">
                          <div className="aspect-[3/4] overflow-hidden">
                            <Image
@@ -124,7 +146,7 @@ export default function WearHub({ content }: WearHubProps) {
                     <h3 className="text-2xl font-semibold mb-6">{category}</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                         {products.map((product) => (
-                            <div key={product.id} className="group">
+                            <div key={product.id} className="group cursor-pointer" onClick={() => handleProductClick(product)}>
                             <Card className="overflow-hidden border-border/50">
                                 <Image
                                 src={product.imageUrl}
@@ -147,6 +169,71 @@ export default function WearHub({ content }: WearHubProps) {
           </div>
         </section>
       )}
+
+       <Dialog open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}>
+        <DialogContent className="max-w-4xl p-0">
+          {selectedProduct && (
+            <>
+                <DialogHeader className="p-6 pb-0 sr-only">
+                    <DialogTitle>{selectedProduct.name}</DialogTitle>
+                </DialogHeader>
+                <div className="grid md:grid-cols-2 gap-0">
+                    <div className="order-2 md:order-1 p-6 flex flex-col">
+                        <div className="flex-grow">
+                             <Badge variant="secondary" className="mb-2">{selectedProduct.category}</Badge>
+                            <h2 className="text-3xl font-bold mb-2">{selectedProduct.name}</h2>
+                            <p className="text-2xl font-bold text-primary mb-4">{selectedProduct.price}</p>
+                            <p className="text-muted-foreground text-sm">
+                                {selectedProduct.summary || "La description de ce produit est à venir. Contactez-nous pour plus d'informations."}
+                            </p>
+                        </div>
+                        <DialogFooter className="mt-6">
+                            <Button size="lg" className="w-full" onClick={handleBookingRequest}>
+                                <ShoppingCart className="mr-2 h-5 w-5"/>
+                                Ajouter au Panier & Réserver
+                            </Button>
+                        </DialogFooter>
+                    </div>
+
+                    <div className="order-1 md:order-2">
+                        {selectedProduct.imageUrls && selectedProduct.imageUrls.length > 0 ? (
+                            <Carousel className="w-full">
+                                <CarouselContent>
+                                    {selectedProduct.imageUrls.map((url, index) => (
+                                        <CarouselItem key={index}>
+                                            <div className="aspect-[3/4] overflow-hidden md:rounded-tr-lg">
+                                                <Image src={url} alt={`Image ${index + 1} de ${selectedProduct.name}`} width={600} height={800} className="object-cover w-full h-full" />
+                                            </div>
+                                        </CarouselItem>
+                                    ))}
+                                </CarouselContent>
+                                {selectedProduct.imageUrls.length > 1 && (
+                                    <>
+                                        <CarouselPrevious className="left-4" />
+                                        <CarouselNext className="right-4" />
+                                    </>
+                                )}
+                            </Carousel>
+                        ) : (
+                             <div className="aspect-[3/4] overflow-hidden md:rounded-tr-lg">
+                                <Image src={selectedProduct.imageUrl} alt={`Image de ${selectedProduct.name}`} width={600} height={800} className="object-cover w-full h-full" />
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+      
+      <BookingChat 
+        isOpen={isChatOpen} 
+        onOpenChange={setChatOpen} 
+        onBookingSubmit={onAddBooking}
+        bookings={bookings}
+        bookingType="culture"
+        prefilledData={chatPrefill}
+      />
     </div>
   );
 }

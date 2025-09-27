@@ -361,7 +361,7 @@ function HomePageContent() {
   const componentProps: { [key: string]: any } = {
     culture: { content, events, onEventRegistration: handleEventRegistration, bookings, onAddBooking: handleAddBooking },
     studio: { bookings, onAddBooking: handleAddBooking, content },
-    wear: { content },
+    wear: { content, bookings, onAddBooking: handleAddBooking },
     admin: { 
         content, onAddContent: handleAddContent, onUpdateContent: handleUpdateContent, onDeleteContent: handleDeleteContent,
         events, onAddEvent: handleAddEvent, onUpdateEvent: handleUpdateEvent, onDeleteEvent: handleDeleteEvent,
