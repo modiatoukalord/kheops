@@ -428,7 +428,7 @@ function HomePageContent() {
         cartItems={cart}
         onUpdateQuantity={handleUpdateCartQuantity}
         onRemoveItem={handleRemoveFromCart}
-        onCheckout={onAddBooking}
+        onCheckout={handleAddBooking}
       />
     </div>
   );
