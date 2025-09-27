@@ -156,26 +156,38 @@ export default function WearHub({ content, bookings, onAddBooking, onAddToCart }
               {Object.entries(productsByCategory).map(([category, products]) => (
                   <div key={category}>
                     <h3 className="text-2xl font-semibold mb-6">{category}</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                        {products.map((product) => (
-                            <div key={product.id} className="group cursor-pointer" onClick={() => handleProductClick(product)}>
-                            <Card className="overflow-hidden border-border/50">
-                                <Image
-                                src={product.imageUrl}
-                                alt={`Pochette de ${product.name}`}
-                                width={600}
-                                height={800}
-                                className="object-cover aspect-[3/4] transition-transform duration-300 group-hover:scale-105"
-                                data-ai-hint={product.hint}
-                                />
-                            </Card>
-                            <div className="mt-2 text-center md:text-left">
-                                <p className="font-semibold text-foreground">{product.name}</p>
-                                <p className="text-sm text-primary">{product.price.toLocaleString('fr-FR')} FCFA</p>
-                            </div>
-                            </div>
-                        ))}
-                    </div>
+                    <Carousel
+                        opts={{
+                            align: "start",
+                            loop: products.length > 5,
+                        }}
+                        className="w-full"
+                    >
+                        <CarouselContent className="-ml-4">
+                            {products.map((product) => (
+                                <CarouselItem key={product.id} className="pl-4 basis-1/2 md:basis-1/3 lg:basis-1/4 xl:basis-1/5">
+                                    <div className="group cursor-pointer" onClick={() => handleProductClick(product)}>
+                                        <Card className="overflow-hidden border-border/50">
+                                            <Image
+                                                src={product.imageUrl}
+                                                alt={`Pochette de ${product.name}`}
+                                                width={600}
+                                                height={800}
+                                                className="object-cover aspect-[3/4] transition-transform duration-300 group-hover:scale-105"
+                                                data-ai-hint={product.hint}
+                                            />
+                                        </Card>
+                                        <div className="mt-2 text-center md:text-left">
+                                            <p className="font-semibold text-foreground">{product.name}</p>
+                                            <p className="text-sm text-primary">{product.price.toLocaleString('fr-FR')} FCFA</p>
+                                        </div>
+                                    </div>
+                                </CarouselItem>
+                            ))}
+                        </CarouselContent>
+                        <CarouselPrevious className="hidden sm:flex" />
+                        <CarouselNext className="hidden sm:flex"/>
+                    </Carousel>
                   </div>
               ))}
           </div>
