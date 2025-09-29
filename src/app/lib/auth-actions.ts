@@ -32,7 +32,11 @@ export async function login(
       role: 'Directeur',
       department: 'Direction',
     };
-    const session = await lucia.createSession(user.id, user);
+    const session = await lucia.createSession(user.id, {
+        name: user.name,
+        role: user.role,
+        department: user.department,
+    });
     const sessionCookie = lucia.createSessionCookie(session.id);
     cookies().set(
       sessionCookie.name,
