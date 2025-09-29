@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { MoreHorizontal, PlusCircle, Trash2, Edit, Users, Briefcase, DollarSign, User, Phone, Mail, UserPlus } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Trash2, Edit, Users, Briefcase, DollarSign, User, Phone, Mail, UserPlus, KeyRound } from "lucide-react";
 import { format, parseISO, isValid } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -30,6 +30,7 @@ export type Employee = {
     phone: string;
     email: string;
     reportsTo?: string;
+    pin?: string;
 };
 
 interface HumanResourcesManagementProps {
@@ -78,6 +79,7 @@ export default function HumanResourcesManagement({ employees, onAddEmployee, onU
             salary: Number(formData.get("salary")),
             phone: formData.get("phone") as string,
             email: formData.get("email") as string,
+            pin: formData.get("pin") as string,
             reportsTo: formData.get("reportsTo") as string,
         };
 
@@ -213,18 +215,25 @@ export default function HumanResourcesManagement({ employees, onAddEmployee, onU
                                                 <Label htmlFor="startDate">Date d'embauche</Label>
                                                 <Input id="startDate" name="startDate" type="date" defaultValue={editingEmployee ? format(editingEmployee.startDate, 'yyyy-MM-dd') : ''} required />
                                             </div>
-                                             {editingEmployee && (
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="status">Statut</Label>
-                                                     <Select name="status" defaultValue={editingEmployee?.status} required>
-                                                        <SelectTrigger><SelectValue/></SelectTrigger>
-                                                        <SelectContent>
-                                                            {Object.keys(statusConfig).map(st => <SelectItem key={st} value={st}>{st}</SelectItem>)}
-                                                        </SelectContent>
-                                                    </Select>
+                                             <div className="space-y-2">
+                                                <Label htmlFor="pin">Code PIN</Label>
+                                                <div className="relative">
+                                                  <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                                  <Input id="pin" name="pin" type="password" placeholder="Ex: 1234" className="pl-10" defaultValue={editingEmployee?.pin} />
                                                 </div>
-                                             )}
+                                            </div>
                                         </div>
+                                         {editingEmployee && (
+                                            <div className="space-y-2">
+                                                <Label htmlFor="status">Statut</Label>
+                                                 <Select name="status" defaultValue={editingEmployee?.status} required>
+                                                    <SelectTrigger><SelectValue/></SelectTrigger>
+                                                    <SelectContent>
+                                                        {Object.keys(statusConfig).map(st => <SelectItem key={st} value={st}>{st}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                         )}
                                         <div className="space-y-2">
                                             <Label htmlFor="reportsTo">Rend compte à (Manager)</Label>
                                             <Select name="reportsTo" defaultValue={editingEmployee?.reportsTo}>
@@ -301,3 +310,5 @@ export default function HumanResourcesManagement({ employees, onAddEmployee, onU
         </div>
     );
 }
+
+    
