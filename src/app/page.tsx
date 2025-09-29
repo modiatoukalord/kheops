@@ -76,6 +76,8 @@ function HomePageContent({ user }: { user: Employee | null }) {
           } else {
             router.push('/login');
           }
+      } else if (hub) {
+          setActiveHub(hub);
       }
   }, [searchParams, user, router]);
 

@@ -1,13 +1,9 @@
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-// import { validateRequest } from './app/lib/auth-actions';
+import { validateRequest } from './app/lib/auth-actions';
 
 export async function middleware(request: NextRequest) {
-  // Auth system is temporarily disabled.
-  return NextResponse.next();
-
-  /*
   const { pathname } = request.nextUrl;
 
   // Allow requests for static files, API routes, and login page
@@ -23,11 +19,16 @@ export async function middleware(request: NextRequest) {
 
   const { user } = await validateRequest();
 
-  if (pathname.startsWith('/admin')) {
-    if (!user) {
+  // If user is not logged in and tries to access a protected route (like /admin)
+  if (!user && pathname.startsWith('/admin')) {
       return NextResponse.redirect(new URL('/login', request.url));
-    }
   }
+  
+  // Special handling for the root path if it requires auth for admin hub
+  if (!user && request.nextUrl.searchParams.get('hub') === 'admin') {
+      return NextResponse.redirect(new URL('/login', request.url));
+  }
+
 
   // Redirect logged-in users from login page to home
   if (user && pathname === '/login') {
@@ -35,7 +36,6 @@ export async function middleware(request: NextRequest) {
   }
 
   return NextResponse.next();
-  */
 }
 
 export const config = {

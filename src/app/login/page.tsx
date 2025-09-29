@@ -26,21 +26,18 @@ export default function LoginPage() {
         </CardHeader>
         <form action={formAction}>
             <CardContent className="space-y-4">
-                 <Alert variant="destructive">
-                    <AlertDescription>Le système de connexion est temporairement désactivé en raison d'un problème technique. Impossible de se connecter pour le moment.</AlertDescription>
-                </Alert>
                 <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
                     <div className="relative">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input id="email" name="email" type="email" placeholder="admin@kheops.com" required className="pl-10" disabled />
+                        <Input id="email" name="email" type="email" placeholder="admin@kheops.com" required className="pl-10" />
                     </div>
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="pin">Code PIN</Label>
                      <div className="relative">
                         <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input id="pin" name="pin" type="password" required className="pl-10" disabled />
+                        <Input id="pin" name="pin" type="password" required className="pl-10" />
                     </div>
                 </div>
                 {state?.error && (
@@ -61,8 +58,8 @@ export default function LoginPage() {
 function LoginButton() {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" className="w-full" disabled={true || pending}>
-      {pending ? 'Connexion...' : 'Connexion Désactivée'}
+    <Button type="submit" className="w-full" disabled={pending}>
+      {pending ? 'Connexion...' : 'Se connecter'}
     </Button>
   );
 }
