@@ -2,9 +2,10 @@
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
-import { validateRequest } from '@/app/lib/auth-actions';
-import { db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import React from 'react';
+// import { validateRequest } from '@/app/lib/auth-actions';
+// import { db } from '@/lib/firebase';
+// import { doc, getDoc } from 'firebase/firestore';
 
 
 export const metadata: Metadata = {
@@ -17,14 +18,15 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { user } = await validateRequest();
-  let fullUser = null;
-  if (user) {
-    const userDoc = await getDoc(doc(db, "employees", user.id));
-    if (userDoc.exists()) {
-        fullUser = { id: userDoc.id, ...userDoc.data() };
-    }
-  }
+  // const { user } = await validateRequest();
+  // let fullUser = null;
+  // if (user) {
+  //   const userDoc = await getDoc(doc(db, "employees", user.id));
+  //   if (userDoc.exists()) {
+  //       fullUser = { id: userDoc.id, ...userDoc.data() };
+  //   }
+  // }
+  const fullUser = null; // Auth is temporarily disabled
 
   // Pass user to children; for client components, this needs to be handled via props.
   // For server components, we can just pass it. For page.tsx, we need to adapt it.
