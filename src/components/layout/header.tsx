@@ -4,17 +4,20 @@
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Pyramid, LogIn, ShoppingCart } from "lucide-react";
+import { Pyramid, LogIn, LogOut, ShoppingCart, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { logout } from "@/app/lib/auth-actions";
+import type { Employee } from "../admin/human-resources-management";
 
 interface HeaderProps {
   activeHub: string;
   setActiveHub: (hub: "culture" | "studio" | "wear" | "admin") => void;
+  user: Employee | null;
   cartCount: number;
   onCartClick: () => void;
 }
 
-export default function Header({ activeHub, setActiveHub, cartCount, onCartClick }: HeaderProps) {
+export default function Header({ activeHub, setActiveHub, user, cartCount, onCartClick }: HeaderProps) {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const navItems = [
@@ -23,13 +26,6 @@ export default function Header({ activeHub, setActiveHub, cartCount, onCartClick
     { id: "wear", label: "Wear" },
     { id: "admin", label: "Admin" },
   ];
-
-  const handleLoginClick = () => {
-    toast({
-      title: "Fonctionnalité à venir",
-      description: "La connexion utilisateur n'est pas encore disponible.",
-    });
-  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -71,14 +67,26 @@ export default function Header({ activeHub, setActiveHub, cartCount, onCartClick
               </Badge>
             )}
           </Button>
-          <Button
-            variant="outline"
-            className="border-primary text-primary hover:bg-primary/10 hover:text-primary"
-            onClick={handleLoginClick}
-          >
-            <LogIn className="mr-2 h-4 w-4" />
-            Connexion
-          </Button>
+          {user ? (
+            <form action={logout}>
+              <Button
+                variant="outline"
+                className="border-primary text-primary hover:bg-primary/10 hover:text-primary"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Déconnexion</span>
+              </Button>
+            </form>
+          ) : (
+            <Button
+              variant="outline"
+              className="border-primary text-primary hover:bg-primary/10 hover:text-primary"
+              onClick={() => setActiveHub('admin')}
+            >
+              <LogIn className="mr-2 h-4 w-4" />
+              Connexion
+            </Button>
+          )}
         </div>
       </div>
     </header>

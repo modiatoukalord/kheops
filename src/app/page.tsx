@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useRef, Suspense } from "react";
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import type { ComponentType } from "react";
 import Header from "@/components/layout/header";
 import CultureHub from "@/components/hubs/culture-hub";
@@ -45,8 +45,9 @@ export interface EventRegistration {
 }
 
 
-function HomePageContent() {
+function HomePageContent({ user }: { user: Employee | null }) {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [activeHub, setActiveHub] = useState("culture");
   const [showMainHeader, setShowMainHeader] = useState(true);
   const [content, setContent] = useState<Content[]>([]);
@@ -67,12 +68,16 @@ function HomePageContent() {
       const hub = searchParams.get('hub');
       const view = searchParams.get('view');
       if (hub === 'admin') {
-          setActiveHub('admin');
-          if (view && adminHubRef.current) {
-              adminHubRef.current.setActiveView(view);
+          if (user) {
+            setActiveHub('admin');
+            if (view && adminHubRef.current) {
+                adminHubRef.current.setActiveView(view);
+            }
+          } else {
+            router.push('/login');
           }
       }
-  }, [searchParams]);
+  }, [searchParams, user, router]);
 
   useEffect(() => {
     const fetchBookings = onSnapshot(query(collection(db, "bookings"), orderBy("date", "desc")), (snapshot) => {
@@ -190,9 +195,12 @@ function HomePageContent() {
   }, []);
 
   const handleSetActiveHub = (hub: "culture" | "studio" | "wear" | "admin") => {
+    if (hub === 'admin' && !user) {
+        router.push('/login');
+        return;
+    }
     setActiveHub(hub);
     if (hub !== 'admin' && adminHubRef.current) {
-      // Reset admin view when leaving admin hub
       adminHubRef.current.setActiveView('dashboard');
     }
   }
@@ -206,7 +214,6 @@ function HomePageContent() {
         };
 
         await addDoc(collection(db, "bookings"), bookingPayload);
-        // State update will be handled by onSnapshot listener
     } catch (error) {
         console.error("Error adding document: ", error);
     }
@@ -317,7 +324,6 @@ function HomePageContent() {
 
   const handleUpdateContract = async (contractId: string, updatedContractData: Partial<Omit<Contract, 'id'>>) => {
       try {
-          // This assumes contracts are stored in a 'contracts' collection
           const contractRef = doc(db, "contracts", contractId);
           await updateDoc(contractRef, updatedContractData);
       } catch (error) {
@@ -412,7 +418,7 @@ function HomePageContent() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
-      {showMainHeader && <Header activeHub={activeHub} setActiveHub={handleSetActiveHub} cartCount={cart.length} onCartClick={() => setCartOpen(true)} />}
+      {showMainHeader && <Header activeHub={activeHub} setActiveHub={handleSetActiveHub} user={user} cartCount={cart.length} onCartClick={() => setCartOpen(true)} />}
       <main className="flex-grow container mx-auto px-4 py-8 mb-16 md:mb-0">
         <div className="animate-fade-in">
           {ActiveComponent && <ActiveComponent {...componentProps[activeHub]} />}
@@ -434,12 +440,14 @@ function HomePageContent() {
 }
 
 
-export default function Home() {
+export default function Home({
+  user,
+}: {
+  user: Employee | null;
+}) {
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <HomePageContent />
+      <HomePageContent user={user} />
     </Suspense>
   )
 }
-
-    
