@@ -2,7 +2,7 @@
 'use server';
 
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from './firebase';
+import { db } from '@/lib/firebase';
 import { lucia } from './session';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';

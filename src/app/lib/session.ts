@@ -1,7 +1,7 @@
 
 import { Lucia } from 'lucia';
 import { FirestoreAdapter } from 'oslo/adapter-firebase';
-import { db } from './firebase';
+import { db } from '@/lib/firebase';
 import { cache } from 'react';
 
 const adapter = new FirestoreAdapter(db.collection('sessions'), db.collection('users'));
